@@ -1,0 +1,11 @@
+{
+  "name": "my-app",
+  "version": "0.0.0",
+  "description": "개인 업무 허브",
+  "license": "MIT",
+  "author": "Kang Sin Wook",
+  "main": "main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}

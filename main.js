@@ -11,6 +11,10 @@ const createWindow = () => {
   win.loadFile('index.html')
 }
 
-app.whenReady().then(() => {
+// DOM API eventlistener처럼 사용 가능
+app.on('ready', () => {
   createWindow()
 })
+// app.whenReady().then(() => {
+//   createWindow()
+// })

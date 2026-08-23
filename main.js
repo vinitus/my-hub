@@ -1,20 +1,26 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow } = require('electron/main')
 
-// 브라우저 창을 생성하는 함수
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
     height: 600
   })
 
-  // index.html 로드
   win.loadFile('index.html')
 }
 
-// DOM API eventlistener처럼 사용 가능
-app.on('ready', () => {
+app.whenReady().then(() => {
   createWindow()
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow()
+    }
+  })
 })
-// app.whenReady().then(() => {
-//   createWindow()
-// })
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') {
+    app.quit()
+  }
+})

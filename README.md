@@ -1,34 +1,21 @@
-# my-app
+# React + TypeScript + Vite + shadcn/ui
 
-An Electron application with React and TypeScript
+This is a template for a new Vite project with React, TypeScript, and shadcn/ui.
 
-## Recommended IDE Setup
+## Adding components
 
-- [VSCode](https://code.visualstudio.com/) + [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint) + [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
-
-## Project Setup
-
-### Install
+To add components to your app, run the following command:
 
 ```bash
-$ pnpm install
+npx shadcn@latest add button
 ```
 
-### Development
+This will place the ui components in the `src/components` directory.
 
-```bash
-$ pnpm dev
-```
+## Using components
 
-### Build
+To use the components in your app, import them as follows:
 
-```bash
-# For windows
-$ pnpm build:win
-
-# For macOS
-$ pnpm build:mac
-
-# For Linux
-$ pnpm build:linux
+```tsx
+import { Button } from "@/components/ui/button"
 ```

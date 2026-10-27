@@ -12,6 +12,10 @@
 .note-editor .note-paragraph {
   margin: 0.4rem 0;
 }
+/* 컨테이너의 상단 여백을 쓰므로 첫 Markdown 블록의 margin은 더하지 않는다. */
+.note-editor > :first-child {
+  margin-top: 0;
+}
 .note-editor h1,
 .note-editor h2,
 .note-editor h3,

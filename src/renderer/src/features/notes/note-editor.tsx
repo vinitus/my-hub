@@ -136,7 +136,7 @@ export function NoteEditor({ markdown, onChange, onError, disabled }: Props) {
       </div>
       <div
         ref={containerRef}
-        className="relative mx-auto w-full max-w-3xl px-6 py-10 sm:px-12"
+        className="relative w-full px-4 pt-4 pb-10 sm:px-8 sm:pt-8"
       >
         <PlateContent
           aria-label="메모 본문"

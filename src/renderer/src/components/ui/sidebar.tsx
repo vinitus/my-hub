@@ -97,6 +97,12 @@ function SidebarProvider({
   // Adds a keyboard shortcut to toggle the sidebar.
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // 본문의 Ctrl/Cmd+B는 굵게 서식이다. 에디터와 입력창의 단축키를 가로채지 않는다.
+      if (
+        event.defaultPrevented ||
+        (event.target instanceof HTMLElement &&
+          (event.target.isContentEditable || event.target.closest("input, textarea, select")))
+      ) return
       if (
         event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
         (event.metaKey || event.ctrlKey)

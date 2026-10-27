@@ -101,3 +101,18 @@ pnpm exec shadcn add button
 ```tsx
 import { Button } from "@/components/ui/button"
 ```
+
+## Markdown 메모
+
+Plate 기반으로 본문을 바로 편집하며 UTF-8 `.md` 파일을 열고 저장합니다.
+제목, 굵게/기울임, 목록, 체크리스트, 인용, 링크, 코드 블록을 지원합니다.
+빈 문단의 `/` 또는 툴바로 블록을 선택할 수 있습니다.
+
+- `Ctrl/Cmd+N`: 새 메모, `Ctrl/Cmd+O`: 열기
+- `Ctrl/Cmd+S`: 저장, `Ctrl/Cmd+Shift+S`: 다른 이름으로 저장
+- 편집 내용은 로컬 초안으로 임시 보관되며 파일 저장은 별도로 수행합니다.
+- 표·이미지·HTML 등 미지원 요소가 있는 파일은 내용 유실을 막기 위해 열기를 제한합니다.
+- `pnpm test:notes`로 Markdown 변환, 파일 IO, IPC/닫기 흐름을 검증합니다.
+
+main/preload도 변경했으므로 실행 중인 Electron을 닫고 `pnpm dev`를 다시 실행하세요.
+브라우저 미리 보기에는 네이티브 파일 열기·저장이 제공되지 않습니다.

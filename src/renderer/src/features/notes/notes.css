@@ -1,0 +1,92 @@
+/* 에디터에만 적용한다. shadcn/Tailwind reset 위에 Markdown의 시각적 의미를 복원한다. */
+.note-editor {
+  font-size: 1rem;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+  caret-color: var(--foreground);
+}
+
+.note-editor [data-slate-placeholder] {
+  color: var(--muted-foreground);
+}
+.note-editor .note-paragraph {
+  margin: 0.4rem 0;
+}
+.note-editor h1,
+.note-editor h2,
+.note-editor h3,
+.note-editor h4,
+.note-editor h5,
+.note-editor h6 {
+  margin: 1.4em 0 0.45em;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+}
+.note-editor h1 {
+  font-size: 2rem;
+}
+.note-editor h2 {
+  font-size: 1.5rem;
+}
+.note-editor h3 {
+  font-size: 1.25rem;
+}
+.note-editor h4 {
+  font-size: 1.125rem;
+}
+.note-editor h5,
+.note-editor h6 {
+  font-size: 1rem;
+}
+.note-editor blockquote {
+  margin: 1rem 0;
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+}
+.note-editor code {
+  border-radius: 0.25rem;
+  background: var(--muted);
+  padding: 0.15em 0.35em;
+  font-family: ui-monospace, monospace;
+  font-size: 0.875em;
+}
+.note-editor pre {
+  margin: 1rem 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--muted);
+  padding: 1rem;
+  white-space: pre;
+}
+.note-editor pre code {
+  padding: 0;
+  background: transparent;
+}
+.note-editor a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.note-editor hr {
+  margin: 1.5rem 0;
+  border-top: 1px solid var(--border);
+}
+.note-editor ul,
+.note-editor ol {
+  margin-left: 1.5rem !important;
+}
+.note-editor ul:has(> li > [data-task]) {
+  list-style: none !important;
+}
+.note-editor input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--primary);
+}
+.note-editor [data-task="true"]:has(input:checked) {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+}

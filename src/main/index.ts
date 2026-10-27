@@ -1,6 +1,7 @@
 import { app, shell, BrowserWindow, ipcMain } from "electron"
 import { join } from "node:path"
 import { electronApp, optimizer, is } from "@electron-toolkit/utils"
+import { registerNotes } from "./notes"
 
 // The development launcher emits this module as ESM at out/main/index.js.
 const mainDirectory = import.meta.dirname
@@ -22,6 +23,8 @@ function createWindow(): void {
       sandbox: false,
     },
   })
+
+  registerNotes(mainWindow)
 
   mainWindow.on("ready-to-show", () => {
     mainWindow.show()

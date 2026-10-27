@@ -1,8 +1,21 @@
-import { contextBridge } from "electron"
+import { contextBridge, ipcRenderer } from "electron"
 import { electronAPI } from "@electron-toolkit/preload"
+import type { NotesAPI } from "../shared/notes"
 
-// Add application-specific APIs here and update index.d.ts accordingly.
-const api = {}
+const notes: NotesAPI = {
+  open: () => ipcRenderer.invoke("notes:open"),
+  save: (request) => ipcRenderer.invoke("notes:save", request),
+  rename: (request) => ipcRenderer.invoke("notes:rename", request),
+  confirmReplace: () => ipcRenderer.invoke("notes:confirm-replace"),
+  setDirty: (dirty) => ipcRenderer.send("notes:dirty", dirty),
+  onSaveBeforeClose: (callback) => {
+    const listener = () => callback()
+    ipcRenderer.on("notes:save-before-close", listener)
+    return () => ipcRenderer.removeListener("notes:save-before-close", listener)
+  },
+  completeClose: (saved) => ipcRenderer.send("notes:complete-close", saved),
+}
+const api = { notes }
 
 if (process.contextIsolated) {
   try {

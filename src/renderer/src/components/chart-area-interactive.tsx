@@ -32,6 +32,7 @@ import {
 
 export const description = "An interactive area chart"
 
+// dashboard-01의 고정 샘플 데이터. 실제 통계로 연결할 때 필터 기준 날짜도 함께 바꾼다.
 const chartData = [
   { date: "2024-04-01", desktop: 222, mobile: 150 },
   { date: "2024-04-02", desktop: 97, mobile: 180 },
@@ -152,6 +153,7 @@ export function ChartAreaInteractive() {
 
   const filteredData = chartData.filter((item) => {
     const date = new Date(item.date)
+    // 샘플의 마지막 날짜를 기준으로 한다. 오늘 날짜 기준의 실시간 통계가 아니다.
     const referenceDate = new Date("2024-06-30")
     let daysToSubtract = 90
     if (timeRange === "30d") {

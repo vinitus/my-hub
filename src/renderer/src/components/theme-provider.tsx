@@ -77,6 +77,8 @@ function isEditableTarget(target: EventTarget | null) {
   return false
 }
 
+// 테마 설정은 localStorage에 저장하고 html의 light/dark 클래스로 CSS에 반영한다.
+// system 모드일 때만 OS 테마 변경을 따라간다. 소비자는 이 파일의 useTheme을 사용한다.
 export function ThemeProvider({
   children,
   defaultTheme = "system",
@@ -139,6 +141,7 @@ export function ThemeProvider({
     }
   }, [theme, applyTheme])
 
+  // 수정 키 없이 D를 누르면 테마를 전환한다. 텍스트 입력 중에는 동작하지 않는다.
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat) {
@@ -179,6 +182,7 @@ export function ThemeProvider({
     }
   }, [storageKey])
 
+  // 같은 origin의 다른 창에서 바꾼 테마를 반영한다.
   React.useEffect(() => {
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) {

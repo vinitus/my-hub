@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/sidebar"
 import { LayoutDashboardIcon, ListIcon, ChartBarIcon, FolderIcon, UsersIcon, CameraIcon, FileTextIcon, Settings2Icon, CircleHelpIcon, SearchIcon, DatabaseIcon, FileChartColumnIcon, FileIcon, CommandIcon } from "lucide-react"
 
+// dashboard-01의 샘플 메뉴와 사용자 정보. 실제 앱의 메뉴/계정 데이터 연결 지점이다.
+// URL은 모두 임시 값(#)이며 NavMain은 아직 url을 링크로 사용하지 않는다.
 const data = {
   user: {
     name: "shadcn",
@@ -63,6 +65,7 @@ const data = {
       ),
     },
   ],
+  // 원본 블록의 하위 메뉴 예제. 현재 AppSidebar에서는 렌더링하지 않는다.
   navClouds: [
     {
       title: "Capture",

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sidebar"
 import { MoreHorizontalIcon, FolderIcon, ShareIcon, Trash2Icon } from "lucide-react"
 
+// 문서 링크는 items.url을 사용한다. Open/Share/Delete와 More는 아직 동작이 없다.
 export function NavDocuments({
   items,
 }: {

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/sidebar"
 import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, LogOutIcon } from "lucide-react"
 
+// 사용자 표시는 AppSidebar의 샘플 데이터를 받는다. 계정/로그아웃 동작은 미연결이다.
 export function NavUser({
   user,
 }: {

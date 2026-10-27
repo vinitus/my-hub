@@ -113,6 +113,7 @@ const columnHelper = createColumnHelper<
   z.infer<typeof schema>
 >()
 
+// @/app/dashboard/data.json의 행 구조. 현재는 타입 추론용이며 입력을 parse하지 않는다.
 export const schema = z.object({
   id: z.number(),
   header: z.string(),
@@ -141,6 +142,8 @@ function DragHandle({ id }: { id: number }) {
     </Button>
   )
 }
+// 셀 표시/편집 UI의 수정 지점. Target/Limit 제출은 지연 후 toast만 띄우는 예제다.
+// Reviewer 선택과 행 메뉴도 데이터 저장에 연결되어 있지 않다.
 const columns = columnHelper.columns([
   columnHelper.display({
     id: "drag",
@@ -351,6 +354,8 @@ export function DataTable({
 }: {
   data: z.infer<typeof schema>[]
 }) {
+  // 최초 props를 로컬 상태로 복사한다. 이후 props 변경은 자동으로 동기화하지 않는다.
+  // 드래그 순서도 이 상태에만 반영되므로 영속화가 필요하면 저장 흐름을 추가한다.
   const [data, setData] = React.useState(() => initialData)
   const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
@@ -684,6 +689,7 @@ const chartConfig = {
     color: "var(--primary)",
   },
 } satisfies ChartConfig
+// 제목 셀에서 여는 상세 Drawer. 차트/폼은 예제이며 Submit 저장 처리는 미구현이다.
 function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
   const isMobile = useIsMobile()
   return (

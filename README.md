@@ -89,6 +89,8 @@ pnpm exec electron-builder --win
 
 ## shadcn/ui
 
+화면 구조와 수정 지점은 [Renderer 작업 안내](src/renderer/README.md)를 참고하세요.
+
 ```bash
 pnpm exec shadcn add button
 ```

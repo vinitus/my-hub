@@ -82,7 +82,8 @@ function SidebarProvider({
         _setOpen(openState)
       }
 
-      // This sets the cookie to keep the sidebar state.
+      // 상태를 cookie에 기록하지만 이 컴포넌트는 다시 읽지 않는다.
+      // 재시작 후 복원이 필요하면 호출부에서 읽어 defaultOpen/open으로 전달한다.
       document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
     },
     [setOpenProp, open]

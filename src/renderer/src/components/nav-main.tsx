@@ -8,6 +8,8 @@ import {
 } from "@/components/ui/sidebar"
 import { CirclePlusIcon, MailIcon } from "lucide-react"
 
+// Quick Create/Inbox와 각 메뉴는 표시용 버튼이다.
+// 화면 전환을 구현할 때 items.url을 링크로 연결하거나 선택 핸들러를 전달한다.
 export function NavMain({
   items,
 }: {

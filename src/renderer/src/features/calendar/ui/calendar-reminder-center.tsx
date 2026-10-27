@@ -20,35 +20,49 @@ export function CalendarReminderCenter() {
   return (
     <div className="pointer-events-none fixed right-4 bottom-4 z-[60] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
       {items.map((item) => (
-        <div
+        <CalendarReminderCard
           key={item.notificationId}
-          role="status"
-          className="pointer-events-auto rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg"
-        >
-          <p className="font-medium">일정 시작 · {item.title}</p>
-          <div className="mt-3 flex justify-end gap-2">
-            {item.openLinks === "on-notification" && (
-              <Button size="sm" onClick={() => void api?.openLinks(item.id)}>
-                참고 링크 열기
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() =>
-                setItems((current) =>
-                  current.filter(
-                    (currentItem) =>
-                      currentItem.notificationId !== item.notificationId
-                  )
-                )
-              }
-            >
-              닫기
-            </Button>
-          </div>
-        </div>
+          item={item}
+          onOpenLinks={() => void api?.openLinks(item.id)}
+          onDismiss={() =>
+            setItems((current) =>
+              current.filter(
+                (currentItem) =>
+                  currentItem.notificationId !== item.notificationId
+              )
+            )
+          }
+        />
       ))}
+    </div>
+  )
+}
+
+export function CalendarReminderCard({
+  item,
+  onOpenLinks,
+  onDismiss,
+}: {
+  item: CalendarReminder
+  onOpenLinks: () => void
+  onDismiss: () => void
+}) {
+  return (
+    <div
+      role="status"
+      className="pointer-events-auto rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg"
+    >
+      <p className="font-medium">일정 시작 · {item.title}</p>
+      <div className="mt-3 flex justify-end gap-2">
+        {item.openLinks === "on-notification" && (
+          <Button size="sm" onClick={onOpenLinks}>
+            참고 링크 열기
+          </Button>
+        )}
+        <Button size="sm" variant="ghost" onClick={onDismiss}>
+          닫기
+        </Button>
+      </div>
     </div>
   )
 }

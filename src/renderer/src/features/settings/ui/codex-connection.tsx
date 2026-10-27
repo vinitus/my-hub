@@ -9,7 +9,7 @@ import {
 } from "lucide-react"
 import { Badge } from "@/shared/ui/badge"
 import { Button } from "@/shared/ui/button"
-import type { CodexConnection } from "../../../../../shared/codex"
+import type { CodexAPI, CodexConnection } from "../../../../../shared/codex"
 import { CodexModelSettings } from "./codex-model-settings"
 import { useCodexConnection } from "../model/use-codex-connection"
 
@@ -23,11 +23,16 @@ const labels: Record<CodexConnection["status"], string> = {
   error: "연결 실패",
 }
 
-export function CodexConnectionPanel({ active }: { active: boolean }) {
+export function CodexConnectionPanel({
+  active,
+  api = window.api?.codex,
+}: {
+  active: boolean
+  api?: CodexAPI
+}) {
   const headingId = useId()
   const disconnectNoticeId = useId()
-  const api = window.api?.codex
-  const { state, error, busy, run } = useCodexConnection(active)
+  const { state, error, busy, run } = useCodexConnection(active, api)
   const checking = state.status === "checking"
   const connecting = state.status === "connecting"
   const connected = state.status === "connected"
@@ -173,6 +178,7 @@ export function CodexConnectionPanel({ active }: { active: boolean }) {
                   : "ChatGPT 계정으로 Codex를 연결해 주세요."}
         </p>
         <CodexModelSettings
+          api={api}
           active={active}
           connection={state}
           busy={busy || connecting}

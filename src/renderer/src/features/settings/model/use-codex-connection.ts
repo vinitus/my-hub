@@ -2,8 +2,7 @@ import { useEffect, useState } from "react"
 import type { CodexConnection } from "../../../../../shared/codex"
 
 // 설정 화면과 첫 실행 안내는 UI만 분리하고, 연결 상태 구독과 IPC 호출은 공유한다.
-export function useCodexConnection(active: boolean) {
-  const api = window.api?.codex
+export function useCodexConnection(active: boolean, api = window.api?.codex) {
   const [state, setState] = useState<CodexConnection>({
     status: "idle",
     executable: null,

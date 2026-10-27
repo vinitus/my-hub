@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react"
 import type {
+  CodexAPI,
   CodexConnection,
   CodexPreferences,
 } from "../../../../../shared/codex"
@@ -10,15 +11,16 @@ const selectClass =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 
 export function CodexModelSettings({
+  api = window.api?.codex,
   active,
   connection,
   busy,
 }: {
+  api?: CodexAPI
   active: boolean
   connection: CodexConnection
   busy: boolean
 }) {
-  const api = window.api?.codex
   const modelId = useId()
   const effortId = useId()
   const models = connection.models ?? []

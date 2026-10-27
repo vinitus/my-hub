@@ -41,6 +41,14 @@ function regionLabel(location: WeatherLocation) {
 
 export function WeatherWidget() {
   const state = useWeather()
+  return <WeatherWidgetView state={state} />
+}
+
+export function WeatherWidgetView({
+  state,
+}: {
+  state: ReturnType<typeof useWeather>
+}) {
   const [editing, setEditing] = useState(false)
   const { location, reading, loading } = state
   const condition = weatherCondition(reading?.code ?? -1)
@@ -160,7 +168,7 @@ export function WeatherWidget() {
   )
 }
 
-function WeatherLocationSheet({
+export function WeatherLocationSheet({
   onSearch,
   onChoose,
   busy,

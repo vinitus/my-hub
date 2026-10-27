@@ -6,8 +6,6 @@ import {
   type DragEvent,
 } from "react"
 import {
-  ArrowUpRightIcon,
-  PencilIcon,
   PlusIcon,
   RefreshCwIcon,
   SearchIcon,
@@ -27,6 +25,7 @@ import {
   ShortcutSheet,
   readShortcutDrop,
   ShortcutIcon,
+  ShortcutTile,
 } from "@/features/shortcuts"
 
 type Editor = { item: Shortcut; existing: boolean; revision: string }
@@ -232,48 +231,19 @@ export default function ShortcutWorkspace({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {filtered.map((item) => {
                 return (
-                  <article
+                  <ShortcutTile
                     key={item.id}
-                    className="group relative rounded-xl border bg-card transition-colors hover:border-foreground/25"
-                  >
-                    <button
-                      type="button"
-                      disabled={disabled}
-                      className="flex w-full items-start gap-4 rounded-xl p-5 pr-12 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-                      onClick={() => void store.launch(item)}
-                      title={item.target}
-                    >
-                      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-muted">
-                        <ShortcutIcon
-                          item={item}
-                          revision={state.snapshot!.revision}
-                        />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">
-                          {item.name}
-                        </span>
-                        <span className="mt-1 block truncate text-xs text-muted-foreground">
-                          {item.target}
-                        </span>
-                        <span className="mt-3 flex items-center gap-1 text-[11px] text-muted-foreground">
-                          {SHORTCUT_LABELS[item.kind]}
-                          <ArrowUpRightIcon className="size-3" />
-                        </span>
-                      </span>
-                    </button>
-                    <Button
-                      variant="ghost"
-                      size="icon-xs"
-                      className="absolute top-3 right-3"
-                      aria-label={`${item.name} 수정`}
-                      title="바로가기 수정"
-                      disabled={disabled}
-                      onClick={() => edit(item)}
-                    >
-                      <PencilIcon />
-                    </Button>
-                  </article>
+                    item={item}
+                    disabled={disabled}
+                    icon={
+                      <ShortcutIcon
+                        item={item}
+                        revision={state.snapshot!.revision}
+                      />
+                    }
+                    onLaunch={() => void store.launch(item)}
+                    onEdit={() => edit(item)}
+                  />
                 )
               })}
             </div>

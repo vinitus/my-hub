@@ -1,7 +1,7 @@
 import { Dialog } from "@base-ui/react/dialog"
 import { useEffect, useId, useState } from "react"
 import { Button } from "@/shared/ui/button"
-import type { CodexPreferences } from "../../../../../shared/codex"
+import type { CodexAPI, CodexPreferences } from "../../../../../shared/codex"
 import {
   defaultSetupEffort,
   defaultSetupPreferences,
@@ -12,17 +12,22 @@ import { useCodexConnection } from "../model/use-codex-connection"
 
 type Step = "intro" | "login" | "model" | "effort"
 export function CodexSetupPrompt({
+  api = window.api?.codex,
+  onRememberChoice = rememberCodexSetupChoice,
   open,
   initialStep,
   onDismiss,
 }: {
+  api?: CodexAPI
+  onRememberChoice?: typeof rememberCodexSetupChoice
   open: boolean
   initialStep: "intro" | "login"
   onDismiss: () => void
 }) {
   const [step, setStep] = useState<Step>(initialStep)
   const { state, error, busy, run } = useCodexConnection(
-    open && step !== "intro"
+    open && step !== "intro",
+    api
   )
   const [saved, setSaved] = useState<CodexPreferences | null>(null)
   const [preferencesReady, setPreferencesReady] = useState(false)
@@ -30,7 +35,6 @@ export function CodexSetupPrompt({
   const [saveError, setSaveError] = useState("")
   const [saving, setSaving] = useState(false)
   const selectId = useId()
-  const api = window.api?.codex
   const setupActive = open && step !== "intro"
   useEffect(() => {
     if (!setupActive || !api) return
@@ -71,7 +75,7 @@ export function CodexSetupPrompt({
     setSaveError("")
     try {
       await api.savePreferences(chosen)
-      rememberCodexSetupChoice("completed")
+      onRememberChoice("completed")
       onDismiss()
     } catch {
       setSaveError("설정을 저장하지 못했습니다. 다시 시도해 주세요.")
@@ -287,7 +291,7 @@ export function CodexSetupPrompt({
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    rememberCodexSetupChoice("skipped")
+                    onRememberChoice("skipped")
                     onDismiss()
                   }}
                 >
@@ -295,7 +299,7 @@ export function CodexSetupPrompt({
                 </Button>
                 <Button
                   onClick={() => {
-                    rememberCodexSetupChoice("started")
+                    onRememberChoice("started")
                     setStep("login")
                   }}
                 >

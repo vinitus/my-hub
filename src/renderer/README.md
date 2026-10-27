@@ -256,3 +256,28 @@ props와 고정 fixture로 동작해 Electron API나 실제 계정·파일을 �
 - `pnpm test:fsd`로 별칭·상대·동적·타입 import, re-export, public API, 같은 레이어 slice, native/IPC 경계와 bootstrap을 포함한 27개 사례를 반복 검증할 수 있다.
 - typecheck, lint, renderer build, 기존 도메인 테스트 81개와 FSD 테스트 27개, Storybook 정적 빌드가 통과했다. 500KB 청크 경고는 기존과 같다.
 - 이 재검증의 자동 테스트는 실제 사용자 계정·OS 알림·프로그램 실행을 사용하지 않는다. 기존 수동 검증 기록은 위 절에 별도로 보존한다.
+
+## UI Storybook 작업
+
+기준 문서는 루트의 `storybook-promt.md`다 (`storybook-prompt.md`라는 파일은 없다).
+공용 `shared/ui` 22개 모듈과 일정 편집·알림, 바로가기 편집·타일, 날씨 표시·검색,
+Codex 연결·모델·첫 안내, 설정 시트, 메모 파일명·편집기, 빠른 입력과 앱 위젯을 다룬다.
+기존 일정 상태 카드를 포함해 128개 typed CSF 3 스토리가 있다.
+각 상태는 별도 스토리로 구성하고, 날짜·시간·서비스 응답은 고정 fixture로 제공한다.
+Toolbar의 Light/Dark는 포털을 포함해 문서 루트에 테마 클래스를 적용한다.
+
+- `pnpm storybook`: 개발 서버와 스토리 탐색기
+- `pnpm build-storybook`: 정적 Storybook 빌드
+- `pnpm test:storybook`: 정적 빌드 후 전체 스토리를 숨겨진 Chromium에서 light/dark 및 360px로 렌더링한다. 일정 링크 입력의 DOM/포커스 유지, 빈 지역 검색, 키보드 파일명 변경도 검사한다.
+
+브라우저 검사는 기존 Electron 개발 의존성만 사용하며 별도 테스트 애드온을 설치하지 않는다.
+임시 프로필, preload 없음, Node 통합 없음, 외부 요청·새 창 차단으로 실사용 파일·계정과 격리한다.
+날씨는 `WeatherWidgetView`에 상태를, 바로가기 타일·알림 카드는 콜백을 주입한다.
+일정 파일 선택과 Codex는 props로 인메모리 응답을 제공하며 전역 `window.api` mock은 없다.
+첫 안내의 저장 콜백도 주입하므로 실제 온보딩 기록을 쓰지 않는다.
+설정 테마의 시험용 저장 키는 `storybook:theme:*`다.
+스토리용 fixture는 production 코드에서 import하지 않는다.
+
+Plate 툴바와 노드 렌더러는 선택·undo Context를 공유하므로 실제 편집기를 함께 렌더링한다.
+이 제약은 `note-editor.stories.tsx` 주석에 기록했다. 연결되지 않은 dashboard 예제는
+실제 앱 UI 검토 대상에서 제외하고 원본을 보존한다. `storybook-static`과 검증 스크린샷은 커밋하지 않는다.

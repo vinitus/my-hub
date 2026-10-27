@@ -19,6 +19,7 @@ const themes = [
 // 저장은 기존 ThemeProvider와 useNote가 담당한다. 설정 화면은 같은 동작을 호출한다.
 export function SettingsSheet({
   open,
+  connectionPanel = <CodexConnectionPanel active={open} />,
   onOpenChange,
   directory,
   ready,
@@ -26,6 +27,7 @@ export function SettingsSheet({
   error,
   onChooseDirectory,
 }: {
+  connectionPanel?: React.ReactNode
   open: boolean
   onOpenChange: (open: boolean) => void
   directory?: string
@@ -101,7 +103,7 @@ export function SettingsSheet({
               </p>
             )}
           </section>
-          <CodexConnectionPanel active={open} />
+          {connectionPanel}
         </div>
       </SheetContent>
     </Sheet>

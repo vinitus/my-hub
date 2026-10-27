@@ -10,6 +10,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/shared/ui/sheet"
+import { chooseCalendarFile } from "../api/choose-calendar-file"
 import { eventDraft, eventFromDraft } from "@/entities/calendar-event"
 
 type Props = {
@@ -19,6 +20,7 @@ type Props = {
   onSave: (event: CalendarEvent) => Promise<boolean>
   onDelete: () => Promise<boolean>
   onClose: () => void
+  onChooseFile?: () => Promise<string | null | undefined>
   serverError: string
 }
 
@@ -30,6 +32,7 @@ export function EventSheet({
   onDelete,
   onClose,
   serverError,
+  onChooseFile = chooseCalendarFile,
 }: Props) {
   const nextLinkId = useRef(event.referenceUrls.length)
   const [draft, setDraft] = useState(() => ({
@@ -225,7 +228,7 @@ export function EventSheet({
                   size="sm"
                   variant="outline"
                   onClick={async () => {
-                    const path = await window.api?.calendar?.chooseFile()
+                    const path = await onChooseFile()
                     if (path)
                       setDraft({
                         ...draft,
@@ -282,7 +285,7 @@ export function EventSheet({
                     size="sm"
                     variant="outline"
                     onClick={async () => {
-                      const path = await window.api?.calendar?.chooseFile()
+                      const path = await onChooseFile()
                       if (path)
                         setDraft({
                           ...draft,

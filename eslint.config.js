@@ -11,7 +11,7 @@ import fsd from "./scripts/eslint-fsd.mjs"
 export default defineConfig([
   globalIgnores(["dist", "out", "storybook-static", "electron-scaffolding"]),
   {
-    files: ["scripts/**/*.mjs"],
+    files: ["scripts/**/*.{mjs,cjs}"],
     extends: [js.configs.recommended],
     languageOptions: {
       globals: globals.node,

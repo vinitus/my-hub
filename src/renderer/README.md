@@ -1,5 +1,8 @@
 # Renderer 작업 안내
 
+앱 첫 화면은 `src/features/chat`의 채팅이다. 대화 입력과 로컬 기록만 제공하며,
+AI/메모/캘린더 실행 연결 지점은 [채팅 구조 안내](src/features/chat/README.md)를 참고한다.
+
 캘린더는 `src/features/calendar`에 있으며 FullCalendar와 기존 shadcn UI를 사용한다.
 파일별 역할, 날짜 규칙, 로컬 저장 구조는 [캘린더 유지보수 안내](src/features/calendar/README.md)를 참고한다.
 `App.tsx`가 메모/캘린더 전환을 관리하고 두 작업 화면은 전환 후에도 마운트를 유지한다.

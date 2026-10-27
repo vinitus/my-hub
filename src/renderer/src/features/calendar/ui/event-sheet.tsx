@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useId, useRef, useState } from "react"
 import type { CalendarEvent } from "../../../../../shared/calendar"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -34,6 +34,7 @@ export function EventSheet({
   serverError,
   onChooseFile = chooseCalendarFile,
 }: Props) {
+  const formId = useId()
   const nextLinkId = useRef(event.referenceUrls.length)
   const [draft, setDraft] = useState(() => ({
     ...eventDraft(event),
@@ -87,9 +88,9 @@ export function EventSheet({
             className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-6"
           >
             <div className="grid gap-2">
-              <Label htmlFor="event-title">제목</Label>
+              <Label htmlFor={`${formId}-event-title`}>제목</Label>
               <Input
-                id="event-title"
+                id={`${formId}-event-title`}
                 autoFocus
                 required
                 maxLength={200}
@@ -109,10 +110,10 @@ export function EventSheet({
               하루 종일
             </label>
             <div className="grid gap-2">
-              <Label htmlFor="event-start-date">시작</Label>
+              <Label htmlFor={`${formId}-event-start-date`}>시작</Label>
               <div className="flex gap-2">
                 <Input
-                  id="event-start-date"
+                  id={`${formId}-event-start-date`}
                   aria-label="시작 날짜"
                   type="date"
                   required
@@ -135,10 +136,10 @@ export function EventSheet({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="event-end-date">종료</Label>
+              <Label htmlFor={`${formId}-event-end-date`}>종료</Label>
               <div className="flex gap-2">
                 <Input
-                  id="event-end-date"
+                  id={`${formId}-event-end-date`}
                   aria-label="종료 날짜"
                   type="date"
                   required
@@ -162,9 +163,9 @@ export function EventSheet({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="event-color">색상</Label>
+              <Label htmlFor={`${formId}-event-color`}>색상</Label>
               <select
-                id="event-color"
+                id={`${formId}-event-color`}
                 className="h-9 rounded-md border bg-background px-3 text-sm"
                 value={draft.color}
                 onChange={(e) =>
@@ -182,9 +183,9 @@ export function EventSheet({
               </select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="event-description">설명</Label>
+              <Label htmlFor={`${formId}-event-description`}>설명</Label>
               <textarea
-                id="event-description"
+                id={`${formId}-event-description`}
                 className="min-h-28 rounded-md border bg-background p-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                 maxLength={10000}
                 placeholder="추가할 내용을 적어 주세요."
@@ -195,12 +196,12 @@ export function EventSheet({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="event-reference-url">
+              <Label htmlFor={`${formId}-event-reference-url`}>
                 참고 링크·파일 (최대 30개)
               </Label>
               <div className="flex items-center gap-2">
                 <Input
-                  id="event-reference-url"
+                  id={`${formId}-event-reference-url`}
                   type="text"
                   maxLength={2048}
                   placeholder="URL 또는 로컬 파일 경로"

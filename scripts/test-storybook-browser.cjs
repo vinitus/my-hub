@@ -161,6 +161,32 @@ app.whenReady().then(async () => {
             ).toPNG()
           )
         }
+        assert.equal(
+          await win.webContents.executeJavaScript(
+            `Array.from(document.querySelectorAll('label[for]')).every(label => !!label.control)`
+          ),
+          true,
+          `${story.id}: label is not connected to a control`
+        )
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("settings-sheet.stories.tsx") &&
+          story.name === "Ready"
+        ) {
+          await win.webContents.executeJavaScript(
+            `window.__themeWrites = 0; window.__originalSetItem = Storage.prototype.setItem; Storage.prototype.setItem = function(key, value) { if (key.startsWith('storybook:theme:')) window.__themeWrites++; return window.__originalSetItem.call(this, key, value) }; window.dispatchEvent(new KeyboardEvent('keydown', {key:'d', bubbles:true}))`
+          )
+          await delay(100)
+          assert.equal(
+            await win.webContents.executeJavaScript(`window.__themeWrites`),
+            1,
+            "theme shortcut must persist once in StrictMode"
+          )
+          await win.webContents.executeJavaScript(
+            `Storage.prototype.setItem = window.__originalSetItem; void 0`
+          )
+          console.log("PASS theme shortcut writes once in StrictMode")
+        }
         count++
       }
       console.log(

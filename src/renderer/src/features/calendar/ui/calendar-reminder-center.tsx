@@ -11,10 +11,8 @@ export function CalendarReminderCenter() {
   useEffect(() => {
     if (!api?.onReminder) return
     return api.onReminder((reminder) => {
-      setItems((current) => [
-        ...current.slice(-3),
-        { ...reminder, notificationId: nextNotificationId.current++ },
-      ])
+      const item = { ...reminder, notificationId: nextNotificationId.current++ }
+      setItems((current) => [...current.slice(-3), item])
     })
   }, [api])
   return (

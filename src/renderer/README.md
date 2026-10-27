@@ -281,3 +281,20 @@ Toolbar의 Light/Dark는 포털을 포함해 문서 루트에 테마 클래스�
 Plate 툴바와 노드 렌더러는 선택·undo Context를 공유하므로 실제 편집기를 함께 렌더링한다.
 이 제약은 `note-editor.stories.tsx` 주석에 기록했다. 연결되지 않은 dashboard 예제는
 실제 앱 UI 검토 대상에서 제외하고 원본을 보존한다. `storybook-static`과 검증 스크린샷은 커밋하지 않는다.
+
+## React 규칙 최종 검토 (2026-10-28)
+
+`rules-of-react.md`의 15개 항목을 전체 렌더러(보관 중인 dashboard 예제 포함)에 대조했다.
+
+- 순수성·불변성: props/state를 직접 바꾸지 않는다. 테마 저장과 알림 ID 생성은 상태 갱신 함수 밖의 이벤트에서 수행한다. 스켈레톤과 story fixture는 결정적이다.
+- Hooks·Effect: Strict Mode와 Hooks 권장 린트를 유지한다. 구독·타이머·키보드 이벤트에는 해제를 제공하고 비동기 조회는 종료된 Effect의 응답을 무시한다. 시간 갱신·외부 store·미디어 쿼리 등 외부 시스템 동기화에 Effect를 한정한다.
+- key·상태: 편집 중 바뀌는 링크 문자열이나 목록 인덱스를 key로 사용하지 않는다. 표시용 dirty·disabled·날씨 설명은 입력에서 계산하고, 편집 초안·방문 화면·undo 상태는 동작 보존을 위해 유지한다.
+- composition·재사용: 표시 UI에는 props/콜백을 전달하고 공통 구독은 기존 custom Hook으로 유지한다. Plate의 선택·undo 결합은 story 주석으로 설명한다.
+- 메모이제이션·추상화: 툴팁 라벨의 불필요한 useMemo를 제거했다. Context 값과 외부 캘린더·DnD 어댑터의 안정적인 입력은 기존 memo를 유지한다.
+- 접근성·타입: 입력 label/aria 연결과 per-instance useId를 사용한다. 공유 UI는 시맨틱 HTML을 유지하고 공개 props와 스토리를 TypeScript로 검사한다.
+
+최종 검증: Node/web typecheck, 전체 lint, renderer/main/preload 빌드, 도메인 테스트 81개,
+FSD 경계 테스트 27개, Storybook 정적 빌드가 통과했다. 전체 128개 스토리를 light/dark 및
+360px 화면에서 검사하며 label 연결, 링크 입력 포커스 유지, 빈 지역 검색, 키보드 파일명 변경,
+Strict Mode에서 테마 단축키 저장 1회를 회귀 검사한다. 실제 사용자 파일·로그인·OS 실행은 사용하지 않는다.
+500KB 초과 번들 경고는 남아 있으며 빌드 실패는 아니다.

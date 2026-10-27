@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useId, useState } from "react"
 import { FolderOpenIcon, Trash2Icon } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -39,6 +39,7 @@ export function ShortcutSheet({
   onDelete,
   onClose,
 }: Props) {
+  const formId = useId()
   const [draft, setDraft] = useState(item)
   const [localError, setLocalError] = useState("")
   const [choosing, setChoosing] = useState(false)
@@ -99,9 +100,9 @@ export function ShortcutSheet({
             className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-4 pb-5"
           >
             <div className="grid gap-2">
-              <Label htmlFor="shortcut-kind">종류</Label>
+              <Label htmlFor={`${formId}-shortcut-kind`}>종류</Label>
               <select
-                id="shortcut-kind"
+                id={`${formId}-shortcut-kind`}
                 className="h-9 w-full rounded-md border bg-background px-3"
                 value={draft.kind}
                 onChange={(e) => {
@@ -121,9 +122,9 @@ export function ShortcutSheet({
               </select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="shortcut-name">이름</Label>
+              <Label htmlFor={`${formId}-shortcut-name`}>이름</Label>
               <Input
-                id="shortcut-name"
+                id={`${formId}-shortcut-name`}
                 autoFocus
                 required
                 maxLength={80}
@@ -133,11 +134,11 @@ export function ShortcutSheet({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="shortcut-target">
+              <Label htmlFor={`${formId}-shortcut-target`}>
                 {draft.kind === "website" ? "웹사이트 주소" : "경로"}
               </Label>
               <Input
-                id="shortcut-target"
+                id={`${formId}-shortcut-target`}
                 required
                 maxLength={4096}
                 type={draft.kind === "website" ? "url" : "text"}

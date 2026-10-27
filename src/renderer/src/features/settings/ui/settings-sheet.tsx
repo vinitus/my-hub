@@ -1,3 +1,4 @@
+import { useId } from "react"
 import { FolderCogIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { CodexConnectionPanel } from "./codex-connection"
@@ -36,6 +37,7 @@ export function SettingsSheet({
   error: string
   onChooseDirectory: () => void
 }) {
+  const sectionId = useId()
   const { theme, setTheme } = useTheme()
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -47,13 +49,19 @@ export function SettingsSheet({
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-6">
-          <section aria-labelledby="settings-theme" className="space-y-3">
-            <h3 id="settings-theme" className="text-sm font-medium">
+          <section
+            aria-labelledby={`${sectionId}-settings-theme`}
+            className="space-y-3"
+          >
+            <h3
+              id={`${sectionId}-settings-theme`}
+              className="text-sm font-medium"
+            >
               테마
             </h3>
             <div
               role="group"
-              aria-labelledby="settings-theme"
+              aria-labelledby={`${sectionId}-settings-theme`}
               className="grid grid-cols-3 gap-2"
             >
               {themes.map(({ value, label, icon: Icon }) => (
@@ -70,10 +78,13 @@ export function SettingsSheet({
             </div>
           </section>
           <section
-            aria-labelledby="settings-notes"
+            aria-labelledby={`${sectionId}-settings-notes`}
             className="space-y-3 border-t pt-6"
           >
-            <h3 id="settings-notes" className="text-sm font-medium">
+            <h3
+              id={`${sectionId}-settings-notes`}
+              className="text-sm font-medium"
+            >
               메모 폴더
             </h3>
             <p

@@ -27,10 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select"
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/shared/ui/toggle-group"
+import { ToggleGroup, ToggleGroupItem } from "@/shared/ui/toggle-group"
 
 export const description = "An interactive area chart"
 
@@ -144,6 +141,7 @@ const chartConfig = {
 } satisfies ChartConfig
 
 export function ChartAreaInteractive() {
+  const gradientId = React.useId()
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState(isMobile ? "7d" : "90d")
   const [wasMobile, setWasMobile] = React.useState(isMobile)
@@ -230,7 +228,13 @@ export function ChartAreaInteractive() {
         >
           <AreaChart data={filteredData}>
             <defs>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient
+                id={`${gradientId}-fillDesktop`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
                 <stop
                   offset="5%"
                   stopColor="var(--color-desktop)"
@@ -242,7 +246,13 @@ export function ChartAreaInteractive() {
                   stopOpacity={0.1}
                 />
               </linearGradient>
-              <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient
+                id={`${gradientId}-fillMobile`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
                 <stop
                   offset="5%"
                   stopColor="var(--color-mobile)"
@@ -287,14 +297,14 @@ export function ChartAreaInteractive() {
             <Area
               dataKey="mobile"
               type="natural"
-              fill="url(#fillMobile)"
+              fill={`url(#${gradientId}-fillMobile)`}
               stroke="var(--color-mobile)"
               stackId="a"
             />
             <Area
               dataKey="desktop"
               type="natural"
-              fill="url(#fillDesktop)"
+              fill={`url(#${gradientId}-fillDesktop)`}
               stroke="var(--color-desktop)"
               stackId="a"
             />

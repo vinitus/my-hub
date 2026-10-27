@@ -87,13 +87,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs"
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/shared/ui/tabs"
-import { GripVerticalIcon, CircleCheckIcon, LoaderIcon, EllipsisVerticalIcon, Columns3Icon, ChevronDownIcon, PlusIcon, ChevronsLeftIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsRightIcon, TrendingUpIcon } from "lucide-react"
+  GripVerticalIcon,
+  CircleCheckIcon,
+  LoaderIcon,
+  EllipsisVerticalIcon,
+  Columns3Icon,
+  ChevronDownIcon,
+  PlusIcon,
+  ChevronsLeftIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsRightIcon,
+  TrendingUpIcon,
+} from "lucide-react"
 
 // New in v9: declare the features this table uses — anything you don't
 // register is tree-shaken out of the bundle.
@@ -108,10 +116,7 @@ const features = tableFeatures({
   sortedRowModel: createSortedRowModel(),
 })
 
-const columnHelper = createColumnHelper<
-  typeof features,
-  DataTableItem
->()
+const columnHelper = createColumnHelper<typeof features, DataTableItem>()
 
 // pages/dashboard/model/data.json의 행 구조. 현재는 타입 추론용이며 입력을 parse하지 않는다.
 type DataTableItem = {
@@ -201,8 +206,7 @@ const columns = columnHelper.columns([
         {row.original.status === "Done" ? (
           <CircleCheckIcon className="fill-green-500 dark:fill-green-400" />
         ) : (
-          <LoaderIcon
-          />
+          <LoaderIcon />
         )}
         {row.original.status}
       </Badge>
@@ -307,8 +311,7 @@ const columns = columnHelper.columns([
             />
           }
         >
-          <EllipsisVerticalIcon
-          />
+          <EllipsisVerticalIcon />
           <span className="sr-only">Open menu</span>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-32">
@@ -322,11 +325,7 @@ const columns = columnHelper.columns([
     ),
   }),
 ])
-function DraggableRow({
-  row,
-}: {
-  row: Row<typeof features, DataTableItem>
-}) {
+function DraggableRow({ row }: { row: Row<typeof features, DataTableItem> }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.id,
   })
@@ -349,11 +348,7 @@ function DraggableRow({
     </TableRow>
   )
 }
-export function DataTable({
-  data: initialData,
-}: {
-  data: DataTableItem[]
-}) {
+export function DataTable({ data: initialData }: { data: DataTableItem[] }) {
   // 최초 props를 로컬 상태로 복사한다. 이후 props 변경은 자동으로 동기화하지 않는다.
   // 드래그 순서도 이 상태에만 반영되므로 영속화가 필요하면 저장 흐름을 추가한다.
   const [data, setData] = React.useState(() => initialData)
@@ -413,7 +408,7 @@ export function DataTable({
       className="w-full flex-col justify-start gap-6"
     >
       <div className="flex items-center justify-between px-4 lg:px-6">
-        <Label htmlFor="view-selector" className="sr-only">
+        <Label htmlFor={`${sortableId}-view-selector`} className="sr-only">
           View
         </Label>
         <Select
@@ -428,7 +423,7 @@ export function DataTable({
           <SelectTrigger
             className="flex w-fit @4xl/main:hidden"
             size="sm"
-            id="view-selector"
+            id={`${sortableId}-view-selector`}
           >
             <SelectValue placeholder="Select a view" />
           </SelectTrigger>
@@ -485,8 +480,7 @@ export function DataTable({
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" size="sm">
-            <PlusIcon
-            />
+            <PlusIcon />
             <span className="hidden lg:inline">Add Section</span>
           </Button>
         </div>
@@ -550,7 +544,10 @@ export function DataTable({
           </div>
           <div className="flex w-full items-center gap-8 lg:w-fit">
             <div className="hidden items-center gap-2 lg:flex">
-              <Label htmlFor="rows-per-page" className="text-sm font-medium">
+              <Label
+                htmlFor={`${sortableId}-rows-per-page`}
+                className="text-sm font-medium"
+              >
                 Rows per page
               </Label>
               <Select
@@ -563,7 +560,11 @@ export function DataTable({
                   value: `${pageSize}`,
                 }))}
               >
-                <SelectTrigger size="sm" className="w-20" id="rows-per-page">
+                <SelectTrigger
+                  size="sm"
+                  className="w-20"
+                  id={`${sortableId}-rows-per-page`}
+                >
                   <SelectValue placeholder={table.state.pagination.pageSize} />
                 </SelectTrigger>
                 <SelectContent side="top">
@@ -589,8 +590,7 @@ export function DataTable({
                 disabled={!table.getCanPreviousPage()}
               >
                 <span className="sr-only">Go to first page</span>
-                <ChevronsLeftIcon
-                />
+                <ChevronsLeftIcon />
               </Button>
               <Button
                 variant="outline"
@@ -600,8 +600,7 @@ export function DataTable({
                 disabled={!table.getCanPreviousPage()}
               >
                 <span className="sr-only">Go to previous page</span>
-                <ChevronLeftIcon
-                />
+                <ChevronLeftIcon />
               </Button>
               <Button
                 variant="outline"
@@ -611,8 +610,7 @@ export function DataTable({
                 disabled={!table.getCanNextPage()}
               >
                 <span className="sr-only">Go to next page</span>
-                <ChevronRightIcon
-                />
+                <ChevronRightIcon />
               </Button>
               <Button
                 variant="outline"
@@ -622,8 +620,7 @@ export function DataTable({
                 disabled={!table.getCanNextPage()}
               >
                 <span className="sr-only">Go to last page</span>
-                <ChevronsRightIcon
-                />
+                <ChevronsRightIcon />
               </Button>
             </div>
           </div>
@@ -691,6 +688,7 @@ const chartConfig = {
 } satisfies ChartConfig
 // 제목 셀에서 여는 상세 Drawer. 차트/폼은 예제이며 Submit 저장 처리는 미구현이다.
 function TableCellViewer({ item }: { item: DataTableItem }) {
+  const fieldId = React.useId()
   const isMobile = useIsMobile()
   return (
     <Drawer swipeDirection={isMobile ? "down" : "right"}>
@@ -771,12 +769,12 @@ function TableCellViewer({ item }: { item: DataTableItem }) {
           )}
           <form className="flex flex-col gap-4">
             <div className="flex flex-col gap-3">
-              <Label htmlFor="header">Header</Label>
-              <Input id="header" defaultValue={item.header} />
+              <Label htmlFor={`${fieldId}-header`}>Header</Label>
+              <Input id={`${fieldId}-header`} defaultValue={item.header} />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-3">
-                <Label htmlFor="type">Type</Label>
+                <Label htmlFor={`${fieldId}-type`}>Type</Label>
                 <Select
                   defaultValue={item.type}
                   items={[
@@ -793,7 +791,7 @@ function TableCellViewer({ item }: { item: DataTableItem }) {
                     { label: "Cover Page", value: "Cover Page" },
                   ]}
                 >
-                  <SelectTrigger id="type" className="w-full">
+                  <SelectTrigger id={`${fieldId}-type`} className="w-full">
                     <SelectValue placeholder="Select a type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -819,7 +817,7 @@ function TableCellViewer({ item }: { item: DataTableItem }) {
                 </Select>
               </div>
               <div className="flex flex-col gap-3">
-                <Label htmlFor="status">Status</Label>
+                <Label htmlFor={`${fieldId}-status`}>Status</Label>
                 <Select
                   defaultValue={item.status}
                   items={[
@@ -828,7 +826,7 @@ function TableCellViewer({ item }: { item: DataTableItem }) {
                     { label: "Not Started", value: "Not Started" },
                   ]}
                 >
-                  <SelectTrigger id="status" className="w-full">
+                  <SelectTrigger id={`${fieldId}-status`} className="w-full">
                     <SelectValue placeholder="Select a status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -843,16 +841,16 @@ function TableCellViewer({ item }: { item: DataTableItem }) {
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-3">
-                <Label htmlFor="target">Target</Label>
-                <Input id="target" defaultValue={item.target} />
+                <Label htmlFor={`${fieldId}-target`}>Target</Label>
+                <Input id={`${fieldId}-target`} defaultValue={item.target} />
               </div>
               <div className="flex flex-col gap-3">
-                <Label htmlFor="limit">Limit</Label>
-                <Input id="limit" defaultValue={item.limit} />
+                <Label htmlFor={`${fieldId}-limit`}>Limit</Label>
+                <Input id={`${fieldId}-limit`} defaultValue={item.limit} />
               </div>
             </div>
             <div className="flex flex-col gap-3">
-              <Label htmlFor="reviewer">Reviewer</Label>
+              <Label htmlFor={`${fieldId}-reviewer`}>Reviewer</Label>
               <Select
                 defaultValue={item.reviewer}
                 items={[
@@ -861,7 +859,7 @@ function TableCellViewer({ item }: { item: DataTableItem }) {
                   { label: "Emily Whalen", value: "Emily Whalen" },
                 ]}
               >
-                <SelectTrigger id="reviewer" className="w-full">
+                <SelectTrigger id={`${fieldId}-reviewer`} className="w-full">
                   <SelectValue placeholder="Select a reviewer" />
                 </SelectTrigger>
                 <SelectContent>

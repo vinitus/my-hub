@@ -141,6 +141,18 @@ export function ThemeProvider({
     }
   }, [theme, applyTheme])
 
+  const toggleTheme = React.useEffectEvent(() => {
+    const nextTheme =
+      theme === "dark"
+        ? "light"
+        : theme === "light"
+          ? "dark"
+          : getSystemTheme() === "dark"
+            ? "light"
+            : "dark"
+    setTheme(nextTheme)
+  })
+
   // 수정 키 없이 D를 누르면 테마를 전환한다. 텍스트 입력 중에는 동작하지 않는다.
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -160,19 +172,7 @@ export function ThemeProvider({
         return
       }
 
-      setThemeState((currentTheme) => {
-        const nextTheme =
-          currentTheme === "dark"
-            ? "light"
-            : currentTheme === "light"
-              ? "dark"
-              : getSystemTheme() === "dark"
-                ? "light"
-                : "dark"
-
-        localStorage.setItem(storageKey, nextTheme)
-        return nextTheme
-      })
+      toggleTheme()
     }
 
     window.addEventListener("keydown", handleKeyDown)
@@ -180,7 +180,7 @@ export function ThemeProvider({
     return () => {
       window.removeEventListener("keydown", handleKeyDown)
     }
-  }, [storageKey])
+  }, [])
 
   // 같은 origin의 다른 창에서 바꾼 테마를 반영한다.
   React.useEffect(() => {

@@ -56,7 +56,7 @@ export function NoteWorkspace({ memo }: { memo: ReturnType<typeof useNote> }) {
           size="sm"
           disabled={busy}
           onClick={() => void open()}
-          title="열기 (Ctrl/Cmd+O)"
+          title="Markdown 열기"
         >
           <FolderOpenIcon />
           열기

@@ -42,10 +42,9 @@ export function useNote(shortcutsEnabled = true) {
       )
         return
       const key = event.key.toLowerCase()
-      if (!["s", "o", "n"].includes(key)) return
+      if (!["s", "n"].includes(key)) return
       event.preventDefault()
       if (key === "s") void store.save(event.shiftKey)
-      else if (key === "o") void store.open()
       else void store.newNote()
     }
     const beforeUnload = (event: BeforeUnloadEvent) => {

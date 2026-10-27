@@ -9,6 +9,11 @@ Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
 사이드바에 번호를 표시한다. 키를 놓거나 창 포커스를 잃으면 번호를 숨긴다.
 등록/수정 모달이 열린 동안에는 화면 이동 단축키를 적용하지 않는다.
 
+사이드바 하단의 **설정**은 `src/features/settings/settings-sheet.tsx`에서 표시한다.
+`Ctrl+O`로도 열 수 있다. `App.tsx`에서 처리하며 다른 모달이 열려 있으면 중첩해서 열지 않는다.
+라이트/다크/시스템 테마는 기존 `ThemeProvider`, 메모 폴더 변경은 `App.tsx`의 `useNote`를 사용한다.
+설정이 열린 동안에는 메모 파일 단축키를 비활성화하며 자동 저장은 계속 동작한다.
+
 `src/features/shortcuts`는 프로그램·폴더·웹사이트 바로가기를 관리한다.
 대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.
 
@@ -43,7 +48,8 @@ Electron 창 안에서 실행하는 React 화면이다. Vite root는 이 디렉�
 index.html
 └─ src/main.tsx: React 마운트, 로컬 ThemeProvider
    └─ src/App.tsx: SidebarProvider, useNote의 문서 상태
-      ├─ AppSidebar: 저장 목록/검색, 새 메모, 열기, 폴더 변경, 테마 전환
+      ├─ AppSidebar: 저장 목록/검색, 새 메모, 열기, 설정 버튼
+      ├─ SettingsSheet: 테마 선택, 메모 폴더 변경
       └─ SidebarInset
          ├─ SiteHeader: 사이드바 토글, 화면 이름
          └─ NoteWorkspace: 파일 도구, 상태/오류, 본문 스크롤
@@ -95,7 +101,7 @@ Esc로 취소한다. `.md`는 자동으로 붙으며 새 메모는 첫 저장의
 
 기본 메모 폴더는 Electron의 `app.getPath("documents")/My Hub/Notes`이다.
 사용자의 문서 폴더가 OneDrive 등으로 이동되어 있어도 OS 경로를 따른다.
-사이드바의 **메모 폴더 변경**으로 고른 위치는 `app.getPath("userData")/notes-settings.json`에
+사이드바의 **설정 → 메모 폴더 변경**으로 고른 위치는 `app.getPath("userData")/notes-settings.json`에
 기억한다. 폴더 변경은 파일을 이동하지 않으며, 열린 메모는 기존 위치를 계속 사용하고
 다음 새 메모부터 선택한 폴더에 저장한다. 목록은 저장/파일명 변경 후, 앱 포커스 복귀,
 새로고침 버튼으로 갱신한다.
@@ -125,7 +131,7 @@ Electron 앱에서만 제공한다.
 | 단축키                 | 동작               |
 | ---------------------- | ------------------ |
 | Ctrl/Cmd+N             | 새 메모            |
-| Ctrl/Cmd+O             | `.md` 파일 열기    |
+| Ctrl+O                 | 설정 열기          |
 | Ctrl/Cmd+S             | 저장               |
 | Ctrl/Cmd+Shift+S       | 다른 이름으로 저장 |
 | Ctrl/Cmd+B / I         | 굵게 / 기울임      |

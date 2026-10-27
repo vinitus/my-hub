@@ -3,15 +3,12 @@ import {
   FileTextIcon,
   FilePlus2Icon,
   FolderOpenIcon,
-  MoonIcon,
-  SunIcon,
-  FolderCogIcon,
+  SettingsIcon,
   RefreshCwIcon,
 } from "lucide-react"
 import type { NoteLibrarySnapshot } from "../../../shared/notes"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useTheme } from "@/components/theme-provider"
 import { NAVIGATION_ITEMS, type AppView } from "@/lib/navigation"
 import { WeatherWidget } from "@/features/weather/weather-widget"
 import {
@@ -34,7 +31,7 @@ type Props = ComponentProps<typeof Sidebar> & {
   ready: boolean
   currentPath?: string
   onSelectNote: (name: string) => void
-  onChooseDirectory: () => void
+  onOpenSettings: () => void
   onRefresh: () => void
   activeView: AppView
   onNavigate: (view: AppView) => void
@@ -50,14 +47,13 @@ export function AppSidebar({
   ready,
   currentPath,
   onSelectNote,
-  onChooseDirectory,
+  onOpenSettings,
   onRefresh,
   activeView,
   onNavigate,
   showNavigationNumbers,
   ...props
 }: Props) {
-  const { theme, setTheme } = useTheme()
   const [query, setQuery] = useState("")
   const notes =
     library?.notes.filter((note) =>
@@ -180,24 +176,17 @@ export function AppSidebar({
       </SidebarContent>
       <SidebarFooter className="gap-3 p-4">
         <SidebarMenu>
-          {activeView === "notes" && (
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                onClick={onChooseDirectory}
-                disabled={busy}
-                title={library?.directory ?? "메모 폴더 선택"}
-              >
-                <FolderCogIcon />
-                <span>메모 폴더 변경</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          )}
           <SidebarMenuItem>
             <SidebarMenuButton
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={onOpenSettings}
+              tooltip="설정 (Ctrl+O)"
+              aria-keyshortcuts="Control+o"
             >
-              {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-              <span>테마 전환</span>
+              <SettingsIcon />
+              <span>설정</span>
+              <kbd className="ml-auto text-xs text-muted-foreground">
+                Ctrl O
+              </kbd>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

@@ -4,7 +4,8 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { NoteWorkspace } from "@/features/notes/note-workspace"
 import { useNote } from "@/features/notes/use-note"
 import { QuickCommand } from "@/features/quick-command/quick-command"
-import { lazy, Suspense, useState } from "react"
+import { SettingsSheet } from "@/features/settings/settings-sheet"
+import { lazy, Suspense, useEffect, useState } from "react"
 import { NAVIGATION_ITEMS, type AppView } from "@/lib/navigation"
 import { useNavigationShortcuts } from "@/hooks/use-navigation-shortcuts"
 
@@ -23,9 +24,34 @@ export function App() {
     ? selectedView
     : "notes"
   const [commandOpen, setCommandOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  useEffect(() => {
+    const openSettings = (event: KeyboardEvent) => {
+      if (
+        !event.ctrlKey ||
+        event.altKey ||
+        event.shiftKey ||
+        event.metaKey ||
+        event.isComposing ||
+        (event.code !== "KeyO" && event.key.toLowerCase() !== "o")
+      )
+        return
+      event.preventDefault()
+      if (
+        event.repeat ||
+        document.querySelector(
+          '[role="dialog"][data-open], [role="alertdialog"][data-open]'
+        )
+      )
+        return
+      setSettingsOpen(true)
+    }
+    window.addEventListener("keydown", openSettings, true)
+    return () => window.removeEventListener("keydown", openSettings, true)
+  }, [])
   const [calendarVisited, setCalendarVisited] = useState(false)
   const [shortcutsVisited, setShortcutsVisited] = useState(false)
-  const memo = useNote(view === "notes" && !commandOpen)
+  const memo = useNote(view === "notes" && !commandOpen && !settingsOpen)
   const navigate = (next: AppView) => {
     if (next === "calendar") setCalendarVisited(true)
     if (next === "shortcuts") setShortcutsVisited(true)
@@ -63,7 +89,7 @@ export function App() {
           navigate("notes")
           void memo.openNote(name)
         }}
-        onChooseDirectory={() => void memo.chooseDirectory()}
+        onOpenSettings={() => setSettingsOpen(true)}
         onRefresh={() => void memo.refresh()}
       />
       <SidebarInset className="min-h-0 overflow-hidden">
@@ -116,6 +142,15 @@ export function App() {
         )}
       </SidebarInset>
       <QuickCommand open={commandOpen} onOpenChange={setCommandOpen} />
+      <SettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        directory={memo.library?.directory}
+        ready={memo.ready}
+        busy={memo.busy}
+        error={memo.error}
+        onChooseDirectory={() => void memo.chooseDirectory()}
+      />
     </SidebarProvider>
   )
 }

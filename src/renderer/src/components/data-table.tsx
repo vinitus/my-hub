@@ -39,7 +39,6 @@ import {
 } from "@tanstack/react-table"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 import { toast } from "sonner"
-import { z } from "zod"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { Badge } from "@/components/ui/badge"
@@ -111,19 +110,19 @@ const features = tableFeatures({
 
 const columnHelper = createColumnHelper<
   typeof features,
-  z.infer<typeof schema>
+  DataTableItem
 >()
 
 // @/app/dashboard/data.json의 행 구조. 현재는 타입 추론용이며 입력을 parse하지 않는다.
-export const schema = z.object({
-  id: z.number(),
-  header: z.string(),
-  type: z.string(),
-  status: z.string(),
-  target: z.string(),
-  limit: z.string(),
-  reviewer: z.string(),
-})
+type DataTableItem = {
+  id: number
+  header: string
+  type: string
+  status: string
+  target: string
+  limit: string
+  reviewer: string
+}
 
 // Create a separate component for the drag handle
 function DragHandle({ id }: { id: number }) {
@@ -326,7 +325,7 @@ const columns = columnHelper.columns([
 function DraggableRow({
   row,
 }: {
-  row: Row<typeof features, z.infer<typeof schema>>
+  row: Row<typeof features, DataTableItem>
 }) {
   const { transform, transition, setNodeRef, isDragging } = useSortable({
     id: row.original.id,
@@ -353,7 +352,7 @@ function DraggableRow({
 export function DataTable({
   data: initialData,
 }: {
-  data: z.infer<typeof schema>[]
+  data: DataTableItem[]
 }) {
   // 최초 props를 로컬 상태로 복사한다. 이후 props 변경은 자동으로 동기화하지 않는다.
   // 드래그 순서도 이 상태에만 반영되므로 영속화가 필요하면 저장 흐름을 추가한다.
@@ -691,7 +690,7 @@ const chartConfig = {
   },
 } satisfies ChartConfig
 // 제목 셀에서 여는 상세 Drawer. 차트/폼은 예제이며 Submit 저장 처리는 미구현이다.
-function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
+function TableCellViewer({ item }: { item: DataTableItem }) {
   const isMobile = useIsMobile()
   return (
     <Drawer swipeDirection={isMobile ? "down" : "right"}>

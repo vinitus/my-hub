@@ -1,4 +1,5 @@
 // UNUSED: dashboard-01 참고 코드. 현재 앱 화면에서 사용하지 않는다.
+import { useSidebar } from "@/hooks/use-sidebar"
 import {
   Avatar,
   AvatarFallback,
@@ -17,7 +18,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar"
 import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, LogOutIcon } from "lucide-react"
 

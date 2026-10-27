@@ -8,7 +8,7 @@ import reactHooks from "eslint-plugin-react-hooks"
 import reactRefresh from "eslint-plugin-react-refresh"
 
 export default defineConfig([
-  globalIgnores(["dist", "out", "electron-scaffolding"]),
+  globalIgnores(["dist", "out", "storybook-static", "electron-scaffolding"]),
   {
     files: ["scripts/**/*.mjs"],
     extends: [js.configs.recommended],

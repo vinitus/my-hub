@@ -2,6 +2,7 @@
 
 // UNUSED: dashboard-01 참고 코드. 현재 앱 화면에서 사용하지 않는다.
 
+import { useSidebar } from "@/hooks/use-sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +17,6 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar"
 import { MoreHorizontalIcon, FolderIcon, ShareIcon, Trash2Icon } from "lucide-react"
 

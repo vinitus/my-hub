@@ -65,6 +65,42 @@ export const NextIn24Minutes: Story = {
   },
 }
 
+export const NextIn5Minutes: Story = {
+  name: "5분 후 · 주황색",
+  args: {
+    now,
+    status: sidebarScheduleStatus(
+      [
+        event(
+          "urgent",
+          "팀 회의",
+          new Date(now + 5 * 60_000).toISOString(),
+          new Date(now + 30 * 60_000).toISOString()
+        ),
+      ],
+      now
+    ),
+  },
+}
+
+export const StartingSoon: Story = {
+  name: "곧 시작 · 주황색",
+  args: {
+    now,
+    status: sidebarScheduleStatus(
+      [
+        event(
+          "soon",
+          "팀 회의",
+          new Date(now + 30_000).toISOString(),
+          new Date(now + 30 * 60_000).toISOString()
+        ),
+      ],
+      now
+    ),
+  },
+}
+
 export const OngoingAndNext: Story = {
   name: "진행 중 일정과 다음 일정",
   args: {

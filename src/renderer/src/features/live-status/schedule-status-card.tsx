@@ -6,7 +6,7 @@ import {
   Clock3Icon,
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { formatEventCountdown } from "./schedule-status"
+import { eventStartTime, formatEventCountdown } from "./schedule-status"
 import type { SidebarScheduleStatus } from "./schedule-status"
 
 export function ScheduleStatusCard({
@@ -17,6 +17,10 @@ export function ScheduleStatusCard({
   now: number
 }) {
   const event = "event" in status ? status.event : null
+  const remaining =
+    status.kind === "today-next" ? eventStartTime(status.event) - now : null
+  const urgent = remaining !== null && remaining <= 5 * 60_000
+  const startingSoon = remaining !== null && remaining <= 60_000
   const Icon =
     status.kind === "today-next"
       ? Clock3Icon
@@ -31,7 +35,9 @@ export function ScheduleStatusCard({
       : "일정 현황"
   const summary =
     status.kind === "today-next"
-      ? `${formatEventCountdown(status.event, now)} 후`
+      ? startingSoon
+        ? "곧 시작"
+        : `${formatEventCountdown(status.event, now)} 후`
       : status.kind === "today-done"
         ? "오늘 남은 일정 없음"
         : status.kind === "next-date"
@@ -49,13 +55,15 @@ export function ScheduleStatusCard({
         <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${event ? "bg-primary/10 text-primary" : status.kind === "today-done" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
+            className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${urgent ? "bg-orange-500/10 text-orange-600 dark:text-orange-400" : event ? "bg-primary/10 text-primary" : status.kind === "today-done" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"}`}
           >
             <Icon className="size-4" />
           </span>
           <div className="min-w-0 flex-1 space-y-0.5">
             <p className="text-xs text-muted-foreground">{label}</p>
-            <p className="text-sm leading-snug font-semibold tabular-nums">
+            <p
+              className={`text-sm leading-snug font-semibold tabular-nums ${urgent ? "text-orange-600 dark:text-orange-400" : "text-foreground"}`}
+            >
               {summary}
             </p>
           </div>

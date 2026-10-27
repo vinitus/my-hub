@@ -1,4 +1,4 @@
-import { BrowserWindow, dialog, ipcMain } from "electron"
+import { app, BrowserWindow, dialog, ipcMain } from "electron"
 import { basename, extname } from "node:path"
 import { randomUUID } from "node:crypto"
 import type { SaveNoteRequest } from "../shared/notes"
@@ -9,10 +9,15 @@ import {
   writeMarkdown,
   renameMarkdown,
 } from "./note-files"
+import { NoteLibrary } from "./note-library"
 
 const filters = [{ name: "Markdown 메모", extensions: ["md"] }]
 
 export function registerNotes(window: BrowserWindow) {
+  const library = new NoteLibrary({
+    documents: app.getPath("documents"),
+    userData: app.getPath("userData"),
+  })
   const files = new Map<string, { path: string; markdown: string }>()
   let dirty = false
   let allowClose = false
@@ -39,6 +44,33 @@ export function registerNotes(window: BrowserWindow) {
     return result.canceled ? null : (result.filePath ?? null)
   }
 
+  ipcMain.handle("notes:library", async (event) => {
+    checkSender(event)
+    return library.snapshot()
+  })
+  ipcMain.handle("notes:choose-directory", async (event) => {
+    checkSender(event)
+    if (fileOperation) throw new Error("파일 작업이 진행 중입니다.")
+    fileOperation = true
+    try {
+      const result = await dialog.showOpenDialog(window, {
+        title: "메모 저장 폴더 선택",
+        properties: ["openDirectory", "createDirectory"],
+      })
+      if (result.canceled || !result.filePaths[0]) return null
+      return await library.setDirectory(result.filePaths[0])
+    } finally {
+      fileOperation = false
+    }
+  })
+  ipcMain.handle("notes:open-library", async (event, name: string) => {
+    checkSender(event)
+    const file = await library.open(name)
+    const id = randomUUID()
+    files.set(id, { path: file.path, markdown: file.markdown })
+    return { ...file, id }
+  })
+
   ipcMain.handle("notes:open", async (event) => {
     checkSender(event)
     if (fileOperation) throw new Error("파일 작업이 진행 중입니다.")
@@ -46,6 +78,7 @@ export function registerNotes(window: BrowserWindow) {
     try {
       const result = await dialog.showOpenDialog(window, {
         title: "Markdown 메모 열기",
+        defaultPath: await library.directory(),
         filters,
         properties: ["openFile"],
       })
@@ -77,6 +110,12 @@ export function registerNotes(window: BrowserWindow) {
       const existing = request.id ? files.get(request.id) : undefined
       if (request.id && !existing)
         throw new Error("파일을 다시 열거나 다른 이름으로 저장해 주세요.")
+      if (!existing && !request.saveAs) {
+        const file = await library.create(request.markdown, request.name)
+        const id = randomUUID()
+        files.set(id, { path: file.path, markdown: file.markdown })
+        return { ...file, id }
+      }
       const path =
         !request.saveAs && existing
           ? existing.path
@@ -185,6 +224,9 @@ export function registerNotes(window: BrowserWindow) {
   window.on("closed", () => {
     for (const channel of [
       "notes:open",
+      "notes:library",
+      "notes:choose-directory",
+      "notes:open-library",
       "notes:save",
       "notes:rename",
       "notes:confirm-replace",

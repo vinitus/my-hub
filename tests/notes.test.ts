@@ -1,6 +1,13 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, writeFile, readdir, rm } from "node:fs/promises"
+import {
+  mkdtemp,
+  readFile,
+  writeFile,
+  readdir,
+  rm,
+  mkdir,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { createPlateEditor } from "platejs/react"
@@ -16,9 +23,11 @@ import {
   renameMarkdown,
 } from "../src/main/note-files"
 import { registerNotes } from "../src/main/notes"
-import { BrowserWindow, dialog, handlers, ipcMain } from "./fakes/electron"
-import type { NoteFile } from "../src/shared/notes"
+import { app, BrowserWindow, dialog, handlers, ipcMain } from "./fakes/electron"
+import type { NoteFile, NotesAPI } from "../src/shared/notes"
 import { normalizeNoteName } from "../src/shared/notes"
+import { NoteLibrary } from "../src/main/note-library"
+import { NoteStore } from "../src/renderer/src/features/notes/note-store"
 
 function semantics(markdown: string) {
   return JSON.parse(
@@ -113,6 +122,7 @@ test("IPC의 열기/저장 취소와 파일 ID·발신자 검증", async () => {
     assert.equal(
       await invoke("notes:save", {
         id: null,
+        saveAs: true,
         name: "회의 기록.md",
         markdown: "새 메모",
       }),
@@ -131,6 +141,7 @@ test("IPC의 열기/저장 취소와 파일 ID·발신자 검증", async () => {
     dialog.saveResult = { canceled: false, filePath: path }
     const file = (await invoke("notes:save", {
       id: null,
+      saveAs: true,
       markdown: "# 메모\n",
     })) as NoteFile
     assert.equal(await readMarkdown(path), "# 메모\n")
@@ -141,7 +152,8 @@ test("IPC의 열기/저장 취소와 파일 ID·발신자 검증", async () => {
     assert.equal(reopened.path, path)
     dialog.saveResult = { canceled: false, filePath: join(dir, "잘못된.txt") }
     await assert.rejects(
-      () => invoke("notes:save", { id: null, markdown: "새 메모" }),
+      () =>
+        invoke("notes:save", { id: null, saveAs: true, markdown: "새 메모" }),
       /확장자/
     )
   } finally {
@@ -224,6 +236,7 @@ test("IPC 파일명 변경 후 같은 ID로 본문 저장을 이어간다", asyn
     dialog.saveResult = { canceled: false, filePath: path }
     const file = (await invoke("notes:save", {
       id: null,
+      saveAs: true,
       name: "원본.md",
       markdown: "원본",
     })) as NoteFile
@@ -243,5 +256,392 @@ test("IPC 파일명 변경 후 같은 ID로 본문 저장을 이어간다", asyn
   } finally {
     window.close()
     await rm(dir, { recursive: true, force: true })
+  }
+})
+
+async function fixture() {
+  const root = await mkdtemp(join(tmpdir(), "my-hub-library-test-"))
+  app.paths = {
+    documents: join(root, "Documents"),
+    userData: join(root, "AppData"),
+  }
+  await mkdir(app.paths.documents)
+  const window = new BrowserWindow()
+  registerNotes(window as never)
+  async function invoke<T>(channel: string, request?: unknown): Promise<T> {
+    return (await handlers.get(channel)!(window.event(), request)) as T
+  }
+  const api: NotesAPI = {
+    library: () => invoke("notes:library"),
+    chooseDirectory: () => invoke("notes:choose-directory"),
+    openFromLibrary: (name) => invoke("notes:open-library", name),
+    open: () => invoke("notes:open"),
+    save: (request) => invoke("notes:save", request),
+    rename: (request) => invoke("notes:rename", request),
+    confirmReplace: () => invoke("notes:confirm-replace"),
+    setDirty: (dirty) => {
+      ipcMain.emit("notes:dirty", window.event(), dirty)
+    },
+    onSaveBeforeClose: () => () => {},
+    completeClose: (saved) => {
+      ipcMain.emit("notes:complete-close", window.event(), saved)
+    },
+  }
+  return {
+    root,
+    api,
+    cleanup: async () => {
+      ipcMain.emit("notes:dirty", window.event(), false)
+      window.close()
+      await rm(root, { recursive: true, force: true })
+    },
+  }
+}
+
+const pause = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms))
+async function until(predicate: () => boolean) {
+  const deadline = Date.now() + 2500
+  while (!predicate()) {
+    assert.ok(
+      Date.now() < deadline,
+      "기대하는 메모 상태로 전환되지 않았습니다."
+    )
+    await pause(5)
+  }
+}
+function memoryDraft(initial: unknown = null) {
+  let value = initial
+  return {
+    read: () => value,
+    write: (draft: unknown) => {
+      value = draft
+    },
+  }
+}
+
+test("기본 폴더 생성, 저장 목록, 중복 이름 보존과 폴더 설정 유지", async () => {
+  const f = await fixture()
+  try {
+    const initial = await f.api.library()
+    assert.equal(
+      initial.directory,
+      join(app.paths.documents, "My Hub", "Notes")
+    )
+    assert.deepEqual(initial.notes, [])
+    dialog.openResult = { canceled: true, filePaths: [] }
+    await f.api.open()
+    assert.equal(dialog.openDefaultPath, initial.directory)
+    const first = await f.api.save({
+      id: null,
+      name: "같은 제목",
+      markdown: "첫 메모",
+    })
+    const second = await f.api.save({
+      id: null,
+      name: "같은 제목",
+      markdown: "둘째 메모",
+    })
+    assert.equal(first!.name, "같은 제목.md")
+    assert.equal(second!.name, "같은 제목 (2).md")
+    assert.equal(await readMarkdown(first!.path), "첫 메모")
+    await writeFile(join(initial.directory, "무시.txt"), "text")
+    await mkdir(join(initial.directory, "폴더.md"))
+    assert.equal((await f.api.library()).notes.length, 2)
+    await assert.rejects(() => f.api.openFromLibrary("../무시.md"))
+    dialog.openResult = { canceled: true, filePaths: [] }
+    assert.equal(await f.api.chooseDirectory(), null)
+    assert.equal((await f.api.library()).directory, initial.directory)
+    const selected = join(f.root, "선택한 폴더")
+    await mkdir(selected)
+    dialog.openResult = { canceled: false, filePaths: [selected] }
+    assert.equal((await f.api.chooseDirectory())!.directory, selected)
+    dialog.openResult = { canceled: true, filePaths: [] }
+    await f.api.open()
+    assert.equal(dialog.openDefaultPath, selected)
+    assert.equal(
+      (await new NoteLibrary(app.paths).snapshot()).directory,
+      selected
+    )
+    assert.equal(await readMarkdown(first!.path), "첫 메모")
+    const third = await f.api.save({
+      id: null,
+      name: "새 위치",
+      markdown: "메모",
+    })
+    assert.equal(third!.path, join(selected, "새 위치.md"))
+  } finally {
+    await f.cleanup()
+  }
+})
+
+test("동시에 만드는 같은 제목과 사라진 지정 폴더에서도 기존 메모를 보호한다", async () => {
+  const f = await fixture()
+  try {
+    const library = new NoteLibrary(app.paths)
+    const created = await Promise.all([
+      library.create("하나", "중복"),
+      library.create("둘", "중복"),
+    ])
+    assert.equal(new Set(created.map((file) => file.path)).size, 2)
+    assert.deepEqual(
+      new Set(
+        await Promise.all(created.map((file) => readMarkdown(file.path)))
+      ),
+      new Set(["하나", "둘"])
+    )
+    const selected = join(f.root, "임시 폴더")
+    await mkdir(selected)
+    await library.setDirectory(selected)
+    await rm(selected, { recursive: true, force: true })
+    await assert.rejects(
+      () => new NoteLibrary(app.paths).snapshot(),
+      /접근할 수 없습니다/
+    )
+  } finally {
+    await f.cleanup()
+  }
+})
+
+test("자동 저장은 빈 문서를 만들지 않고 연속 입력을 한 번에 저장한다", async () => {
+  const f = await fixture()
+  let saves = 0
+  const store = new NoteStore(
+    {
+      ...f.api,
+      save: (request) => {
+        saves++
+        return f.api.save(request)
+      },
+    },
+    memoryDraft(),
+    15
+  )
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    await pause()
+    assert.equal(saves, 0)
+    store.change("첫 입력")
+    store.change("두 번째 입력")
+    store.change("완성한 한글 메모")
+    await until(
+      () => store.getSnapshot().note.savedMarkdown === "완성한 한글 메모"
+    )
+    assert.equal(saves, 1)
+    assert.equal(
+      await readMarkdown(store.getSnapshot().note.file!.path),
+      "완성한 한글 메모"
+    )
+    await until(() => store.getSnapshot().library!.notes.length === 1)
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("저장이 느려도 입력을 막지 않고 최신 내용까지 순서대로 저장한다", async () => {
+  const f = await fixture()
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const snapshots: string[] = []
+  const store = new NoteStore(
+    {
+      ...f.api,
+      save: async (request) => {
+        snapshots.push(request.markdown)
+        if (snapshots.length === 1) await gate
+        return f.api.save(request)
+      },
+    },
+    memoryDraft(),
+    15
+  )
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    store.change("저장 중인 내용")
+    await until(() => store.getSnapshot().saving)
+    assert.equal(store.getSnapshot().busy, false)
+    store.change("저장 도중 추가한 내용")
+    release()
+    await until(
+      () => store.getSnapshot().note.savedMarkdown === "저장 도중 추가한 내용"
+    )
+    assert.deepEqual(snapshots, ["저장 중인 내용", "저장 도중 추가한 내용"])
+    assert.equal(
+      await readMarkdown(store.getSnapshot().note.file!.path),
+      "저장 도중 추가한 내용"
+    )
+    assert.equal((await f.api.library()).notes.length, 1)
+  } finally {
+    release()
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("새 메모/목록 전환 전에 미저장 내용을 저장하고 다음 문서에 섞지 않는다", async () => {
+  const f = await fixture()
+  const store = new NoteStore(f.api, memoryDraft(), 15)
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    store.change("첫 메모의 내용")
+    await store.newNote()
+    assert.equal(store.getSnapshot().note.markdown, "")
+    assert.equal((await f.api.library()).notes.length, 1)
+    const first = (await f.api.library()).notes[0]
+    store.change("두 번째 메모의 내용")
+    await store.openNote(first.name)
+    assert.equal(store.getSnapshot().note.markdown, "첫 메모의 내용")
+    const files = (await f.api.library()).notes
+    assert.equal(files.length, 2)
+    assert.deepEqual(
+      new Set(await Promise.all(files.map((file) => readMarkdown(file.path)))),
+      new Set(["첫 메모의 내용", "두 번째 메모의 내용"])
+    )
+    await pause()
+    assert.equal((await f.api.library()).notes.length, 2)
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("외부 변경 충돌 시 자동 저장을 중지하고 다른 이름으로 저장하면 복구된다", async () => {
+  const f = await fixture()
+  let saves = 0
+  const store = new NoteStore(
+    {
+      ...f.api,
+      save: (request) => {
+        saves++
+        return f.api.save(request)
+      },
+    },
+    memoryDraft(),
+    15
+  )
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    store.change("원본 내용")
+    await until(() => store.getSnapshot().note.savedMarkdown === "원본 내용")
+    const original = store.getSnapshot().note.file!.path
+    await writeFile(original, "외부 프로그램의 변경")
+    store.change("내가 편집한 내용")
+    await until(() => store.getSnapshot().autosavePaused)
+    const attempts = saves
+    store.change("이어 편집한 내용")
+    await pause()
+    assert.equal(saves, attempts)
+    assert.equal(await readMarkdown(original), "외부 프로그램의 변경")
+    dialog.saveResult = {
+      canceled: false,
+      filePath: join(f.root, "별도 저장.md"),
+    }
+    await store.save(true)
+    assert.equal(store.getSnapshot().autosavePaused, false)
+    assert.equal(
+      await readMarkdown(store.getSnapshot().note.file!.path),
+      "이어 편집한 내용"
+    )
+    assert.equal(await readMarkdown(original), "외부 프로그램의 변경")
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("다시 시작하면 저장된 메모의 디스크 최신본을 이어 열고 중복 파일을 만들지 않는다", async () => {
+  const f = await fixture()
+  const storage = memoryDraft()
+  const first = new NoteStore(f.api, storage, 15)
+  const stopFirst = first.start()
+  let stopSecond = () => {}
+  try {
+    await until(() => first.getSnapshot().ready)
+    first.change("저장한 내용")
+    await until(() => first.getSnapshot().note.savedMarkdown === "저장한 내용")
+    const path = first.getSnapshot().note.file!.path
+    stopFirst()
+    await writeFile(path, "외부에서 갱신한 최신본")
+    const second = new NoteStore(f.api, storage, 15)
+    stopSecond = second.start()
+    await until(() => second.getSnapshot().ready)
+    assert.equal(second.getSnapshot().note.markdown, "외부에서 갱신한 최신본")
+    assert.equal(second.getSnapshot().note.file!.path, path)
+    await pause()
+    assert.equal((await f.api.library()).notes.length, 1)
+  } finally {
+    stopFirst()
+    stopSecond()
+    await f.cleanup()
+  }
+})
+
+test("미저장 초안과 디스크가 충돌하면 원본을 보존하고 별도 메모로 복원한다", async () => {
+  const f = await fixture()
+  let stop = () => {}
+  try {
+    const file = await f.api.save({
+      id: null,
+      name: "원본",
+      markdown: "디스크 최신본",
+    })
+    const store = new NoteStore(
+      f.api,
+      memoryDraft({
+        filePath: file!.path,
+        name: file!.name,
+        markdown: "미저장 초안",
+        savedMarkdown: "과거 내용",
+      }),
+      15
+    )
+    stop = store.start()
+    await until(() => store.getSnapshot().ready)
+    await until(() => store.getSnapshot().note.savedMarkdown === "미저장 초안")
+    assert.equal(store.getSnapshot().note.name, "원본 (복원).md")
+    assert.equal(await readMarkdown(file!.path), "디스크 최신본")
+    assert.equal(
+      await readMarkdown(store.getSnapshot().note.file!.path),
+      "미저장 초안"
+    )
+    assert.equal((await f.api.library()).notes.length, 2)
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("폴더 변경은 열린 파일을 이동하지 않고 다음 새 메모의 위치만 바꾼다", async () => {
+  const f = await fixture()
+  const store = new NoteStore(f.api, memoryDraft(), 15)
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    store.change("이전 폴더의 메모")
+    await store.save()
+    const original = store.getSnapshot().note.file!.path
+    const selected = join(f.root, "새 폴더")
+    await mkdir(selected)
+    dialog.openResult = { canceled: false, filePaths: [selected] }
+    await store.chooseDirectory()
+    assert.equal(store.getSnapshot().note.file!.path, original)
+    assert.equal(store.getSnapshot().library!.directory, selected)
+    await store.newNote()
+    store.change("새 위치의 메모")
+    await store.save()
+    assert.equal(
+      store.getSnapshot().note.file!.path,
+      join(selected, "제목 없는 메모.md")
+    )
+    assert.equal(await readMarkdown(original), "이전 폴더의 메모")
+  } finally {
+    stop()
+    await f.cleanup()
   }
 })

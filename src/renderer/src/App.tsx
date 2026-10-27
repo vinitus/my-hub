@@ -23,6 +23,12 @@ export function App() {
         onNewNote={() => void memo.newNote()}
         onOpenNote={() => void memo.open()}
         busy={memo.busy}
+        library={memo.library}
+        ready={memo.ready}
+        currentPath={memo.note.file?.path}
+        onSelectNote={(name) => void memo.openNote(name)}
+        onChooseDirectory={() => void memo.chooseDirectory()}
+        onRefresh={() => void memo.refresh()}
       />
       <SidebarInset className="min-h-0 overflow-hidden">
         <SiteHeader />

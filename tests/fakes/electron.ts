@@ -1,4 +1,14 @@
 import { EventEmitter } from "node:events"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+
+export const app = {
+  paths: {
+    documents: join(tmpdir(), "my-hub-test-documents"),
+    userData: join(tmpdir(), "my-hub-test-user-data"),
+  },
+  getPath: (name: "documents" | "userData") => app.paths[name],
+}
 
 // OS 창 없이 IPC와 닫기 이벤트 흐름만 검증하는 테스트용 Electron 경계다.
 export const handlers = new Map<string, (...args: unknown[]) => unknown>()
@@ -8,11 +18,18 @@ export const ipcMain = Object.assign(new EventEmitter(), {
   removeHandler: (channel: string) => handlers.delete(channel),
 })
 export const dialog = {
+  openDefaultPath: undefined as string | undefined,
   saveDefaultPath: "",
   openResult: { canceled: true, filePaths: [] as string[] },
   saveResult: { canceled: true, filePath: undefined as string | undefined },
   response: 2,
-  showOpenDialog: async () => dialog.openResult,
+  showOpenDialog: async (
+    _window: unknown,
+    options: { defaultPath?: string }
+  ) => {
+    dialog.openDefaultPath = options.defaultPath
+    return dialog.openResult
+  },
   showSaveDialog: async (
     _window: unknown,
     options: { defaultPath: string }

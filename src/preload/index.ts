@@ -3,6 +3,9 @@ import { electronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
 
 const notes: NotesAPI = {
+  library: () => ipcRenderer.invoke("notes:library"),
+  chooseDirectory: () => ipcRenderer.invoke("notes:choose-directory"),
+  openFromLibrary: (name) => ipcRenderer.invoke("notes:open-library", name),
   open: () => ipcRenderer.invoke("notes:open"),
   save: (request) => ipcRenderer.invoke("notes:save", request),
   rename: (request) => ipcRenderer.invoke("notes:rename", request),

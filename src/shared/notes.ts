@@ -13,7 +13,13 @@ export type SaveNoteRequest = {
   name?: string
 }
 
+export type NoteSummary = { name: string; path: string; modifiedAt: number }
+export type NoteLibrarySnapshot = { directory: string; notes: NoteSummary[] }
+
 export type NotesAPI = {
+  library: () => Promise<NoteLibrarySnapshot>
+  chooseDirectory: () => Promise<NoteLibrarySnapshot | null>
+  openFromLibrary: (name: string) => Promise<NoteFile>
   open: () => Promise<NoteFile | null>
   save: (request: SaveNoteRequest) => Promise<NoteFile | null>
   rename: (request: { id: string; name: string }) => Promise<NoteFile>

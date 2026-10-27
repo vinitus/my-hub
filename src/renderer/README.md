@@ -22,7 +22,7 @@ Electron 창 안에서 실행하는 React 화면이다. Vite root는 이 디렉�
 index.html
 └─ src/main.tsx: React 마운트, 로컬 ThemeProvider
    └─ src/App.tsx: SidebarProvider, useNote의 문서 상태
-      ├─ AppSidebar: 메모 선택, 새 메모, 열기, 테마 전환
+      ├─ AppSidebar: 저장 목록/검색, 새 메모, 열기, 폴더 변경, 테마 전환
       └─ SidebarInset
          ├─ SiteHeader: 사이드바 토글, 화면 이름
          └─ NoteWorkspace: 파일 도구, 상태/오류, 본문 스크롤
@@ -31,22 +31,25 @@ index.html
 
 ## 메모의 편집·저장 구조
 
-| 파일                                    | 역할                                                  |
-| --------------------------------------- | ----------------------------------------------------- |
-| `src/features/notes/use-note.ts`        | 문서 상태, dirty, 초안 복원, 단축키, 비동기 파일 작업 |
-| `src/features/notes/note-workspace.tsx` | 파일 버튼, 저장 상태, 오류, 편집 화면                 |
-| `src/features/notes/note-editor.tsx`    | Plate 생명주기, 툴바, 붙여넣기, 슬래시 메뉴           |
-| `src/features/notes/editor-plugins.tsx` | 지원하는 Markdown 노드와 입력 규칙의 허용 목록        |
-| `src/features/notes/note-elements.tsx`  | 실제 HTML 노드, 체크박스, 링크 렌더링                 |
-| `src/features/notes/markdown.ts`        | 미지원 Markdown 검사                                  |
-| `src/features/notes/notes.css`          | 에디터 안에만 적용하는 Markdown 서식                  |
-| `../shared/notes.ts`                    | main/preload/renderer가 공유하는 파일 API 타입        |
-| `../preload/index.ts`                   | `window.api.notes`의 제한된 IPC 브리지                |
-| `../main/notes.ts`                      | 네이티브 파일 대화상자, 파일 ID 관리, 닫기 확인       |
-| `../main/note-files.ts`                 | UTF-8 읽기, 외부 변경 검사, 임시 파일 작성 후 교체    |
+| 파일                                    | 역할                                               |
+| --------------------------------------- | -------------------------------------------------- |
+| `src/features/notes/use-note.ts`        | React 구독, 단축키, 창 닫기/포커스 이벤트          |
+| `src/features/notes/note-store.ts`      | 문서 상태, 작업 큐, 자동 저장, 초안 복원           |
+| `src/features/notes/note-workspace.tsx` | 파일 버튼, 저장 상태, 오류, 편집 화면              |
+| `src/features/notes/note-editor.tsx`    | Plate 생명주기, 툴바, 붙여넣기, 슬래시 메뉴        |
+| `src/features/notes/editor-plugins.tsx` | 지원하는 Markdown 노드와 입력 규칙의 허용 목록     |
+| `src/features/notes/note-elements.tsx`  | 실제 HTML 노드, 체크박스, 링크 렌더링              |
+| `src/features/notes/markdown.ts`        | 미지원 Markdown 검사                               |
+| `src/features/notes/notes.css`          | 에디터 안에만 적용하는 Markdown 서식               |
+| `../shared/notes.ts`                    | main/preload/renderer가 공유하는 파일 API 타입     |
+| `../preload/index.ts`                   | `window.api.notes`의 제한된 IPC 브리지             |
+| `../main/notes.ts`                      | 네이티브 파일 대화상자, 파일 ID 관리, 닫기 확인    |
+| `../main/note-files.ts`                 | UTF-8 읽기, 외부 변경 검사, 임시 파일 작성 후 교체 |
+| `../main/note-library.ts`               | 기본 폴더/설정, 메모 목록, 중복 없는 새 파일 생성  |
 
-- 문서는 단일 메모 단위로 편집하며 저장 결과는 UTF-8 `.md` 텍스트다.
-  메모 목록/폴더 탐색/동기화는 아직 구현하지 않았다.
+- 문서는 한 번에 하나를 편집하며 저장 결과는 UTF-8 `.md` 텍스트다.
+  사이드바에 지정 폴더의 메모를 최근 수정 순으로 표시하고 이름으로 검색한다.
+  하위 폴더 탐색과 클라우드 동기화는 아직 제공하지 않는다.
 - 지원 범위는 문단, 제목 1~6, 굵게, 기울임, 취소선, 인라인 코드, 목록,
   중첩 목록, 체크리스트, 인용문, 링크, 코드 블록, 구분선이다.
   체크리스트와 취소선은 GitHub Flavored Markdown 확장이다.
@@ -69,13 +72,31 @@ Esc로 취소한다. `.md`는 자동으로 붙으며 새 메모는 첫 저장의
 저장된 메모는 본문 변경을 저장하지 않고 같은 폴더의 실제 파일명만 바꾼다.
 같은 이름의 다른 파일은 덮어쓰지 않는다.
 
-`localStorage`의 `my-hub:markdown-draft:v1`은 마지막 편집 내용의 임시 복원용이다.
-실제 `.md` 저장은 저장 버튼 또는 단축키로 수행한다. 재시작 후 초안은 새 메모로
-복원하며 이전 파일 경로에 자동 덮어쓰지 않는다. 새 메모/열기와 창 닫기는 변경이
-있으면 저장·저장하지 않음·취소를 확인한다. 초안 보관이 실패하면 오류를 표시한다.
+기본 메모 폴더는 Electron의 `app.getPath("documents")/My Hub/Notes`이다.
+사용자의 문서 폴더가 OneDrive 등으로 이동되어 있어도 OS 경로를 따른다.
+사이드바의 **메모 폴더 변경**으로 고른 위치는 `app.getPath("userData")/notes-settings.json`에
+기억한다. 폴더 변경은 파일을 이동하지 않으며, 열린 메모는 기존 위치를 계속 사용하고
+다음 새 메모부터 선택한 폴더에 저장한다. 목록은 저장/파일명 변경 후, 앱 포커스 복귀,
+새로고침 버튼으로 갱신한다.
 
-Renderer는 파일 경로를 임의로 지정해 저장할 수 없다. 사용자가 대화상자에서
-선택한 파일에 main이 ID를 발급하고, 이후 저장은 그 ID로만 요청한다. 저장 직전에
+입력을 1초 멈추면 새 메모도 대화상자 없이 기본 폴더에 자동 저장한다.
+빈 새 메모는 자동 생성하지 않으며, 같은 이름이 있으면 `(2)`, `(3)`을 붙인다.
+Ctrl/Cmd+S는 즉시 저장하고 다른 이름으로 저장만 파일 대화상자를 연다.
+저장 중에도 본문 입력을 허용하고 완료 응답은 해당 스냅샷까지만 저장된 것으로 처리한다.
+추가 입력은 다음 저장에 반영한다. 파일 작업은 큐에서 직렬 실행하며 메모 전환 전에
+남은 변경을 저장한다. 저장 실패 시에만 저장·버리기·취소를 확인한다.
+외부 변경 등으로 자동 저장이 실패하면 자동 재시도를 멈추고 오류를 표시한다.
+명시적인 저장 재시도나 다른 이름으로 저장 성공 후 자동 저장을 재개한다.
+
+`localStorage`의 `my-hub:markdown-draft:v1`은 마지막 편집 내용과 파일 경로/저장된
+기준 내용을 임시 보관한다. 재시작 시 같은 폴더의 저장된 메모는 디스크 최신본으로
+다시 열고, 미저장 초안이 있으면 기준 내용을 비교한 뒤 이어서 저장한다.
+초안과 디스크가 모두 변경된 경우 원본을 유지하고 `(복원)` 메모를 별도로 만든다.
+폴더 밖에서 열었던 파일이나 삭제된 파일은 깨끗한 초안만 남아 있으면 다시 만들지 않는다.
+임시 보관이 실패하면 오류를 표시하며 실제 파일 저장은 계속 시도할 수 있다.
+
+Renderer는 파일 경로를 임의로 지정해 저장할 수 없다. 폴더 목록에서 열거나 사용자가
+대화상자에서 선택한 파일에 main이 ID를 발급하고, 이후 저장은 그 ID로만 요청한다. 저장 직전에
 파일 내용의 외부 변경을 확인하며 충돌 시 원본을 덮어쓰지 않는다. 5MB 이하 UTF-8
 메모를 지원한다. 브라우저 미리 보기에서는 편집/초안만 가능하며 네이티브 열기·저장은
 Electron 앱에서만 제공한다.
@@ -113,7 +134,7 @@ UI 추가 명령은 루트에서 `pnpm exec shadcn add <component>`를 실행한
 
 ```bash
 pnpm typecheck
-pnpm test:notes    # Markdown 왕복/입력 규칙, UTF-8 파일 저장, IPC/닫기 흐름
+pnpm test:notes    # Markdown/파일 IO/IPC, 폴더 설정, 자동 저장/충돌/재시작
 pnpm lint
 pnpm dev          # main/preload를 다시 빌드하고 Electron 창 실행
 ```

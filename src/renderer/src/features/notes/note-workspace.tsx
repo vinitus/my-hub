@@ -31,11 +31,15 @@ export function NoteWorkspace({ memo }: { memo: ReturnType<typeof useNote> }) {
           <span role="status" className="text-xs text-muted-foreground">
             {busy
               ? "처리 중…"
-              : dirty
-                ? "저장하지 않은 변경"
-                : note.file
-                  ? "저장됨"
-                  : "새 메모"}
+              : memo.saving
+                ? "저장 중…"
+                : memo.autosavePaused
+                  ? "자동 저장 중지"
+                  : dirty
+                    ? "자동 저장 대기"
+                    : note.file
+                      ? "자동 저장됨"
+                      : "새 메모"}
           </span>
         </div>
         <Button
@@ -97,7 +101,8 @@ export function NoteWorkspace({ memo }: { memo: ReturnType<typeof useNote> }) {
       <footer className="flex justify-between gap-2 border-t px-6 py-2 text-xs text-muted-foreground">
         <span className="truncate" title={note.file?.path}>
           {note.file?.path ??
-            "작성 내용은 이 기기에 임시 보관됩니다. 파일 저장은 저장 버튼을 사용하세요."}
+            memo.library?.directory ??
+            "작성 내용은 이 기기에 임시 보관됩니다."}
         </span>
         <span className="shrink-0">
           {note.markdown.length.toLocaleString()}자 · Markdown

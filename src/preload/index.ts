@@ -59,6 +59,7 @@ const weather: WeatherAPI = {
 const codex: CodexAPI = {
   check: () => ipcRenderer.invoke("codex:check"),
   connect: () => ipcRenderer.invoke("codex:connect"),
+  disconnect: () => ipcRenderer.invoke("codex:disconnect"),
   cancel: () => ipcRenderer.invoke("codex:cancel"),
   preferences: () => ipcRenderer.invoke("codex:preferences"),
   savePreferences: (preferences) =>

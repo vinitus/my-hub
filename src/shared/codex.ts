@@ -37,6 +37,7 @@ export type CodexConnection = {
 export type CodexAPI = {
   check: () => Promise<CodexConnection>
   connect: () => Promise<CodexConnection>
+  disconnect: () => Promise<CodexConnection>
   cancel: () => Promise<CodexConnection>
   preferences: () => Promise<CodexPreferences>
   savePreferences: (preferences: CodexPreferences) => Promise<CodexPreferences>

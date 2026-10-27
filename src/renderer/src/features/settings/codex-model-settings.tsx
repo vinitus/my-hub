@@ -1,19 +1,11 @@
-import { useEffect, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import type {
   CodexConnection,
   CodexPreferences,
 } from "../../../../shared/codex"
 
-const effortLabels: Record<string, string> = {
-  none: "없음",
-  minimal: "최소",
-  low: "낮음",
-  medium: "보통",
-  high: "높음",
-  xhigh: "매우 높음",
-  max: "최대",
-  ultra: "최고",
-}
+import { effortLabels } from "./codex-onboarding"
+
 const selectClass =
   "h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
 
@@ -27,6 +19,8 @@ export function CodexModelSettings({
   busy: boolean
 }) {
   const api = window.api?.codex
+  const modelId = useId()
+  const effortId = useId()
   const models = connection.models ?? []
   const [preferences, setPreferences] = useState<CodexPreferences | null>(null)
   const [saving, setSaving] = useState(false)
@@ -87,11 +81,11 @@ export function CodexModelSettings({
   return (
     <div className="space-y-3 border-t pt-4">
       <div className="space-y-2">
-        <label htmlFor="codex-model" className="text-xs font-medium">
+        <label htmlFor={modelId} className="text-xs font-medium">
           모델
         </label>
         <select
-          id="codex-model"
+          id={modelId}
           className={selectClass}
           disabled={disabled}
           value={preferences?.model ?? ""}
@@ -118,11 +112,11 @@ export function CodexModelSettings({
         </select>
       </div>
       <div className="space-y-2">
-        <label htmlFor="codex-effort" className="text-xs font-medium">
+        <label htmlFor={effortId} className="text-xs font-medium">
           생각 수준
         </label>
         <select
-          id="codex-effort"
+          id={effortId}
           className={selectClass}
           disabled={
             disabled || !model || !model.supportedReasoningEfforts.length

@@ -19,6 +19,7 @@ import { registerCodex } from "../src/main/codex"
 import { CodexSettings } from "../src/main/codex-settings"
 import { BrowserWindow, handlers } from "./fakes/electron"
 import type { CodexConnection } from "../src/shared/codex"
+import { defaultSetupPreferences } from "../src/renderer/src/features/settings/codex-onboarding"
 
 const models = [
   {
@@ -44,6 +45,38 @@ const models = [
   },
 ]
 
+test("setup prefers Luna and low, preserves saved choices, and falls back to supported values", () => {
+  const luna = {
+    ...models[0],
+    id: "test-luna",
+    model: "test-luna",
+    displayName: "Luna",
+    isDefault: false,
+  }
+  assert.deepEqual(defaultSetupPreferences([...models, luna], null), {
+    model: "test-luna",
+    reasoningEffort: "low",
+  })
+  const saved = { model: "test-deep", reasoningEffort: "high" }
+  assert.deepEqual(defaultSetupPreferences([...models, luna], saved), saved)
+  assert.deepEqual(defaultSetupPreferences(models, null), {
+    model: "test-balanced",
+    reasoningEffort: "low",
+  })
+  assert.deepEqual(defaultSetupPreferences([models[1]], null), saved)
+  assert.deepEqual(
+    defaultSetupPreferences([luna], {
+      model: "removed",
+      reasoningEffort: "ultra",
+    }),
+    { model: "test-luna", reasoningEffort: "low" }
+  )
+  assert.deepEqual(defaultSetupPreferences([], saved), {
+    model: null,
+    reasoningEffort: null,
+  })
+})
+
 // 메모리 스트림으로 공식 stdio 프로토콜을 흉내 낸다. 실제 계정/브라우저에는 접근하지 않는다.
 function fakeCodex(
   options: {
@@ -52,6 +85,7 @@ function fakeCodex(
     stall?: boolean
     modelFailure?: boolean
     paginated?: boolean
+    logoutFailure?: boolean
   } = {}
 ) {
   let loggedIn = options.account === "chatgpt"
@@ -102,7 +136,10 @@ function fakeCodex(
         })
       else if (request.method === "account/login/cancel")
         reply({ status: "canceled" })
-      else if (request.method === "model/list" && !options.modelFailure) {
+      else if (request.method === "account/logout" && !options.logoutFailure) {
+        loggedIn = false
+        reply({})
+      } else if (request.method === "model/list" && !options.modelFailure) {
         if (options.paginated)
           reply(
             request.params.cursor
@@ -352,6 +389,118 @@ test("실패한 로그인은 연결 성공으로 표시하지 않는다", async 
   }
 })
 
+test("연결 해제는 진행 중 조회를 마친 후 로그아웃하고 계정과 모델 목록을 비운다", async () => {
+  const initial = fakeCodex({ account: "chatgpt" })
+  const logout = fakeCodex({ account: "chatgpt" })
+  const recheck = fakeCodex()
+  const sessions = [initial, logout, recheck]
+  const service = new CodexConnectionService(
+    () => {},
+    async () => {
+      assert.fail("No browser")
+    },
+    {
+      find: async () => "fake",
+      version: async () => "0.164.0",
+      start: () => {
+        const session = sessions.shift()
+        assert.ok(session)
+        return session.rpc
+      },
+    }
+  )
+  try {
+    const checking = service.check()
+    const disconnecting = service.disconnect()
+    assert.equal((await checking).status, "connected")
+    const state = await disconnecting
+    assert.equal(state.status, "disconnected")
+    assert.equal(state.account, null)
+    assert.deepEqual(state.models, [])
+    assert.equal(state.modelsError, "")
+    assert.deepEqual(
+      logout.requests.map((request) => request.method),
+      [
+        "initialize",
+        "initialized",
+        "account/read",
+        "account/logout",
+        "account/read",
+      ]
+    )
+    assert.equal(initial.killed, 1)
+    assert.equal(logout.killed, 1)
+    assert.throws(() =>
+      service.validatePreferences({
+        model: "test-balanced",
+        reasoningEffort: "low",
+      })
+    )
+    assert.equal((await service.check()).status, "disconnected")
+    assert.equal(recheck.killed, 1)
+  } finally {
+    service.dispose()
+  }
+})
+
+test("로그아웃 실패를 연결 해제 성공으로 표시하지 않고 프로세스를 정리한다", async () => {
+  const initial = fakeCodex({ account: "chatgpt" })
+  const logout = fakeCodex({ account: "chatgpt", logoutFailure: true })
+  const sessions = [initial, logout]
+  const service = new CodexConnectionService(
+    () => {},
+    async () => {},
+    {
+      find: async () => "fake",
+      version: async () => "0.164.0",
+      start: () => {
+        const session = sessions.shift()
+        assert.ok(session)
+        return session.rpc
+      },
+    }
+  )
+  try {
+    await service.check()
+    const state = await service.disconnect()
+    assert.equal(state.status, "error")
+    assert.match(state.error, /연결을 해제하지 못했습니다/)
+    assert.equal(logout.killed, 1)
+    assert.ok(!state.error.includes("SECRET"))
+  } finally {
+    service.dispose()
+  }
+})
+
+test("외부 CLI가 API 키 계정으로 바뀌었으면 그 계정을 로그아웃하지 않는다", async () => {
+  const initial = fakeCodex({ account: "chatgpt" })
+  const changed = fakeCodex({ account: "apiKey" })
+  const sessions = [initial, changed]
+  const service = new CodexConnectionService(
+    () => {},
+    async () => {},
+    {
+      find: async () => "fake",
+      version: async () => "0.164.0",
+      start: () => {
+        const session = sessions.shift()
+        assert.ok(session)
+        return session.rpc
+      },
+    }
+  )
+  try {
+    await service.check()
+    assert.equal((await service.disconnect()).status, "disconnected")
+    assert.ok(
+      !changed.requests.some((request) => request.method === "account/logout")
+    )
+    assert.equal(changed.killed, 1)
+  } finally {
+    service.dispose()
+  }
+})
+
 test("로그인 취소와 창 종료는 자기 프로세스만 종료하고 전역 로그아웃을 호출하지 않는다", async () => {
   for (const cancel of [true, false]) {
     const { fake, service } = setup()
@@ -482,6 +631,7 @@ test("IPC는 현재 창의 메인 프레임만 허용하고 창이 닫히면 핸
   for (const method of [
     "check",
     "connect",
+    "disconnect",
     "cancel",
     "preferences",
     "save-preferences",

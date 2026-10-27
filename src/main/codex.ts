@@ -13,6 +13,7 @@ export function registerCodex(window: BrowserWindow) {
   const handlers = {
     "codex:check": service.check,
     "codex:connect": service.connect,
+    "codex:disconnect": service.disconnect,
     "codex:cancel": service.cancel,
     "codex:preferences": () => settings.read(),
     "codex:save-preferences": (request: unknown) =>

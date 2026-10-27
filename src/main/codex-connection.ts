@@ -187,7 +187,9 @@ export class CodexConnectionService {
       if (this.client === client) this.release()
     }
   }
-  private run(login: boolean): Promise<CodexConnection> {
+  private run(
+    action: "check" | "connect" | "disconnect"
+  ): Promise<CodexConnection> {
     if (this.operation) return this.operation
     if (this.client || this.state.status === "connecting" || this.disposed)
       return Promise.resolve(this.state)
@@ -237,10 +239,22 @@ export class CodexConnectionService {
         }
         await client.initialize()
         const account = await this.account(client)
-        if (account) {
+        if (action === "disconnect") {
+          // 연결 확인 이후 외부 CLI가 API 키 계정으로 바뀐 경우 그 계정은 로그아웃하지 않는다.
+          if (account) await client.request("account/logout")
+          if (await this.account(client))
+            throw new Error("Codex logout was not completed")
+          this.update({
+            status: "disconnected",
+            account: null,
+            models: [],
+            modelsError: "",
+            error: "",
+          })
+        } else if (account) {
           this.update({ status: "connected", account })
           await this.models(client)
-        } else if (!login) {
+        } else if (action === "check") {
           this.update({ status: "disconnected" })
         } else {
           const result = LoginSchema.parse(
@@ -273,7 +287,9 @@ export class CodexConnectionService {
           status: "error",
           account: null,
           error:
-            "Codex에 연결하지 못했습니다. 설치 상태와 인터넷 연결을 확인한 뒤 다시 시도해 주세요.",
+            action === "disconnect"
+              ? "Codex 연결을 해제하지 못했습니다. 다시 확인한 뒤 시도해 주세요."
+              : "Codex에 연결하지 못했습니다. 설치 상태와 인터넷 연결을 확인한 뒤 다시 시도해 주세요.",
         })
       } finally {
         // 상태 조회 후에는 프로세스를 유지하지 않는다. 로그인 콜백 대기 중에만 살아 있다.
@@ -285,8 +301,15 @@ export class CodexConnectionService {
     })
     return this.operation
   }
-  check = () => this.run(false)
-  connect = () => this.run(true)
+  check = () => this.run("check")
+  connect = () => this.run("connect")
+  disconnect = async () => {
+    // 모델 목록 조회가 아직 끝나지 않았다면 먼저 마친 뒤 로그아웃을 실행한다.
+    if (this.operation) await this.operation
+    if (this.disposed || this.state.status !== "connected") return this.state
+    this.release()
+    return this.run("disconnect")
+  }
   validatePreferences(request: unknown) {
     const preferences = CodexPreferencesSchema.parse(request)
     if (preferences.model === null) return preferences

@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react"
+import { useId } from "react"
 import {
   ExternalLinkIcon,
   LoaderCircleIcon,
   PlugIcon,
   RefreshCwIcon,
   TerminalIcon,
+  UnplugIcon,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { CodexConnection } from "../../../../shared/codex"
 import { CodexModelSettings } from "./codex-model-settings"
+import { useCodexConnection } from "./use-codex-connection"
 
 const labels: Record<CodexConnection["status"], string> = {
   idle: "미확인",
@@ -22,63 +24,16 @@ const labels: Record<CodexConnection["status"], string> = {
 }
 
 export function CodexConnectionPanel({ active }: { active: boolean }) {
+  const headingId = useId()
+  const disconnectNoticeId = useId()
   const api = window.api?.codex
-  const [state, setState] = useState<CodexConnection>({
-    status: "idle",
-    executable: null,
-    version: null,
-    account: null,
-    error: "",
-    models: [],
-    modelsError: "",
-  })
-  const [working, setWorking] = useState(false)
-  const [error, setError] = useState("")
-  useEffect(() => {
-    if (!active || !api) return
-    let alive = true
-    const unsubscribe = api.onChange((next) => {
-      if (alive) setState(next)
-    })
-    void api.check().then(
-      (next) => {
-        if (alive) {
-          setState(next)
-          setError("")
-        }
-      },
-      () => {
-        if (alive)
-          setError("Codex 상태를 확인하지 못했습니다. 다시 시도해 주세요.")
-      }
-    )
-    return () => {
-      alive = false
-      unsubscribe()
-    }
-  }, [active, api])
-
-  async function run(action: "check" | "connect" | "cancel") {
-    if (!api || working) return
-    setWorking(true)
-    setError("")
-    try {
-      setState(await api[action]())
-    } catch {
-      setError(
-        "Codex에 연결하지 못했습니다. 앱을 다시 실행한 뒤 시도해 주세요."
-      )
-    } finally {
-      setWorking(false)
-    }
-  }
+  const { state, error, busy, run } = useCodexConnection(active)
   const checking = state.status === "checking"
   const connecting = state.status === "connecting"
   const connected = state.status === "connected"
-  const busy = working || checking
   return (
-    <section aria-labelledby="settings-ai" className="space-y-3 border-t pt-6">
-      <h3 id="settings-ai" className="text-sm font-medium">
+    <section aria-labelledby={headingId} className="space-y-3 border-t pt-6">
+      <h3 id={headingId} className="text-sm font-medium">
         AI 연결
       </h3>
       <div className="space-y-4 rounded-lg border p-4">
@@ -153,6 +108,17 @@ export function CodexConnectionPanel({ active }: { active: boolean }) {
               </Button>
             )
           )}
+          {connected && (
+            <Button
+              variant="outline"
+              disabled={busy || !api?.disconnect}
+              aria-describedby={disconnectNoticeId}
+              onClick={() => void run("disconnect")}
+            >
+              <UnplugIcon />
+              연결 해제
+            </Button>
+          )}
           <Button
             variant="outline"
             disabled={!api || busy || connecting}
@@ -177,6 +143,14 @@ export function CodexConnectionPanel({ active }: { active: boolean }) {
             </Button>
           )}
         </div>
+        {connected && (
+          <p
+            id={disconnectNoticeId}
+            className="text-xs leading-relaxed text-muted-foreground"
+          >
+            연결을 해제하면 이 기기의 Codex CLI에서도 로그아웃됩니다.
+          </p>
+        )}
         {(!api || error || state.error) && (
           <p role="alert" className="text-xs leading-relaxed text-destructive">
             {!api

@@ -1,5 +1,8 @@
 # Renderer 작업 안내
 
+사이드바 하단의 `src/features/weather`는 선택한 도시의 현재 날씨를 표시한다.
+Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/features/weather/README.md)를 참고한다.
+
 워크스페이스 메뉴와 번호는 `src/lib/navigation.ts`에서 함께 관리한다.
 Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
 `src/hooks/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안

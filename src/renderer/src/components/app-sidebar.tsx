@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
 import { NAVIGATION_ITEMS, type AppView } from "@/lib/navigation"
+import { WeatherWidget } from "@/features/weather/weather-widget"
 import {
   Sidebar,
   SidebarContent,
@@ -210,6 +211,7 @@ export function AppSidebar({
               ? "프로그램 · 폴더 · 웹사이트"
               : "일정은 이 기기에 저장됩니다."}
         </p>
+        <WeatherWidget />
       </SidebarFooter>
     </Sidebar>
   )

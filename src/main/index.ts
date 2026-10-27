@@ -4,6 +4,7 @@ import { electronApp, optimizer, is } from "@electron-toolkit/utils"
 import { registerNotes } from "./notes"
 import { registerCalendar } from "./calendar"
 import { registerShortcuts } from "./shortcuts"
+import { registerWeather } from "./weather"
 
 // The development launcher emits this module as ESM at out/main/index.js.
 const mainDirectory = import.meta.dirname
@@ -29,6 +30,7 @@ function createWindow(): void {
   registerNotes(mainWindow)
   registerCalendar(mainWindow)
   registerShortcuts(mainWindow)
+  registerWeather(mainWindow)
 
   mainWindow.on("ready-to-show", () => {
     mainWindow.show()

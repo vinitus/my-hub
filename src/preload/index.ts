@@ -3,6 +3,7 @@ import { electronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
 import type { CalendarAPI } from "../shared/calendar"
 import type { ShortcutsAPI } from "../shared/shortcuts"
+import type { WeatherAPI } from "../shared/weather"
 
 const notes: NotesAPI = {
   library: () => ipcRenderer.invoke("notes:library"),
@@ -46,7 +47,15 @@ const shortcuts: ShortcutsAPI & {
   remove: (request) => ipcRenderer.invoke("shortcuts:remove", request),
   launch: (request) => ipcRenderer.invoke("shortcuts:launch", request),
 }
-const api = { notes, calendar, shortcuts }
+const weather: WeatherAPI = {
+  location: () => ipcRenderer.invoke("weather:location"),
+  setLocation: (location) =>
+    ipcRenderer.invoke("weather:set-location", location),
+  search: (query) => ipcRenderer.invoke("weather:search", query),
+  current: (location, force = false) =>
+    ipcRenderer.invoke("weather:current", { location, force }),
+}
+const api = { notes, calendar, shortcuts, weather }
 
 if (process.contextIsolated) {
   try {

@@ -1,3 +1,4 @@
+// UNUSED: dashboard-01 참고 코드. 현재 앱 화면에서 사용하지 않는다.
 import { Button } from "@/components/ui/button"
 import {
   SidebarGroup,

@@ -1,3 +1,4 @@
+// UNUSED: dashboard-01 참고 코드. 아래 app/dashboard/data.json과 함께 현재 앱에서 사용하지 않는다.
 import * as React from "react"
 import {
   closestCenter,

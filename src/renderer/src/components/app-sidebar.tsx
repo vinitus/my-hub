@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { NAVIGATION_ITEMS, type AppView } from "@/lib/navigation"
 import { WeatherWidget } from "@/features/weather/weather-widget"
+import type { CalendarStore } from "@/features/calendar/calendar-store"
+import { LiveScheduleStatus } from "@/features/live-status/live-schedule-status"
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +26,7 @@ import {
 } from "@/components/ui/sidebar"
 
 type Props = ComponentProps<typeof Sidebar> & {
+  calendarStore: CalendarStore
   onNewNote: () => void
   onOpenNote: () => void
   busy: boolean
@@ -40,6 +43,7 @@ type Props = ComponentProps<typeof Sidebar> & {
 
 // 메모의 문서 상태는 App/useNote에서 관리한다. 사이드바는 같은 파일 작업을 호출한다.
 export function AppSidebar({
+  calendarStore,
   onNewNote,
   onOpenNote,
   busy,
@@ -61,18 +65,8 @@ export function AppSidebar({
     ) ?? []
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader className="px-4 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <FileTextIcon className="size-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold">My Hub</p>
-            <p className="text-xs text-muted-foreground">
-              생각을 기록하는 공간
-            </p>
-          </div>
-        </div>
+      <SidebarHeader className="px-2 pt-2 pb-0">
+        <LiveScheduleStatus store={calendarStore} />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

@@ -3,6 +3,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { NoteWorkspace } from "@/features/notes/note-workspace"
 import { CalendarReminderCenter } from "@/features/calendar/calendar-reminder-center"
+import { CalendarStore } from "@/features/calendar/calendar-store"
 import { useNote } from "@/features/notes/use-note"
 import { QuickCommand } from "@/features/quick-command/quick-command"
 import { SettingsSheet } from "@/features/settings/settings-sheet"
@@ -29,6 +30,7 @@ export function App() {
     : "notes"
   const [commandOpen, setCommandOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [calendarStore] = useState(() => new CalendarStore(window.api?.calendar))
   const [codexSetup, setCodexSetup] = useState<"intro" | "login" | null>(() => {
     if (!window.api?.codex) return null
     const choice = readCodexSetupChoice()
@@ -111,6 +113,7 @@ export function App() {
       }
     >
       <AppSidebar
+        calendarStore={calendarStore}
         variant="inset"
         activeView={view}
         showNavigationNumbers={showNavigationNumbers}
@@ -180,7 +183,7 @@ export function App() {
                 </p>
               }
             >
-              <CalendarWorkspace />
+              <CalendarWorkspace store={calendarStore} />
             </Suspense>
           </div>
         )}

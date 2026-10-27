@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { CalendarEvent } from "../../../../shared/calendar"
-import { CalendarStore } from "./calendar-store"
+import type { CalendarStore } from "./calendar-store"
 import { EventCalendarViews } from "./fullcalendar-views"
 import { EventSheet } from "./event-sheet"
 import { newCalendarEvent, shiftDate } from "./calendar-dates"
@@ -45,8 +45,7 @@ const views = [
 ]
 type Editor = { event: CalendarEvent; existing: boolean; revision: string }
 
-export default function CalendarWorkspace() {
-  const [store] = useState(() => new CalendarStore(window.api?.calendar))
+export default function CalendarWorkspace({ store }: { store: CalendarStore }) {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [editor, setEditor] = useState<Editor | null>(null)
   const controller = useCalendarController()

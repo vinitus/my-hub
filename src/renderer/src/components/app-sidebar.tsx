@@ -206,11 +206,9 @@ export function AppSidebar({
         >
           {activeView === "notes"
             ? (library?.directory ?? "로컬 Markdown 메모")
-            : activeView === "chat"
-              ? "대화는 이 기기에 저장됩니다."
-              : activeView === "shortcuts"
-                ? "프로그램 · 폴더 · 웹사이트"
-                : "일정은 이 기기에 저장됩니다."}
+            : activeView === "shortcuts"
+              ? "프로그램 · 폴더 · 웹사이트"
+              : "일정은 이 기기에 저장됩니다."}
         </p>
       </SidebarFooter>
     </Sidebar>

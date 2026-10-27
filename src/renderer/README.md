@@ -1,7 +1,7 @@
 # Renderer 작업 안내
 
 워크스페이스 메뉴와 번호는 `src/lib/navigation.ts`에서 함께 관리한다.
-Ctrl+1 바로가기, Ctrl+2 채팅, Ctrl+3 메모, Ctrl+4 캘린더로 이동한다.
+Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
 `src/hooks/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안
 사이드바에 번호를 표시한다. 키를 놓거나 창 포커스를 잃으면 번호를 숨긴다.
 등록/수정 모달이 열린 동안에는 화면 이동 단축키를 적용하지 않는다.
@@ -9,8 +9,9 @@ Ctrl+1 바로가기, Ctrl+2 채팅, Ctrl+3 메모, Ctrl+4 캘린더로 이동한
 `src/features/shortcuts`는 프로그램·폴더·웹사이트 바로가기를 관리한다.
 대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.
 
-앱 첫 화면은 `src/features/chat`의 채팅이다. 대화 입력과 로컬 기록만 제공하며,
-AI/메모/캘린더 실행 연결 지점은 [채팅 구조 안내](src/features/chat/README.md)를 참고한다.
+앱 첫 화면은 메모다. AI 요청은 Ctrl+K로 여는 한 줄 모달에 입력하고,
+전송 후 우측 하단에서 작업 상태를 확인한다. AI 연결은 아직 필요하며,
+구조는 [빠른 입력 안내](src/features/quick-command/README.md)를 참고한다.
 
 캘린더는 `src/features/calendar`에 있으며 FullCalendar와 기존 shadcn UI를 사용한다.
 파일별 역할, 날짜 규칙, 로컬 저장 구조는 [캘린더 유지보수 안내](src/features/calendar/README.md)를 참고한다.

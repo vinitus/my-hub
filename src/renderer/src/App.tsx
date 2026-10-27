@@ -3,7 +3,7 @@ import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { NoteWorkspace } from "@/features/notes/note-workspace"
 import { useNote } from "@/features/notes/use-note"
-import { ChatWorkspace } from "@/features/chat/chat-workspace"
+import { QuickCommand } from "@/features/quick-command/quick-command"
 import { lazy, Suspense, useState } from "react"
 import { NAVIGATION_ITEMS, type AppView } from "@/lib/navigation"
 import { useNavigationShortcuts } from "@/hooks/use-navigation-shortcuts"
@@ -17,10 +17,15 @@ const ShortcutWorkspace = lazy(
 // shadcn dashboard-01을 바탕으로 만든 앱 레이아웃. 구조 안내: ../README.md
 // SidebarProvider의 CSS 변수는 사이드바와 SiteHeader에서 함께 사용한다.
 export function App() {
-  const [view, setView] = useState<AppView>("chat")
+  const [selectedView, setView] = useState<AppView>("notes")
+  // 개발 중 Fast Refresh가 제거된 채팅 메뉴의 상태를 유지해도 메모로 돌아간다.
+  const view = NAVIGATION_ITEMS.some((item) => item.id === selectedView)
+    ? selectedView
+    : "notes"
+  const [commandOpen, setCommandOpen] = useState(false)
   const [calendarVisited, setCalendarVisited] = useState(false)
   const [shortcutsVisited, setShortcutsVisited] = useState(false)
-  const memo = useNote(view === "notes")
+  const memo = useNote(view === "notes" && !commandOpen)
   const navigate = (next: AppView) => {
     if (next === "calendar") setCalendarVisited(true)
     if (next === "shortcuts") setShortcutsVisited(true)
@@ -64,15 +69,8 @@ export function App() {
       <SidebarInset className="min-h-0 overflow-hidden">
         <SiteHeader
           title={NAVIGATION_ITEMS.find((item) => item.id === view)!.label}
+          onQuickCommand={() => setCommandOpen(true)}
         />
-
-        <div
-          className={
-            view === "chat" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-          }
-        >
-          <ChatWorkspace active={view === "chat"} />
-        </div>
 
         {/* 창 전체 대신 메모 본문만 스크롤한다. 상위 flex 요소의 min-h-0도 유지한다. */}
         <div
@@ -117,6 +115,7 @@ export function App() {
           </div>
         )}
       </SidebarInset>
+      <QuickCommand open={commandOpen} onOpenChange={setCommandOpen} />
     </SidebarProvider>
   )
 }

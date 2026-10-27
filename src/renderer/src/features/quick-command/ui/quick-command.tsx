@@ -25,9 +25,11 @@ type Task = {
 export function QuickCommand({
   open,
   onOpenChange,
+  runCommand = executeCommand,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  runCommand?: typeof executeCommand
 }) {
   const [draft, setDraft] = useState("")
   const [task, setTask] = useState<Task | null>(null)
@@ -74,7 +76,7 @@ export function QuickCommand({
     setDraft("")
     onOpenChange(false)
     try {
-      const result = await executeCommand(input)
+      const result = await runCommand(input)
       setTask((current) =>
         current?.id === id ? { ...current, ...result } : current
       )
@@ -106,7 +108,11 @@ export function QuickCommand({
         ? "완료"
         : task?.status === "needs-connection"
           ? "AI 연결 필요"
-          : "처리 실패"
+          : task?.status === "clarification"
+            ? "추가 설명 필요"
+            : task?.status === "partial"
+              ? "일부 저장됨"
+              : "처리 실패"
 
   return (
     <>
@@ -119,8 +125,8 @@ export function QuickCommand({
           >
             <Dialog.Title className="sr-only">빠른 AI 입력</Dialog.Title>
             <Dialog.Description className="sr-only">
-              일정 추가나 메모 저장 요청을 한 줄로 입력하세요. Enter로 전송하고
-              Escape로 닫습니다. AI 연결은 추가 작업이 필요합니다.
+              캘린더 일정이나 할일 요청을 입력하세요. Enter로 전송하고 Escape로
+              닫습니다. 요청과 현재 일정·할일 정보가 연결된 AI로 전송됩니다.
             </Dialog.Description>
             <form
               className="flex items-center gap-2"
@@ -140,7 +146,7 @@ export function QuickCommand({
                 spellCheck={false}
                 maxLength={MAX_COMMAND_LENGTH}
                 className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-                placeholder="내일 오후 3시에 팀 회의 추가해줘"
+                placeholder="내일 오후 3시 팀 회의 / 금요일까지 보고서 할일 추가"
                 value={draft}
                 onChange={(event) =>
                   setDraft(event.target.value.replace(/[\r\n]+/g, " "))
@@ -195,7 +201,7 @@ export function QuickCommand({
               >
                 {task.input}
               </p>
-              <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              <p className="mt-2 max-h-64 overflow-auto text-xs leading-5 break-words whitespace-pre-wrap text-muted-foreground">
                 {task.message}
               </p>
             </div>

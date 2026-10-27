@@ -30,6 +30,7 @@ export class CalendarStore {
   private readonly listeners = new Set<() => void>()
   private generation = 0
   private initialization: Promise<void> | undefined
+  private refreshPending = false
   constructor(api: CalendarAPI | undefined) {
     this.api = api
   }
@@ -62,13 +63,18 @@ export class CalendarStore {
     return this.initialization
   }
   refresh = async () => {
-    if (this.state.busy) return
+    if (this.state.busy) {
+      this.refreshPending = true
+      return
+    }
+    const pendingError = this.refreshPending ? this.state.error : ""
+    this.refreshPending = false
     const generation = ++this.generation
     this.publish({ loading: true })
     try {
       const snapshot = await this.requireAPI().load()
       if (generation === this.generation)
-        this.publish({ snapshot, error: "", loading: false })
+        this.publish({ snapshot, error: pendingError, loading: false })
     } catch (error) {
       if (generation === this.generation)
         this.publish({ error: message(error), loading: false })
@@ -87,6 +93,10 @@ export class CalendarStore {
     } catch (error) {
       this.publish({ error: message(error), busy: false })
       return false
+    } finally {
+      if (this.refreshPending) {
+        void this.refresh()
+      }
     }
   }
   save = (event: CalendarEvent, expectedRevision: string) =>

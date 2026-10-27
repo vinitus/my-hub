@@ -1,8 +1,10 @@
 ﻿import { app, ipcMain, type BrowserWindow } from "electron"
 import { TodoRepository } from "./todo-repository"
 
-export function registerTodos(window: BrowserWindow) {
-  const repository = new TodoRepository(app.getPath("userData"))
+export function registerTodos(
+  window: BrowserWindow,
+  repository = new TodoRepository(app.getPath("userData"))
+) {
   const channels = ["todos:load", "todos:save", "todos:remove"] as const
   for (const channel of channels) {
     ipcMain.handle(channel, (event, request: unknown) => {

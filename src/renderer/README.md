@@ -15,13 +15,13 @@ Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
 설정이 열린 동안에는 메모 파일 단축키를 비활성화하며 자동 저장은 계속 동작한다.
 설정의 **AI 연결 → Codex**는 로컬 Codex 설치/계정 확인과 브라우저 로그인을 제공한다.
 구조와 인증 범위는 [Codex 연결 안내](src/features/settings/README.md)를 참고한다.
-현재는 계정 연결과 모델·생각 수준 설정까지 제공한다. Ctrl+K의 일정/메모 실행은 `quick-command/model/command-runner.ts`의 안내 상태를 유지한다.
+계정 연결과 모델·생각 수준 설정을 Ctrl+K의 캘린더·할일 요청에 사용한다. 실행 구조와 한계는 `features/quick-command/README.md`와 루트 `ctrl-k-report.md`를 참고한다.
 
 `src/features/shortcuts`는 프로그램·폴더·웹사이트 바로가기를 관리한다.
 대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.
 
 앱 첫 화면은 메모다. AI 요청은 Ctrl+K로 여는 한 줄 모달에 입력하고,
-전송 후 우측 하단에서 작업 상태를 확인한다. AI 연결은 아직 필요하며,
+전송 후 우측 하단에서 작업 상태를 확인한다. 설정에서 ChatGPT를 연결한 뒤 사용할 수 있으며,
 구조는 [빠른 입력 안내](src/features/quick-command/README.md)를 참고한다.
 
 캘린더 화면은 `src/pages/calendar`, 편집·알림은 `src/features/calendar`에 있으며 FullCalendar와 기존 shadcn UI를 사용한다.

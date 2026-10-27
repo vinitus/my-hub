@@ -20,6 +20,7 @@ const meta = {
         completed: true,
       },
     ],
+    revision: "fixture",
     ready: true,
     busy: false,
     error: "",

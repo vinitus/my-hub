@@ -1,3 +1,4 @@
+import { TodoStore } from "@/features/todos"
 import { AppSidebar } from "@/widgets/app-sidebar"
 import { SiteHeader } from "@/widgets/site-header"
 import { LiveScheduleStatus } from "@/widgets/live-status"
@@ -31,7 +32,12 @@ export function App() {
     : "notes"
   const [commandOpen, setCommandOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [todoStore] = useState(() => new TodoStore(window.api?.todos))
   const [calendarStore] = useState(() => new CalendarStore(window.api?.calendar))
+  useEffect(() => window.api?.commands?.onChange((domains) => {
+    if (domains.includes("calendar")) void calendarStore.refresh()
+    if (domains.includes("todos")) void todoStore.refresh()
+  }), [calendarStore, todoStore])
   const [codexSetup, setCodexSetup] = useState<"intro" | "login" | null>(() => {
     if (!window.api?.codex) return null
     const choice = readCodexSetupChoice()
@@ -188,7 +194,7 @@ export function App() {
                 </p>
               }
             >
-              <TodoWorkspace />
+              <TodoWorkspace store={todoStore} />
             </Suspense>
           </div>
         )}

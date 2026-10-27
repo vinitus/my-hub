@@ -1,3 +1,6 @@
+import { registerCommands } from "./commands"
+import { CalendarRepository } from "./calendar-repository"
+import { TodoRepository } from "./todo-repository"
 import { registerTodos } from "./todos"
 import { app, shell, BrowserWindow, ipcMain } from "electron"
 import { join } from "node:path"
@@ -29,12 +32,21 @@ function createWindow(): void {
     },
   })
 
-  registerTodos(mainWindow)
+  const calendarRepository = new CalendarRepository(app.getPath("userData"))
+  const todoRepository = new TodoRepository(app.getPath("userData"))
+  registerTodos(mainWindow, todoRepository)
   registerNotes(mainWindow)
-  registerCalendar(mainWindow)
+  const refreshReminders = registerCalendar(mainWindow, calendarRepository)
   registerShortcuts(mainWindow)
   registerWeather(mainWindow)
-  registerCodex(mainWindow)
+  const codexSettings = registerCodex(mainWindow)
+  registerCommands(
+    mainWindow,
+    calendarRepository,
+    todoRepository,
+    codexSettings,
+    refreshReminders
+  )
 
   mainWindow.on("ready-to-show", () => {
     mainWindow.show()

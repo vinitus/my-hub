@@ -286,6 +286,35 @@ app.whenReady().then(async () => {
         }
         if (
           theme === "light" &&
+          story.importPath.endsWith("quick-command.stories.tsx")
+        ) {
+          await win.webContents.executeJavaScript(
+            `document.querySelector('[aria-label="AI에게 요청할 내용"]').focus()`
+          )
+          win.webContents.insertText("내일 오후 3시에 팀 회의 추가해줘")
+          await delay(50)
+          await win.webContents.executeJavaScript(
+            `document.querySelector('[aria-label="요청 전송"]').click()`
+          )
+          await delay(100)
+          const expected = {
+            Open: "완료",
+            "Needs Connection": "AI 연결 필요",
+            Clarification: "추가 설명 필요",
+            Failure: "처리 실패",
+            Partial: "일부 저장됨",
+          }
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[aria-label="AI 작업 상태"] [role=status]').innerText.includes(${JSON.stringify(expected[story.name])})`
+            ),
+            true,
+            `${story.id}: command result status`
+          )
+          console.log(`PASS quick command ${story.name}`)
+        }
+        if (
+          theme === "light" &&
           story.importPath.endsWith("settings-sheet.stories.tsx") &&
           story.name === "Ready"
         ) {

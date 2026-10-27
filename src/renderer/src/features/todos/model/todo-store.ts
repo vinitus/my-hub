@@ -27,6 +27,7 @@ export class TodoStore {
   private readonly listeners = new Set<() => void>()
   private initialization: Promise<void> | undefined
   private generation = 0
+  private refreshPending = false
   constructor(api: TodosAPI | undefined) {
     this.api = api
   }
@@ -59,13 +60,18 @@ export class TodoStore {
   }
   clearFeedback = () => this.publish({ error: "", notice: "" })
   refresh = async () => {
-    if (this.state.busy) return
+    if (this.state.busy) {
+      this.refreshPending = true
+      return
+    }
+    const pendingError = this.refreshPending ? this.state.error : ""
+    this.refreshPending = false
     const generation = ++this.generation
     this.publish({ loading: true, notice: "" })
     try {
       const snapshot = await this.requireAPI().load()
       if (generation === this.generation)
-        this.publish({ snapshot, loading: false, error: "" })
+        this.publish({ snapshot, loading: false, error: pendingError })
     } catch (error) {
       if (generation === this.generation)
         this.publish({ loading: false, error: todoError(error) })
@@ -86,6 +92,10 @@ export class TodoStore {
     } catch (error) {
       this.publish({ busy: false, error: todoError(error) })
       return false
+    } finally {
+      if (this.refreshPending) {
+        void this.refresh()
+      }
     }
   }
   save = (todo: Todo, expectedRevision: string) =>

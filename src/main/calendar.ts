@@ -4,8 +4,10 @@ import { stat } from "node:fs/promises"
 import { CalendarRepository } from "./calendar-repository"
 import { CalendarReminders } from "./calendar-reminders"
 
-export function registerCalendar(window: BrowserWindow) {
-  const repository = new CalendarRepository(app.getPath("userData"))
+export function registerCalendar(
+  window: BrowserWindow,
+  repository = new CalendarRepository(app.getPath("userData"))
+) {
   const reminders = new CalendarReminders(repository, window)
   void reminders.refresh()
   function check(event: Electron.IpcMainInvokeEvent) {
@@ -55,6 +57,9 @@ export function registerCalendar(window: BrowserWindow) {
     })
     return result.canceled ? null : (result.filePaths[0] ?? null)
   })
+  const refreshReminders = () => {
+    void reminders.refresh()
+  }
   window.on("closed", () => {
     reminders.dispose()
     for (const channel of [
@@ -66,4 +71,5 @@ export function registerCalendar(window: BrowserWindow) {
     ])
       ipcMain.removeHandler(channel)
   })
+  return refreshReminders
 }

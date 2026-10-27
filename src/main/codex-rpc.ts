@@ -44,7 +44,8 @@ export class CodexRPC {
             id: message.id,
             error: {
               code: -32601,
-              message: "Only account connection is supported",
+              message:
+                "Client-side tool and approval requests are not supported",
             },
           })
         }
@@ -107,14 +108,40 @@ export function codexEnvironment() {
   delete env.CODEX_API_KEY
   return env
 }
-export function startCodex(executable: string) {
+export function startCodex(
+  executable: string,
+  cwd = homedir(),
+  planner = false
+) {
   return new CodexRPC(
-    spawn(executable, ["app-server"], {
-      cwd: homedir(),
-      windowsHide: true,
-      shell: false,
-      stdio: "pipe",
-      env: codexEnvironment(),
-    })
+    spawn(
+      executable,
+      [
+        "app-server",
+        ...(planner
+          ? [
+              "-c",
+              "features.shell_tool=false",
+              "-c",
+              "features.multi_agent=false",
+              "-c",
+              "features.apps=false",
+              "-c",
+              'web_search="disabled"',
+              "-c",
+              "mcp_servers={}",
+              "-c",
+              "plugins={}",
+            ]
+          : []),
+      ],
+      {
+        cwd,
+        windowsHide: true,
+        shell: false,
+        stdio: "pipe",
+        env: codexEnvironment(),
+      }
+    )
   )
 }

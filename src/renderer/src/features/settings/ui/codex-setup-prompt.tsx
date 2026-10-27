@@ -109,7 +109,7 @@ export function CodexSetupPrompt({
             </Dialog.Title>
             <Dialog.Description className="text-sm leading-relaxed text-muted-foreground">
               {step === "intro"
-                ? "일정 추가나 메모 저장 같은 간단한 작업을 채팅으로 요청하고 싶으신가요? Codex를 연결해 준비할 수 있어요."
+                ? "캘린더 일정과 할일을 AI에게 요청해 보세요. Codex를 연결하면 Ctrl+K로 조회하고 관리할 수 있어요."
                 : step === "login"
                   ? "이 기기에 설치된 Codex와 로그인 상태를 공유합니다. ChatGPT 구독에 포함된 Codex 사용량을 활용합니다."
                   : step === "model"
@@ -122,10 +122,9 @@ export function CodexSetupPrompt({
               <div className="rounded-lg bg-muted p-4 text-muted-foreground">
                 “내일 오후 3시 회의 추가해 줘”
                 <br />
-                “이 내용을 메모로 남겨 줘”
+                “금요일까지 보고서 작성 할일 추가해 줘”
                 <p className="mt-3 text-xs">
-                  현재는 연결과 설정까지 지원하며, 채팅을 통한 실제 작업 실행은
-                  준비 중입니다.
+                  Ctrl+K로 일정과 할일을 조회·추가·수정·삭제할 수 있습니다.
                 </p>
               </div>
             )}

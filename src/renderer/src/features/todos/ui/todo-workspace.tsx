@@ -7,11 +7,12 @@ import { Label } from "@/shared/ui/label"
 
 type Props = {
   items: Todo[]
+  revision: string
   ready: boolean
   busy: boolean
   error: string
   notice: string
-  onSave: (todo: Todo) => Promise<boolean>
+  onSave: (todo: Todo, revision: string) => Promise<boolean>
   onRemove: (id: string) => Promise<boolean>
   onRefresh: () => void
 }
@@ -23,7 +24,7 @@ function TodoForm({
 }: {
   item: Todo | null
   busy: boolean
-  onSave: Props["onSave"]
+  onSave: (todo: Todo) => Promise<boolean>
   onCancel: () => void
 }) {
   const id = useId()
@@ -100,6 +101,7 @@ function TodoForm({
 }
 export function TodoWorkspace({
   items,
+  revision,
   ready,
   busy,
   error,
@@ -108,7 +110,10 @@ export function TodoWorkspace({
   onRemove,
   onRefresh,
 }: Props) {
-  const [editing, setEditing] = useState<Todo | null>(null)
+  const [editing, setEditing] = useState<{
+    item: Todo
+    revision: string
+  } | null>(null)
   const [filter, setFilter] = useState("all")
   const remaining = items.filter((item) => !item.completed).length
   const visible = items
@@ -149,10 +154,10 @@ export function TodoWorkspace({
       ) : (
         <>
           <TodoForm
-            key={editing?.id ?? "new"}
-            item={editing}
+            key={editing ? `${editing.item.id}:${editing.revision}` : "new"}
+            item={editing?.item ?? null}
             busy={busy}
-            onSave={onSave}
+            onSave={(todo) => onSave(todo, editing?.revision ?? revision)}
             onCancel={() => setEditing(null)}
           />
           <div className="flex items-center gap-2 text-sm">
@@ -179,7 +184,10 @@ export function TodoWorkspace({
                     checked={item.completed}
                     disabled={busy}
                     onChange={(e) => {
-                      void onSave({ ...item, completed: e.target.checked })
+                      void onSave(
+                        { ...item, completed: e.target.checked },
+                        revision
+                      )
                     }}
                   />
                   <div className="min-w-0 flex-1">
@@ -198,7 +206,7 @@ export function TodoWorkspace({
                     variant="ghost"
                     aria-label={`${item.title} 수정`}
                     disabled={busy}
-                    onClick={() => setEditing(item)}
+                    onClick={() => setEditing({ item, revision })}
                   >
                     <PencilIcon />
                   </Button>
@@ -209,7 +217,7 @@ export function TodoWorkspace({
                     disabled={busy}
                     onClick={async () => {
                       if (await onRemove(item.id)) {
-                        if (editing?.id === item.id) setEditing(null)
+                        if (editing?.item.id === item.id) setEditing(null)
                       }
                     }}
                   >

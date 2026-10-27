@@ -1,3 +1,4 @@
+import type { CommandAPI } from "../shared/command"
 import type { TodosAPI } from "../shared/todos"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { electronAPI } from "@electron-toolkit/preload"
@@ -91,7 +92,20 @@ const todos: TodosAPI = {
   save: (request) => ipcRenderer.invoke("todos:save", request),
   remove: (request) => ipcRenderer.invoke("todos:remove", request),
 }
-const api = { notes, calendar, shortcuts, weather, codex, todos }
+const commands: CommandAPI = {
+  execute: (input) => ipcRenderer.invoke("commands:execute", input),
+  onChange: (callback) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      domains: Parameters<typeof callback>[0]
+    ) => callback(domains)
+    ipcRenderer.on("commands:changed", listener)
+    return () => {
+      ipcRenderer.removeListener("commands:changed", listener)
+    }
+  },
+}
+const api = { commands, notes, calendar, shortcuts, weather, codex, todos }
 
 if (process.contextIsolated) {
   try {

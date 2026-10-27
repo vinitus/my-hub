@@ -10,7 +10,6 @@ export function registerCodex(window: BrowserWindow) {
     },
     (url) => shell.openExternal(url)
   )
-  // TODO: Codex 추론 API(thread/turn)를 추가하고, 응답을 검증된 메모·캘린더 기능에 연결한다.
   const handlers = {
     "codex:check": service.check,
     "codex:connect": service.connect,
@@ -34,4 +33,5 @@ export function registerCodex(window: BrowserWindow) {
     service.dispose()
     for (const channel of Object.keys(handlers)) ipcMain.removeHandler(channel)
   })
+  return settings
 }

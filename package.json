@@ -13,6 +13,7 @@
     "test:storybook": "node scripts/test-storybook.mjs",
     "test:fsd": "node --test scripts/test-fsd.mjs",
     "test:notes": "node scripts/test-notes.mjs",
+    "test:commands": "node scripts/test-notes.mjs commands",
     "test:todos": "node scripts/test-notes.mjs todos",
     "test:calendar": "node scripts/test-notes.mjs calendar",
     "test:shortcuts": "node scripts/test-notes.mjs shortcuts",

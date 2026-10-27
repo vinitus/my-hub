@@ -1,16 +1,27 @@
-export const MAX_COMMAND_LENGTH = 500
-export type CommandResult = {
-  status: "needs-connection" | "success" | "error"
-  message: string
-}
+﻿import {
+  CommandInputSchema,
+  CommandResultSchema,
+  MAX_COMMAND_LENGTH,
+  type CommandResult,
+} from "../../../../../shared/command"
+export { MAX_COMMAND_LENGTH }
+export type { CommandResult }
 
-// 향후 main/preload의 AI 작업 API를 연결할 지점이다.
-// 실제 저장 응답을 받은 뒤에만 success를 반환하며 현재는 파일을 변경하지 않는다.
 export async function executeCommand(input: string): Promise<CommandResult> {
-  if (!input.trim() || input.length > MAX_COMMAND_LENGTH)
-    return { status: "error", message: "요청을 500자 이내로 입력해 주세요." }
-  return {
-    status: "needs-connection",
-    message: "AI 연결이 필요합니다. 일정이나 메모는 아직 변경되지 않았습니다.",
-  }
+  const parsed = CommandInputSchema.safeParse(input)
+  if (!parsed.success)
+    return {
+      status: "error",
+      message: "요청을 500자 이내로 입력해 주세요.",
+      changed: [],
+    }
+  if (!window.api?.commands?.execute)
+    return {
+      status: "needs-connection",
+      message: "Electron을 다시 시작하고 설정에서 ChatGPT를 연결해 주세요.",
+      changed: [],
+    }
+  return CommandResultSchema.parse(
+    await window.api.commands.execute(parsed.data)
+  )
 }

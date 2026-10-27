@@ -4,7 +4,17 @@ import { isAbsolute } from "node:path"
 import { fileURLToPath } from "node:url"
 
 const suite = process.argv[2] ?? "notes"
-if (!["notes", "calendar", "shortcuts", "weather", "codex", "todos"].includes(suite))
+if (
+  ![
+    "notes",
+    "calendar",
+    "shortcuts",
+    "weather",
+    "codex",
+    "todos",
+    "commands",
+  ].includes(suite)
+)
   throw new Error("Unknown test suite")
 
 // TS/TSX를 실제 번들링하고 OS 대화상자만 테스트용 Electron 경계로 대체한다.

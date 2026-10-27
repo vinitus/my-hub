@@ -1,5 +1,10 @@
 # Renderer 작업 안내
 
+캘린더는 `src/features/calendar`에 있으며 FullCalendar와 기존 shadcn UI를 사용한다.
+파일별 역할, 날짜 규칙, 로컬 저장 구조는 [캘린더 유지보수 안내](src/features/calendar/README.md)를 참고한다.
+`App.tsx`가 메모/캘린더 전환을 관리하고 두 작업 화면은 전환 후에도 마운트를 유지한다.
+기존 아래 문서의 메모 구조는 메모 화면에 적용된다.
+
 Electron 창 안에서 실행하는 React 화면이다. Vite root는 이 디렉터리이며,
 `@/`와 `@renderer/`는 모두 `src/renderer/src`를 가리킨다.
 

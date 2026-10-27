@@ -3,7 +3,7 @@ import { NoteStore, hasNoteChanges } from "./note-store"
 
 const DRAFT_KEY = "my-hub:markdown-draft:v1"
 
-export function useNote() {
+export function useNote(shortcutsEnabled = true) {
   const api = window.api?.notes
   const [store] = useState(
     () =>
@@ -35,6 +35,7 @@ export function useNote() {
     const listener = (event: KeyboardEvent) => {
       if (
         event.isComposing ||
+        !shortcutsEnabled ||
         event.defaultPrevented ||
         !(event.ctrlKey || event.metaKey) ||
         event.altKey
@@ -56,7 +57,7 @@ export function useNote() {
       window.removeEventListener("keydown", listener)
       window.removeEventListener("beforeunload", beforeUnload)
     }
-  }, [api, store])
+  }, [api, store, shortcutsEnabled])
 
   return {
     ...state,

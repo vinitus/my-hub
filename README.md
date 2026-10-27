@@ -1,5 +1,19 @@
 # Electron + React + TypeScript + Vite + shadcn/ui
 
+## 캘린더
+
+사이드바의 **캘린더**에서 월·주·일·목록 보기를 사용할 수 있습니다.
+날짜 클릭이나 범위 선택으로 일정을 추가하고, 일정을 클릭해 수정·삭제합니다.
+드래그 이동과 길이 조절 결과도 로컬에 저장합니다.
+
+일정은 Electron 앱 데이터 폴더(`app.getPath("userData")/calendar.json`)에 저장합니다.
+캘린더 하단의 저장 안내에 마우스를 올리면 실제 경로를 확인할 수 있습니다.
+반복 일정과 알림, 외부 캘린더 동기화는 아직 지원하지 않습니다.
+
+`pnpm test:calendar`로 날짜·저장·충돌 처리를 검증합니다.
+구조와 날짜 규칙은 [캘린더 유지보수 안내](src/renderer/src/features/calendar/README.md)를 참고하세요.
+main/preload가 추가되었으므로 기존 Electron을 닫고 `pnpm dev`로 다시 실행해야 합니다.
+
 기존 shadcn 대시보드와 루트 의존성 버전을 유지한 Electron 소스 이식 프로젝트입니다.
 `electron-vite`는 사용하지 않습니다. `scripts/dev.mjs`가 Vite API로 개발용 main/preload를 빌드하고 Electron을 실행합니다.
 

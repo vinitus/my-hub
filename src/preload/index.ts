@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron"
 import { electronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
+import type { CalendarAPI } from "../shared/calendar"
 
 const notes: NotesAPI = {
   library: () => ipcRenderer.invoke("notes:library"),
@@ -18,7 +19,12 @@ const notes: NotesAPI = {
   },
   completeClose: (saved) => ipcRenderer.send("notes:complete-close", saved),
 }
-const api = { notes }
+const calendar: CalendarAPI = {
+  load: () => ipcRenderer.invoke("calendar:load"),
+  save: (request) => ipcRenderer.invoke("calendar:save", request),
+  remove: (request) => ipcRenderer.invoke("calendar:remove", request),
+}
+const api = { notes, calendar }
 
 if (process.contextIsolated) {
   try {

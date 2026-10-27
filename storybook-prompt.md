@@ -1,5 +1,7 @@
 # My Hub Storybook 조사 보고서
 
+> 현재 상태 (2026-10-28 재점검): 기본 설치 이후 공용 UI와 주요 기능 UI까지 확장해 128개 스토리가 있다. 아래의 기존 경로·설치 현황은 당시 조사 기록이다. 현재 경로와 검증 명령은 `src/renderer/README.md`를 따른다. `pnpm test:storybook`은 정적 빌드 후 light/dark·360px 렌더링과 핵심 상호작용을 검증한다.
+
 - 조사일: 2026-10-28
 - 범위: Storybook의 현재 프로젝트 적용 상태와 UI 개발·검증을 위한 다음 단계
 - 핵심 결론: Storybook은 이미 프로젝트에 설치·설정되어 있다. 새로 도입하는 작업은 필요하지 않고, 현재 스토리를 실제 UI 검토에 맞게 확장하고 Electron 의존성 경계를 분명히 하는 것이 다음 일이다.
@@ -131,7 +133,7 @@ Storybook을 다시 설치하거나 프레임워크를 바꾸지 않는다. 로�
 Storybook 기본 설정은 이미 있으므로, 아래 프롬프트는 재설치가 아니라 실제 UI 스토리를 추가하는 작업에 사용한다.
 
 ```text
-이 프로젝트는 Storybook 10.6 + @storybook/react-vite 설정이 이미 되어 있다. 먼저 storybook-promt.md, .storybook 설정, 기존 schedule-status-card.stories.tsx와 대상 컴포넌트/관련 README를 읽어.
+이 프로젝트는 Storybook 10.6 + @storybook/react-vite 설정이 이미 되어 있다. 먼저 storybook-prompt.md, .storybook 설정, 기존 schedule-status-card.stories.tsx와 대상 컴포넌트/관련 README를 읽어.
 
 이번에는 내가 지정한 컴포넌트 하나만 Storybook으로 다뤄줘: [대상 컴포넌트 또는 UI]. 기존 동작을 바꾸지 말고, 현재 컴포넌트 입력에 맞는 대표 상태와 경계 상태를 재현하는 typed CSF 3 stories를 추가해. 날짜/시간/네트워크 데이터는 고정 fixture를 사용하고, Storybook에서 실제 Electron window.api, 파일 시스템, OS 알림, 프로그램 실행, Codex 계정을 호출하지 않게 해. 필요한 의존은 props나 story 범위 mock으로 제공해.
 

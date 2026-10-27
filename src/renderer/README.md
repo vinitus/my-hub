@@ -259,7 +259,7 @@ props와 고정 fixture로 동작해 Electron API나 실제 계정·파일을 �
 
 ## UI Storybook 작업
 
-기준 문서는 루트의 `storybook-promt.md`다 (`storybook-prompt.md`라는 파일은 없다).
+기준 문서는 루트의 `storybook-prompt.md`다 (기존 파일명의 오타를 정정했다).
 공용 `shared/ui` 22개 모듈과 일정 편집·알림, 바로가기 편집·타일, 날씨 표시·검색,
 Codex 연결·모델·첫 안내, 설정 시트, 메모 파일명·편집기, 빠른 입력과 앱 위젯을 다룬다.
 기존 일정 상태 카드를 포함해 128개 typed CSF 3 스토리가 있다.
@@ -307,3 +307,8 @@ Strict Mode에서 테마 단축키 저장 1회를 회귀 검사한다. 실제 �
 2. **FSD**: 레이어 방향·slice 공개 API·같은 레이어 독립성, shared의 IPC 격리,
    App의 lazy loading·방문 화면 유지·공유 store 조립을 재확인했다. 전체 lint와 경계 테스트
    27개가 통과했다. 도입 전 조사 기록을 현재 구조로 오인하지 않도록 `fsd-prompt.md`에 상태를 표시했다.
+3. **Storybook**: 지침 파일명을 `storybook-prompt.md`로 정정하고 관련 참조를 갱신했다.
+   개발 서버 smoke test·정적 빌드·128개 스토리의 384회 렌더링이 통과했다.
+   빈 인덱스·중복 ID·테마 미적용을 실패로 처리하며, 일정 카드 15개 고정 fixture의
+   예상 문구·70px 높이·가로 넘침도 검사한다. 기존 핵심 상호작용 4개와 label 연결 검사도 통과했다.
+   이번 재점검에서는 제품 TS/TSX 코드를 변경하지 않았다. 기존 500KB 번들 경고는 유지된다.

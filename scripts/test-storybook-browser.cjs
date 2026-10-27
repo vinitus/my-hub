@@ -38,6 +38,39 @@ app.whenReady().then(async () => {
     const entries = Object.values(index.entries).filter(
       (entry) => entry.type === "story"
     )
+    assert.ok(entries.length > 0, "Story index must not be empty")
+    assert.equal(
+      new Set(entries.map((entry) => entry.id)).size,
+      entries.length,
+      "Story IDs must be unique"
+    )
+    const scheduleSummaries = {
+      "next-in-24-minutes": "24분 후",
+      "next-in-5-minutes": "5분 후",
+      "starting-soon": "곧 시작",
+      "ongoing-and-next": "1시간 20분 후",
+      "ongoing-no-more-today": "오늘 남은 일정 없음",
+      "next-tomorrow": "내일 09:00",
+      "no-scheduled-events": "예정된 일정 없음",
+      dark: "24분 후",
+      "narrow-with-long-title": "1시간 20분 후",
+      "just-outside-urgent": "6분 후",
+      "just-outside-starting-soon": "2분 후",
+      "exactly-one-minute": "곧 시작",
+      "all-day-tomorrow": "내일 09:00",
+      "next-week-narrow": "11월 4일 14:00",
+      "dark-urgent-narrow": "5분 후",
+    }
+    for (const key of Object.keys(scheduleSummaries)) {
+      assert.ok(
+        entries.some(
+          (entry) =>
+            entry.importPath.endsWith("schedule-status-card.stories.tsx") &&
+            entry.id.endsWith(`--${key}`)
+        ),
+        `Missing schedule fixture: ${key}`
+      )
+    }
     let count = 0
     for (const [theme, width] of [
       ["light", 1100],
@@ -67,6 +100,24 @@ app.whenReady().then(async () => {
         assert.equal(result.native, false, `${story.id}: native bridge exposed`)
         await delay(50)
         assert.deepEqual(errors, [], `${story.id}: browser errors`)
+        assert.equal(
+          await win.webContents.executeJavaScript(
+            `document.documentElement.classList.contains('dark')`
+          ),
+          theme === "dark",
+          `${story.id}: toolbar theme was not applied`
+        )
+        if (story.importPath.endsWith("schedule-status-card.stories.tsx")) {
+          const card = await win.webContents.executeJavaScript(
+            `(() => { const node = document.querySelector('[aria-label="일정 현황"]'); return { text: node.innerText, height: node.getBoundingClientRect().height, overflow: node.scrollWidth > node.clientWidth } })()`
+          )
+          assert.ok(
+            card.text.includes(scheduleSummaries[story.id.split("--")[1]]),
+            `${story.id}: unexpected schedule summary ${card.text}`
+          )
+          assert.equal(card.height, 70, `${story.id}: card height changed`)
+          assert.equal(card.overflow, false, `${story.id}: card overflows`)
+        }
         if (
           theme === "light" &&
           story.importPath.endsWith("event-sheet.stories.tsx") &&

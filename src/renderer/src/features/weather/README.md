@@ -6,9 +6,9 @@
 
 ## 구조
 
-- `weather-widget.tsx`: 작은 날씨 카드와 지역 검색 Sheet.
-- `weather-condition.ts`: WMO 날씨 코드를 한국어와 아이콘 종류로 변환한다.
-- `use-weather.ts`: React 상태와 주기적 갱신, 이전/새 지역 응답 분리.
+- `ui/weather-widget.tsx`: 작은 날씨 카드와 지역 검색 Sheet.
+- `lib/weather-condition.ts`: WMO 날씨 코드를 한국어와 아이콘 종류로 변환한다.
+- `model/use-weather.ts`: React 상태와 주기적 갱신, 이전/새 지역 응답 분리.
 - `../../../../shared/weather.ts`: 공통 API와 지역 좌표 스키마.
 - `../../../../main/weather-service.ts`: 고정 API 호출, 데이터 검증, 캐시와 지역 저장.
 - `../../../../main/weather.ts`: 현재 창/메인 프레임을 확인하는 제한된 IPC.

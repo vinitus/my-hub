@@ -15,8 +15,8 @@ import { MarkdownPlugin } from "@platejs/markdown"
 import { unified } from "unified"
 import remarkParse from "remark-parse"
 import remarkGfm from "remark-gfm"
-import { notePlugins } from "../src/renderer/src/features/notes/editor-plugins"
-import { assertSupportedMarkdown } from "../src/renderer/src/features/notes/markdown"
+import { notePlugins } from "../src/renderer/src/features/notes/model/editor-plugins"
+import { assertSupportedMarkdown } from "../src/renderer/src/features/notes/lib/markdown"
 import {
   readMarkdown,
   writeMarkdown,
@@ -27,7 +27,7 @@ import { app, BrowserWindow, dialog, handlers, ipcMain } from "./fakes/electron"
 import type { NoteFile, NotesAPI } from "../src/shared/notes"
 import { normalizeNoteName } from "../src/shared/notes"
 import { NoteLibrary } from "../src/main/note-library"
-import { NoteStore } from "../src/renderer/src/features/notes/note-store"
+import { NoteStore } from "../src/renderer/src/features/notes/model/note-store"
 
 function semantics(markdown: string) {
   return JSON.parse(

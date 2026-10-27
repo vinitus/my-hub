@@ -20,11 +20,11 @@ import {
   validateShortcut,
   inspectShortcutDrop,
 } from "../src/main/shortcut-target"
-import { readShortcutDrop } from "../src/renderer/src/features/shortcuts/drop-input"
+import { readShortcutDrop } from "../src/renderer/src/features/shortcuts/lib/drop-input"
 import { ShortcutIcons } from "../src/main/shortcut-icons"
 import { ShortcutRepository } from "../src/main/shortcut-repository"
 import { registerShortcuts } from "../src/main/shortcuts"
-import { ShortcutStore } from "../src/renderer/src/features/shortcuts/shortcut-store"
+import { ShortcutStore } from "../src/renderer/src/features/shortcuts/model/shortcut-store"
 import { app, BrowserWindow, dialog, handlers, shell } from "./fakes/electron"
 
 const website = (): Shortcut => ({

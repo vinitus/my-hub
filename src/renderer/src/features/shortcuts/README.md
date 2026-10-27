@@ -9,7 +9,7 @@ Windows 프로그램은 `.exe`와 기존 `.lnk` 바로가기를 지원한다.
 화면에 `.exe`/`.lnk`, 폴더 또는 브라우저의 웹 링크를 끌어 놓으면
 종류·이름·대상을 판별하여 등록창을 연다. 한 번에 하나씩 등록하며 저장 전에는 목록을 변경하지 않는다.
 일반 문서와 여러 항목을 동시에 놓는 경우는 안내 후 거부한다.
-`drop-input.ts`는 drop 이벤트에서 File/URI를 동기적으로 읽고,
+`lib/drop-input.ts`는 drop 이벤트에서 File/URI를 동기적으로 읽고,
 preload의 `webUtils.getPathForFile()`이 실제 파일 경로를 main으로 전달한다.
 `File.path`를 사용하거나 File 객체 자체를 IPC로 보내지 않는다.
 웹 링크는 `text/uri-list`를 우선하며 URL 텍스트도 허용한다.
@@ -18,9 +18,9 @@ preload의 `webUtils.getPathForFile()`이 실제 파일 경로를 main으로 전
 
 | 파일 | 역할 |
 | --- | --- |
-| `shortcut-workspace.tsx` | 카드 목록, 검색/필터, 편집창, 실행 결과 안내 |
-| `shortcut-sheet.tsx` | 등록/수정, 대상 선택, 삭제 확인 |
-| `shortcut-store.ts` | IPC 호출과 상태, 중복 요청 억제, 실패 시 기존 목록 유지 |
+| `../../pages/shortcuts/ui/shortcuts-page.tsx` | 카드 목록, 검색/필터, 편집창, 실행 결과 안내 |
+| `ui/shortcut-sheet.tsx` | 등록/수정, 대상 선택, 삭제 확인 |
+| `model/shortcut-store.ts` | IPC 호출과 상태, 중복 요청 억제, 실패 시 기존 목록 유지 |
 | `../../../../shared/shortcuts.ts` | 공통 타입, 입력 스키마, URL 허용 규칙 |
 | `../../../../main/shortcut-target.ts` | 절대 경로, 파일 존재, 프로그램/폴더 구분 검사 |
 | `../../../../main/shortcut-repository.ts` | JSON 저장, 충돌 확인, 등록 ID로 대상 조회 |

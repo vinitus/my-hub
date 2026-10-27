@@ -135,11 +135,11 @@ pnpm exec electron-builder --win
 pnpm exec shadcn add button
 ```
 
-컴포넌트는 `src/renderer/src/components/ui`, CSS는 `src/renderer/src/index.css`를 사용합니다.
+컴포넌트는 `src/renderer/src/shared/ui`, CSS는 `src/renderer/src/app/styles/index.css`를 사용합니다.
 `@/` 및 `@renderer/`는 `src/renderer/src`를 가리킵니다.
 
 ```tsx
-import { Button } from "@/components/ui/button"
+import { Button } from "@/shared/ui/button"
 ```
 
 ## Markdown 메모

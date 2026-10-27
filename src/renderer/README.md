@@ -3,19 +3,19 @@
 사이드바 하단의 `src/features/weather`는 선택한 도시의 현재 날씨를 표시한다.
 Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/features/weather/README.md)를 참고한다.
 
-워크스페이스 메뉴와 번호는 `src/lib/navigation.ts`에서 함께 관리한다.
+워크스페이스 메뉴와 번호는 `src/app/config/navigation.ts`에서 함께 관리한다.
 Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
-`src/hooks/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안
+`src/app/model/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안
 사이드바에 번호를 표시한다. 키를 놓거나 창 포커스를 잃으면 번호를 숨긴다.
 등록/수정 모달이 열린 동안에는 화면 이동 단축키를 적용하지 않는다.
 
-사이드바 하단의 **설정**은 `src/features/settings/settings-sheet.tsx`에서 표시한다.
-`Ctrl+O`로도 열 수 있다. `App.tsx`에서 처리하며 다른 모달이 열려 있으면 중첩해서 열지 않는다.
-라이트/다크/시스템 테마는 기존 `ThemeProvider`, 메모 폴더 변경은 `App.tsx`의 `useNote`를 사용한다.
+사이드바 하단의 **설정**은 `src/features/settings/ui/settings-sheet.tsx`에서 표시한다.
+`Ctrl+O`로도 열 수 있다. `src/app/App.tsx`에서 처리하며 다른 모달이 열려 있으면 중첩해서 열지 않는다.
+라이트/다크/시스템 테마는 기존 `ThemeProvider`, 메모 폴더 변경은 `src/app/App.tsx`의 `useNote`를 사용한다.
 설정이 열린 동안에는 메모 파일 단축키를 비활성화하며 자동 저장은 계속 동작한다.
 설정의 **AI 연결 → Codex**는 로컬 Codex 설치/계정 확인과 브라우저 로그인을 제공한다.
 구조와 인증 범위는 [Codex 연결 안내](src/features/settings/README.md)를 참고한다.
-현재는 계정 연결과 모델·생각 수준 설정까지 제공한다. Ctrl+K의 일정/메모 실행은 `quick-command/command-runner.ts`의 안내 상태를 유지한다.
+현재는 계정 연결과 모델·생각 수준 설정까지 제공한다. Ctrl+K의 일정/메모 실행은 `quick-command/model/command-runner.ts`의 안내 상태를 유지한다.
 
 `src/features/shortcuts`는 프로그램·폴더·웹사이트 바로가기를 관리한다.
 대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.
@@ -24,21 +24,69 @@ Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
 전송 후 우측 하단에서 작업 상태를 확인한다. AI 연결은 아직 필요하며,
 구조는 [빠른 입력 안내](src/features/quick-command/README.md)를 참고한다.
 
-캘린더는 `src/features/calendar`에 있으며 FullCalendar와 기존 shadcn UI를 사용한다.
+캘린더 화면은 `src/pages/calendar`, 편집·알림은 `src/features/calendar`에 있으며 FullCalendar와 기존 shadcn UI를 사용한다.
 파일별 역할, 날짜 규칙, 로컬 저장 구조는 [캘린더 유지보수 안내](src/features/calendar/README.md)를 참고한다.
-`App.tsx`가 메모/캘린더 전환을 관리하고 두 작업 화면은 전환 후에도 마운트를 유지한다.
+`src/app/App.tsx`가 메모/캘린더 전환을 관리하고 두 작업 화면은 전환 후에도 마운트를 유지한다.
 기존 아래 문서의 메모 구조는 메모 화면에 적용된다.
 
 Electron 창 안에서 실행하는 React 화면이다. Vite root는 이 디렉터리이며,
 `@/`와 `@renderer/`는 모두 `src/renderer/src`를 가리킨다.
 
+## FSD 구조와 의존 경계
+
+의존 방향은 `app → pages → widgets → features → entities → shared`다.
+중간 레이어를 건너뛰어 아래 레이어를 사용할 수 있지만 위쪽 레이어나 같은 레이어의
+다른 slice를 참조하지 않는다. 여러 기능·위젯의 조합은 상위 레이어에서 담당한다.
+
+| 레이어 | 현재 책임 |
+| --- | --- |
+| `app` | `providers`의 전역 테마, `config`의 메뉴 정의, `model`의 전역 이동 단축키, `styles`의 앱 스타일, App의 store 수명·화면·모달 조립 |
+| `pages/notes` | 파일 도구·저장 상태·오류·편집기·본문 스크롤의 실제 화면 구성 |
+| `pages/calendar` | FullCalendar 어댑터·탐색·선택·일정 편집창 조립 |
+| `pages/shortcuts` | 카드 목록·검색·필터·드롭·편집창 조립 |
+| `widgets` | `app-sidebar`, `site-header`, `live-status`의 큰 UI 블록 |
+| `features` | notes 편집·자동 저장·복구, calendar 편집·알림, shortcuts 관리·실행, settings의 테마·Codex 연결, weather 지역 선택·갱신, quick-command 입력 |
+| `entities/calendar-event` | 공유 CalendarStore, 일정 날짜·입력 변환과 다음 일정 계산 |
+| `shared/ui`, `shared/lib` | 로컬 shadcn UI와 도메인에 의존하지 않는 유틸리티·테마·사이드바 Context |
+
+기능별 `ui`, `model`, `lib`는 각각 표시·상태/동작·순수 도구를 담는다. 독립적인
+재사용이 없는 기능을 작은 slice로 쪼개지 않는다. notes store는 저장·편집 시나리오에
+속하므로 feature에 남기며, 여러 화면에서 공유하는 캘린더 모델만 entity로 추출했다.
+연결하지 않은 shadcn 예제는 `pages/dashboard/ui`, 예제 데이터는 `model`에 보존한다.
+빈 레이어나 deprecated된 `processes`는 만들지 않는다.
+
+slice 밖에서는 `index.ts`의 명시적 export를 사용한다. 예를 들어
+`@/features/notes`, `@/entities/calendar-event`, `@/widgets/app-sidebar`로 가져온다.
+같은 slice 내부는 상대 import를 사용하며 `export *`는 쓰지 않는다.
+app과 shared에는 slice가 없으므로 shared의 공개 모듈은 `@/shared/ui/button`,
+`@/shared/lib/utils`처럼 파일 단위로 사용한다. 전체 UI barrel은 만들지 않는다.
+테스트는 구현 내부를 직접 검사할 수 있지만 제품 코드가 이 경로를 따라가면 안 된다.
+
+AppSidebar는 메뉴 목록, 일정 현황과 날씨 영역을 props로 받는다. App이 세 위젯과
+기능을 조립하므로 위젯끼리 서로 import하지 않는다. 메뉴 ID와 번호는 App의 config에
+한 번만 정의한다. 캘린더 store는 App이 한 번 생성해 페이지와 일정 현황에 함께 전달한다.
+메모는 즉시 로드하고 캘린더·바로가기는 page 공개 API를 lazy import한다.
+방문한 화면을 숨겨서 마운트를 유지하는 처리, 모달 우선순위와 단축키는 그대로 유지한다.
+
+`@/`, `@renderer/`는 모두 렌더러 루트의 alias다. 루트 `src/shared`는 별도의 Electron
+IPC 타입·검증 계약이며 렌더러 FSD의 `shared`와 다르다. 도메인 코드가 이 계약을
+참조할 때는 루트로 향하는 상대 경로를 사용한다. 렌더러 shared는 이 계약과
+`window.api`에 의존하지 않는다. 네이티브 권한 검사·파일·프로그램 실행은 main에,
+좁은 공개 API는 preload에 유지한다. 라우터나 상태 관리 라이브러리는 추가하지 않았다.
+
+`pnpm lint`의 `fsd/boundaries`가 전체 렌더러 TS/TSX에서 상위 레이어·같은 레이어의
+다른 slice 참조, 외부 slice 내부 경로 참조, wildcard export, 레거시 폴더 재도입,
+Electron/Node/main/preload 직접 import와 shared의 IPC 의존을 오류로 처리한다.
+정적·동적·타입 import와 re-export, 상대 경로 및 두 renderer alias를 검사한다.
+규칙 구현은 루트 `scripts/eslint-fsd.mjs`에 있으며 추가 패키지가 필요하지 않다.
+
 ## shadcn 출처와 현재 구성
 
 화면 레이아웃의 기반은 [shadcn Blocks](https://ui.shadcn.com/blocks)의
 `dashboard-01`이다. 현재 사이드바와 본문은 메모 기능에 맞게 변경했다.
-원본의 `nav-*`, 지표 카드, 차트, 데이터 테이블과 `app/dashboard/data.json`은
+원본의 `nav-*`, 지표 카드, 차트, 데이터 테이블과 `pages/dashboard/model/data.json`은
 참고용으로 남아 있으며 현재 App에는 연결하지 않는다.
-`src/components/ui`의 기본 UI도 shadcn에서 가져온 로컬 소스다.
+`src/shared/ui`의 기본 UI도 shadcn에서 가져온 로컬 소스다.
 
 루트 `components.json`은 `base-vega`, `neutral`, CSS 변수, Lucide 아이콘을 사용한다.
 기본 UI는 Base UI의 `render` prop 등을 사용하므로 다른 스타일이나 Radix 기반 예제를
@@ -49,28 +97,29 @@ Electron 창 안에서 실행하는 React 화면이다. Vite root는 이 디렉�
 
 ```text
 index.html
-└─ src/main.tsx: React 마운트, 로컬 ThemeProvider
-   └─ src/App.tsx: SidebarProvider, useNote의 문서 상태
-      ├─ AppSidebar: 저장 목록/검색, 새 메모, 열기, 설정 버튼
-      ├─ SettingsSheet: 테마 선택, 메모 폴더 변경
-      └─ SidebarInset
-         ├─ SiteHeader: 사이드바 토글, 화면 이름
-         └─ NoteWorkspace: 파일 도구, 상태/오류, 본문 스크롤
-            └─ NoteEditor: Plate 편집기, 서식 도구, / 메뉴
+└─ src/main.tsx: React 마운트, app 공개 API
+   └─ AppProviders: 로컬 ThemeProvider
+      └─ src/app/App.tsx: SidebarProvider, useNote의 문서 상태
+         ├─ AppSidebar: 메뉴·메모 목록과 App이 주입한 일정 현황·날씨
+         ├─ SettingsSheet: 테마 선택, 메모 폴더 변경
+         └─ SidebarInset
+            ├─ SiteHeader: 사이드바 토글, 화면 이름
+            └─ NotesPage (src/pages/notes): 파일 도구, 상태/오류, 본문 스크롤
+               └─ NoteEditor: Plate 편집기, 서식 도구, / 메뉴
 ```
 
 ## 메모의 편집·저장 구조
 
 | 파일                                    | 역할                                               |
 | --------------------------------------- | -------------------------------------------------- |
-| `src/features/notes/use-note.ts`        | React 구독, 단축키, 창 닫기/포커스 이벤트          |
-| `src/features/notes/note-store.ts`      | 문서 상태, 작업 큐, 자동 저장, 초안 복원           |
-| `src/features/notes/note-workspace.tsx` | 파일 버튼, 저장 상태, 오류, 편집 화면              |
-| `src/features/notes/note-editor.tsx`    | Plate 생명주기, 툴바, 붙여넣기, 슬래시 메뉴        |
-| `src/features/notes/editor-plugins.tsx` | 지원하는 Markdown 노드와 입력 규칙의 허용 목록     |
-| `src/features/notes/note-elements.tsx`  | 실제 HTML 노드, 체크박스, 링크 렌더링              |
-| `src/features/notes/markdown.ts`        | 미지원 Markdown 검사                               |
-| `src/features/notes/notes.css`          | 에디터 안에만 적용하는 Markdown 서식               |
+| `src/features/notes/model/use-note.ts`        | React 구독, 단축키, 창 닫기/포커스 이벤트          |
+| `src/features/notes/model/note-store.ts`      | 문서 상태, 작업 큐, 자동 저장, 초안 복원           |
+| `src/pages/notes/ui/notes-page.tsx` | 파일 버튼, 저장 상태, 오류, 편집 화면              |
+| `src/features/notes/ui/note-editor.tsx`    | Plate 생명주기, 툴바, 붙여넣기, 슬래시 메뉴        |
+| `src/features/notes/model/editor-plugins.tsx` | 지원하는 Markdown 노드와 입력 규칙의 허용 목록     |
+| `src/features/notes/ui/note-elements.tsx`  | 실제 HTML 노드, 체크박스, 링크 렌더링              |
+| `src/features/notes/lib/markdown.ts`        | 미지원 Markdown 검사                               |
+| `src/features/notes/ui/notes.css`          | 에디터 안에만 적용하는 Markdown 서식               |
 | `../shared/notes.ts`                    | main/preload/renderer가 공유하는 파일 API 타입     |
 | `../preload/index.ts`                   | `window.api.notes`의 제한된 IPC 브리지             |
 | `../main/notes.ts`                      | 네이티브 파일 대화상자, 파일 ID 관리, 닫기 확인    |
@@ -145,11 +194,11 @@ Electron 앱에서만 제공한다.
 ## 레이아웃·테마 변경 위치
 
 - App의 `h-svh overflow-hidden`과 상위 flex의 `min-h-0`를 유지한다.
-  스크롤은 NoteWorkspace의 본문에서 처리하며 툴바는 그 안에서 sticky로 유지한다.
+  스크롤은 NotesPage의 본문에서 처리하며 툴바는 그 안에서 sticky로 유지한다.
 - `--sidebar-width`와 `--header-height`는 App에서 정하고 공통 컴포넌트가 참조한다.
-- `src/index.css`의 `:root` / `.dark`로 색상·폰트·반경을 바꾼다.
-  에디터 서식은 전역 UI를 건드리지 않고 `features/notes/notes.css`에서 조정한다.
-- 테마는 `components/theme-provider.tsx`의 로컬 Provider와 `useTheme`을 사용한다.
+- `src/app/styles/index.css`의 `:root` / `.dark`로 색상·폰트·반경을 바꾼다.
+  에디터 서식은 전역 UI를 건드리지 않고 `features/notes/ui/notes.css`에서 조정한다.
+- 테마는 `shared/lib/theme-provider.tsx`의 로컬 Provider와 `useTheme`을 사용한다.
   아직 연결하지 않은 `ui/sonner.tsx`는 next-themes를 참조하므로 도입 시 맞춰야 한다.
 - `ui/sidebar.tsx`는 cookie를 기록만 한다. 다시 시작할 때 복원하지는 않는다.
 - 외부 리소스/통신은 `index.html`의 CSP와 루트 `vite.config.ts` 개발 예외도 확인한다.
@@ -165,9 +214,35 @@ UI 추가 명령은 루트에서 `pnpm exec shadcn add <component>`를 실행한
 ```bash
 pnpm typecheck
 pnpm test:notes    # Markdown/파일 IO/IPC, 폴더 설정, 자동 저장/충돌/재시작
+pnpm test:calendar
+pnpm test:shortcuts
+pnpm test:weather
+pnpm test:codex
 pnpm lint
+pnpm build
+corepack pnpm build-storybook
 pnpm dev          # main/preload를 다시 빌드하고 Electron 창 실행
 ```
 
 main/preload 변경은 개발 서버의 HMR 대상이 아니므로 Electron을 닫고 `pnpm dev`를
-다시 실행해야 한다. 원본 shadcn 예제의 기존 ESLint 오류는 메모 기능과 별도로 남아 있다.
+다시 실행해야 한다. 일정 카드 스토리는 `src/widgets/live-status/ui`에 있으며
+props와 고정 fixture로 동작해 Electron API나 실제 계정·파일을 사용하지 않는다.
+
+## FSD 도입 검증 (2026-10-28)
+
+페이지 분리, 위젯·공유 UI 이동, 기능 segment·공유 일정 모델 정리,
+의존 경계 자동화의 각 단계에서 typecheck·lint·build를 통과했다.
+추가한 런타임 라이브러리는 없으며 Electron main/preload와 루트 IPC 계약은 변경하지 않았다.
+
+- 기존 테스트 81개 통과: notes 19, calendar 10, shortcuts 17, weather 15, codex 20.
+- ESLint 경계 규칙의 허용·차단 예제 21개 통과.
+- 임시 프로필·가짜 IPC로 최종 renderer 빌드를 실행해 페이지 lazy loading,
+  Ctrl+1/2/3 이동, Plate·검색 필터·주간 보기 유지, store 재사용,
+  편집창의 이동 차단과 Ctrl+O/K 모달 우선순위 등 20개 항목을 확인했다.
+- Storybook 정적 빌드와 일정 카드 15개 실제 렌더링 통과. 예상 문구, 70px 높이,
+  248/288px 컨테이너, 가로 넘침 없음, light/dark 토큰과 `window.api` 미사용을 확인했다.
+- import와 의도한 페이지·Provider·주입 props 변경을 제외한 소스·테스트 84개의
+  구현 보존을 비교했다. shadcn·Prettier·Storybook의 스타일 경로도 새 위치에 맞췄다.
+
+위 실행 검증은 실제 사용자 파일·로그인·OS 프로그램 실행을 사용하지 않았다.
+빌드에는 기준선부터 있던 500KB 초과 청크 경고가 남아 있다.

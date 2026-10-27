@@ -10,12 +10,12 @@ import {
 } from "../src/shared/calendar"
 import { CalendarRepository } from "../src/main/calendar-repository"
 import { registerCalendar } from "../src/main/calendar"
-import { CalendarStore } from "../src/renderer/src/features/calendar/calendar-store"
+import { CalendarStore } from "../src/renderer/src/entities/calendar-event/model/calendar-store"
 import {
   eventDraft,
   eventFromDraft,
   shiftDate,
-} from "../src/renderer/src/features/calendar/calendar-dates"
+} from "../src/renderer/src/entities/calendar-event/lib/calendar-dates"
 import { app, BrowserWindow, handlers, dialog, shell } from "./fakes/electron"
 
 function sample(): CalendarEvent {

@@ -9,12 +9,12 @@ FullCalendar 7 React를 사용한다. 월·주·일·목록 보기, 날짜 클�
 
 | 파일                                      | 역할                                                |
 | ----------------------------------------- | --------------------------------------------------- |
-| `calendar-workspace.tsx`                  | FullCalendar 연결, 탐색 도구, 일정 편집창 열기      |
-| `calendar-reminder-center.tsx`            | 앱 내 일정 알림 표시와 알림 클릭 링크 실행          |
-| `fullcalendar-views.tsx`                  | 공식 shadcn 어댑터의 테마와 뷰 스타일               |
-| `event-sheet.tsx`                         | 일정 입력, 유효성 검사, 삭제 확인                   |
-| `calendar-dates.ts`                       | 날짜/시간 입력과 저장 형식 변환                     |
-| `calendar-store.ts`                       | React 외부 상태, IPC 요청, 저장 실패 처리           |
+| `../../pages/calendar/ui/calendar-page.tsx`                  | FullCalendar 연결, 탐색 도구, 일정 편집창 열기      |
+| `ui/calendar-reminder-center.tsx`            | 앱 내 일정 알림 표시와 알림 클릭 링크 실행          |
+| `../../pages/calendar/ui/fullcalendar-views.tsx`                  | 공식 shadcn 어댑터의 테마와 뷰 스타일               |
+| `ui/event-sheet.tsx`                         | 일정 입력, 유효성 검사, 삭제 확인                   |
+| `../../entities/calendar-event/lib/calendar-dates.ts`                       | 날짜/시간 입력과 저장 형식 변환                     |
+| `../../entities/calendar-event/model/calendar-store.ts`                       | React 외부 상태, IPC 요청, 저장 실패 처리           |
 | `../../../../shared/calendar.ts`          | main/preload/renderer 공통 스키마와 API             |
 | `../../../../main/calendar.ts`            | IPC 호출자 확인과 핸들러 등록                       |
 | `../../../../main/calendar-repository.ts` | JSON 읽기, 충돌 검사, 원자적 교체 저장              |
@@ -53,7 +53,7 @@ OS 알림과 앱 내 알림은 일정별로 각각 끌 수 있다. 참고 링크
 
 뷰 어댑터 출처는 [FullCalendar 공식 shadcn 레지스트리](https://shadcn-registry.fullcalendar.io/monarch-event-calendar.json)다.
 기존 Base UI 기반 Button을 유지하기 위해 어댑터의 뷰만 가져오고 탐색 도구는
-프로젝트의 shadcn 컴포넌트로 구성했다. MIT 고지는 `LICENSE.fullcalendar.md`에 있다.
+프로젝트의 shadcn 컴포넌트로 구성했다. MIT 고지는 `../../pages/calendar/LICENSE.fullcalendar.md`에 있다.
 루트 `components.json`에 `@fullcalendar` 레지스트리가 등록되어 있다.
 v7은 플러그인을 `@fullcalendar/react/daygrid` 등의 하위 경로에서 가져온다.
 v6 예제를 적용할 때 옵션/API 차이를 확인한다.

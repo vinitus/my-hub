@@ -1,13 +1,13 @@
 # 설정과 Codex 연결
 
-`settings-sheet.tsx`는 테마·메모 폴더 설정, `codex-connection.tsx`는 Codex 계정 연결을 표시한다.
-`codex-model-settings.tsx`는 모델·생각 수준 선택과 자동 저장을 담당한다.
-첫 실행의 `codex-setup-prompt.tsx`는 사용 여부 → 로그인 → 모델 → 사고 수준 순서로 안내한다.
+`ui/settings-sheet.tsx`는 테마·메모 폴더 설정, `ui/codex-connection.tsx`는 Codex 계정 연결을 표시한다.
+`ui/codex-model-settings.tsx`는 모델·생각 수준 선택과 자동 저장을 담당한다.
+첫 실행의 `ui/codex-setup-prompt.tsx`는 사용 여부 → 로그인 → 모델 → 사고 수준 순서로 안내한다.
 사용을 선택하기 전에는 CLI를 조회하지 않는다. 사용하지 않으면 localStorage에 기억하고 다시 묻지 않는다.
 시작 후 나중에 닫으면 다음 실행에서 로그인 단계부터 이어 간다. 완료 후에는 시작 시 연결 상태를 확인하고,
 연결이 끊겼을 때 로그인부터 다시 안내한다. 설정(Ctrl+O)에서는 언제든 직접 연결할 수 있다.
-단계별 UI는 설정과 `use-codex-connection.ts`의 상태 구독·IPC 호출만 공유한다.
-`codex-onboarding.ts`는 진행 여부와 기본값을 담당한다. 최초 설정은 실제 목록의 Luna와 low를 우선하며,
+단계별 UI는 설정과 `model/use-codex-connection.ts`의 상태 구독·IPC 호출만 공유한다.
+`model/codex-onboarding.ts`는 진행 여부와 기본값을 담당한다. 최초 설정은 실제 목록의 Luna와 low를 우선하며,
 없으면 지원되는 기본값으로 대체하고 안내한다. 재연결 시 유효한 기존 선택을 보존한다.
 단계 이동은 저장하지 않으며 마지막 **설정 완료**에서 저장이 성공해야 완료 처리한다.
 현재 일정 추가·메모 저장 실행은 준비 중임을 첫 화면에 표시한다. 브라우저 미리 보기에서는 자동 안내를 생략한다.

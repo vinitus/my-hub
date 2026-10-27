@@ -19,7 +19,7 @@ import { registerCodex } from "../src/main/codex"
 import { CodexSettings } from "../src/main/codex-settings"
 import { BrowserWindow, handlers } from "./fakes/electron"
 import type { CodexConnection } from "../src/shared/codex"
-import { defaultSetupPreferences } from "../src/renderer/src/features/settings/codex-onboarding"
+import { defaultSetupPreferences } from "../src/renderer/src/features/settings/model/codex-onboarding"
 
 const models = [
   {

@@ -6,6 +6,7 @@ import globals from "globals"
 
 import reactHooks from "eslint-plugin-react-hooks"
 import reactRefresh from "eslint-plugin-react-refresh"
+import fsd from "./scripts/eslint-fsd.mjs"
 
 export default defineConfig([
   globalIgnores(["dist", "out", "storybook-static", "electron-scaffolding"]),
@@ -29,5 +30,10 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+  },
+  {
+    files: ["src/renderer/src/**/*.{ts,tsx}"],
+    plugins: { fsd },
+    rules: { "fsd/boundaries": "error" },
   },
 ])

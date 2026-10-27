@@ -4,8 +4,8 @@
 Enter로 전송하면 즉시 닫고, 우측 하단의 상태 카드에서 처리 중/완료/실패/AI 연결 필요를 표시한다.
 Escape나 바깥 클릭으로 닫으면 입력 초안은 이번 실행 동안 유지한다.
 
-- `quick-command.tsx`: 전역 단축키, 입력 모달, 최근 요청 한 개의 상태 카드.
-- `command-runner.ts`: 이후 main/preload의 AI 작업 API를 연결할 지점.
+- `ui/quick-command.tsx`: 전역 단축키, 입력 모달, 최근 요청 한 개의 상태 카드.
+- `model/command-runner.ts`: 이후 main/preload의 AI 작업 API를 연결할 지점.
   현재는 실제 작업 없이 `needs-connection`을 반환한다. 가짜 진행률이나 저장 성공을 표시하지 않는다.
 
 요청은 최대 500자이며 대화 목록, 모델 선택, 영구 기록은 제공하지 않는다.

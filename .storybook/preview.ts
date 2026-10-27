@@ -1,4 +1,4 @@
-import "../src/renderer/src/index.css"
+import "../src/renderer/src/app/styles/index.css"
 
 const preview = {
   parameters: {

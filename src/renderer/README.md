@@ -304,3 +304,6 @@ Strict Mode에서 테마 단축키 저장 1회를 회귀 검사한다. 실제 �
 1. **React 규칙**: 전체 renderer의 Hook/Effect 정리, 불변 갱신, 목록 key, 파생 상태,
    접근성 연결과 Strict Mode 설정을 재확인했다. 추가 제품 코드 수정 없이
    typecheck·lint·build 및 도메인 테스트 81개가 통과했다.
+2. **FSD**: 레이어 방향·slice 공개 API·같은 레이어 독립성, shared의 IPC 격리,
+   App의 lazy loading·방문 화면 유지·공유 store 조립을 재확인했다. 전체 lint와 경계 테스트
+   27개가 통과했다. 도입 전 조사 기록을 현재 구조로 오인하지 않도록 `fsd-prompt.md`에 상태를 표시했다.

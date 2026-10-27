@@ -2,6 +2,7 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { NoteWorkspace } from "@/features/notes/note-workspace"
+import { CalendarReminderCenter } from "@/features/calendar/calendar-reminder-center"
 import { useNote } from "@/features/notes/use-note"
 import { QuickCommand } from "@/features/quick-command/quick-command"
 import { SettingsSheet } from "@/features/settings/settings-sheet"
@@ -185,6 +186,7 @@ export function App() {
         )}
       </SidebarInset>
       <QuickCommand open={commandOpen} onOpenChange={setCommandOpen} />
+      <CalendarReminderCenter />
       <SettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}

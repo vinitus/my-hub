@@ -2,26 +2,34 @@
 
 FullCalendar 7 React를 사용한다. 월·주·일·목록 보기, 날짜 클릭/범위 선택,
 일정 추가·수정·삭제, 드래그 이동과 길이 조절을 지원한다.
-반복 일정, 알림, 외부 서비스 동기화는 아직 구현하지 않았다.
+반복 일정과 외부 서비스 동기화는 아직 구현하지 않았다. 일정 시각의 OS·앱 내 알림,
+여러 참고 링크, 사용자가 선택하는 링크 자동 실행 시점을 지원한다.
 
 ## 코드와 데이터 흐름
 
-| 파일 | 역할 |
-| --- | --- |
-| `calendar-workspace.tsx` | FullCalendar 연결, 탐색 도구, 일정 편집창 열기 |
-| `fullcalendar-views.tsx` | 공식 shadcn 어댑터의 테마와 뷰 스타일 |
-| `event-sheet.tsx` | 일정 입력, 유효성 검사, 삭제 확인 |
-| `calendar-dates.ts` | 날짜/시간 입력과 저장 형식 변환 |
-| `calendar-store.ts` | React 외부 상태, IPC 요청, 저장 실패 처리 |
-| `../../../../shared/calendar.ts` | main/preload/renderer 공통 스키마와 API |
-| `../../../../main/calendar.ts` | IPC 호출자 확인과 핸들러 등록 |
-| `../../../../main/calendar-repository.ts` | JSON 읽기, 충돌 검사, 원자적 교체 저장 |
+| 파일                                      | 역할                                                |
+| ----------------------------------------- | --------------------------------------------------- |
+| `calendar-workspace.tsx`                  | FullCalendar 연결, 탐색 도구, 일정 편집창 열기      |
+| `calendar-reminder-center.tsx`            | 앱 내 일정 알림 표시와 알림 클릭 링크 실행          |
+| `fullcalendar-views.tsx`                  | 공식 shadcn 어댑터의 테마와 뷰 스타일               |
+| `event-sheet.tsx`                         | 일정 입력, 유효성 검사, 삭제 확인                   |
+| `calendar-dates.ts`                       | 날짜/시간 입력과 저장 형식 변환                     |
+| `calendar-store.ts`                       | React 외부 상태, IPC 요청, 저장 실패 처리           |
+| `../../../../shared/calendar.ts`          | main/preload/renderer 공통 스키마와 API             |
+| `../../../../main/calendar.ts`            | IPC 호출자 확인과 핸들러 등록                       |
+| `../../../../main/calendar-repository.ts` | JSON 읽기, 충돌 검사, 원자적 교체 저장              |
+| `../../../../main/calendar-reminders.ts`  | 앱 실행 중 일정 시각 감시, OS 알림과 선택 링크 실행 |
 
 `window.api.calendar`를 통해 main에 요청하며, renderer에서 임의의 파일 경로를
 전달할 수 없다. 저장 파일은 `app.getPath("userData")/calendar.json`이다.
 실제 경로는 캘린더 하단의 로컬 저장 안내에 마우스를 올려 확인한다.
 메모 폴더와 별도로 관리하며, 저장/삭제 성공 응답을 받은 뒤 화면 상태를 갱신한다.
 드래그 저장 실패 시 FullCalendar의 `revert()`로 화면을 복구한다.
+
+기존 일정에는 링크 없음, 알림 켜짐, 링크 자동 실행 안 함을 기본 적용한다. 참고 링크는 최대 30개이며
+HTTP/HTTPS 주소와 파일 선택으로 지정한 로컬 파일을 저장·실행한다. 알림은 시간 일정의 시작 시각, 종일 일정의 오전 9시(로컬 시간)에 발생한다.
+OS 알림과 앱 내 알림은 일정별로 각각 끌 수 있다. 참고 링크 자동 실행은 기본 꺼짐이며,
+켰을 때 일정 시각 또는 OS/앱 알림 클릭 중 실행 시점을 고른다. 앱을 종료한 동안의 알림은 예약하지 않는다.
 
 파일 내용의 SHA-256을 revision으로 사용한다. 편집창을 연 시점의 revision을
 저장할 때 전달하므로, 외부 수정이나 오래 열린 편집창이 최신 파일을 덮어쓰지 않는다.

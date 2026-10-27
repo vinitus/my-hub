@@ -16,7 +16,7 @@ import {
   eventFromDraft,
   shiftDate,
 } from "../src/renderer/src/features/calendar/calendar-dates"
-import { app, BrowserWindow, handlers } from "./fakes/electron"
+import { app, BrowserWindow, handlers, dialog, shell } from "./fakes/electron"
 
 function sample(): CalendarEvent {
   return {
@@ -24,6 +24,10 @@ function sample(): CalendarEvent {
     title: "회의",
     description: "회의 내용",
     color: "blue",
+    referenceUrls: [],
+    openLinks: "never",
+    notifyOS: true,
+    notifyInApp: true,
     allDay: false,
     start: "2026-10-27T09:00:00+09:00",
     end: "2026-10-27T10:00:00+09:00",
@@ -33,6 +37,26 @@ function sample(): CalendarEvent {
 test("제목, 실제 날짜, 종료 순서와 저장 형식을 검사한다", () => {
   const valid = sample()
   assert.equal(CalendarEventSchema.parse(valid).title, "회의")
+  assert.deepEqual(
+    CalendarEventSchema.parse({
+      ...valid,
+      referenceUrls: [join(tmpdir(), "참고.pdf")],
+    }).referenceUrls,
+    [join(tmpdir(), "참고.pdf")]
+  )
+  assert.equal(
+    CalendarEventSchema.safeParse({
+      ...valid,
+      referenceUrls: ["javascript:alert(1)"],
+    }).success,
+    false
+  )
+  const legacy = { ...valid } as Record<string, unknown>
+  delete legacy.referenceUrls
+  delete legacy.openLinks
+  delete legacy.notifyOS
+  delete legacy.notifyInApp
+  assert.deepEqual(CalendarEventSchema.parse(legacy).referenceUrls, [])
   for (const invalid of [
     { ...valid, title: "  " },
     { ...valid, end: valid.start },
@@ -212,9 +236,22 @@ test("IPC는 다른 발신자를 거부하고 유효한 일정만 앱 경로에 
       /제목/
     )
     await handlers.get("calendar:save")!(window.event(), {
-      event: sample(),
+      event: { ...sample(), referenceUrls: [join(dir, "meeting.pdf")] },
       expectedRevision: initial.revision,
     })
+    const file = join(dir, "meeting.pdf")
+    await writeFile(file, "test file")
+    dialog.openResult = { canceled: false, filePaths: [file] }
+    assert.equal(
+      await handlers.get("calendar:choose-file")!(window.event()),
+      file
+    )
+    await handlers.get("calendar:open-links")!(
+      window.event(),
+      (await new CalendarRepository(dir).load()).events[0].id
+    )
+    assert.ok(shell.openedPaths.includes(file))
+    dialog.openResult = { canceled: true, filePaths: [] }
     assert.equal((await new CalendarRepository(dir).load()).events.length, 1)
   } finally {
     window.close()
@@ -237,6 +274,8 @@ test("저장 오류 시 화면 상태를 되돌릴 수 있도록 기존 일정�
     remove: async () => {
       throw new Error("쓰기 실패")
     },
+    openLinks: async () => {},
+    onReminder: () => () => {},
   })
   await store.initialize()
   assert.equal(

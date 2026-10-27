@@ -8,6 +8,10 @@ export type EventDraft = {
   title: string
   description: string
   color: CalendarEvent["color"]
+  referenceUrls: string[]
+  openLinks: CalendarEvent["openLinks"]
+  notifyOS: boolean
+  notifyInApp: boolean
   allDay: boolean
   startDate: string
   endDate: string
@@ -82,6 +86,10 @@ export function eventFromDraft(
     title: draft.title,
     description: draft.description,
     color: draft.color,
+    referenceUrls: draft.referenceUrls.filter((url) => url.trim()),
+    openLinks: draft.openLinks,
+    notifyOS: draft.notifyOS,
+    notifyInApp: draft.notifyInApp,
     allDay: draft.allDay,
     start,
     end,
@@ -103,6 +111,10 @@ export function newCalendarEvent(
     title: "",
     description: "",
     color: "blue",
+    referenceUrls: [],
+    openLinks: "never",
+    notifyOS: true,
+    notifyInApp: true,
     allDay,
     start: allDay ? localDate(date) : date.toISOString(),
     end:

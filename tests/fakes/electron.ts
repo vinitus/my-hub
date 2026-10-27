@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
+import { EventEmitter as NotificationEmitter } from "node:events"
 
 export const app = {
   iconPaths: [] as string[],
@@ -78,9 +79,21 @@ export const shell = {
     if (shell.externalError) throw shell.externalError
   },
 }
+export class Notification extends NotificationEmitter {
+  static isSupported() {
+    return true
+  }
+  constructor(readonly options: { title: string; body: string }) {
+    super()
+  }
+  show() {}
+}
 export class BrowserWindow extends EventEmitter {
   closed = false
   sent: string[] = []
+  isDestroyed() {
+    return this.closed
+  }
   webContents = {
     mainFrame: {},
     send: (channel: string) => this.sent.push(channel),

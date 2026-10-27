@@ -179,6 +179,171 @@ export function EventSheet({
                 }
               />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="event-reference-url">
+                참고 링크·파일 (최대 30개)
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="event-reference-url"
+                  type="text"
+                  maxLength={2048}
+                  placeholder="URL 또는 로컬 파일 경로"
+                  value={draft.referenceUrls[0] ?? ""}
+                  onChange={(e) => {
+                    const rest = draft.referenceUrls.slice(1)
+                    setDraft({
+                      ...draft,
+                      referenceUrls: e.target.value
+                        ? [e.target.value, ...rest]
+                        : rest,
+                    })
+                  }}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    const path = await window.api?.calendar?.chooseFile()
+                    if (path)
+                      setDraft({
+                        ...draft,
+                        referenceUrls: [path, ...draft.referenceUrls.slice(1)],
+                      })
+                  }}
+                >
+                  파일 선택
+                </Button>
+                <label className="flex shrink-0 cursor-pointer items-center gap-1.5 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={draft.openLinks !== "never"}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        openLinks: e.target.checked ? "at-start" : "never",
+                      })
+                    }
+                  />
+                  자동 실행
+                </label>
+              </div>
+              {draft.referenceUrls.slice(1).map((url, index) => (
+                <div
+                  key={`${index}-${url}`}
+                  className="flex items-center gap-2"
+                >
+                  <Input
+                    type="text"
+                    maxLength={2048}
+                    aria-label={`참고 링크 ${index + 2}`}
+                    placeholder="URL 또는 로컬 파일 경로"
+                    value={url}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        referenceUrls: draft.referenceUrls.map(
+                          (item, itemIndex) =>
+                            itemIndex === index + 1 ? e.target.value : item
+                        ),
+                      })
+                    }
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      const path = await window.api?.calendar?.chooseFile()
+                      if (path)
+                        setDraft({
+                          ...draft,
+                          referenceUrls: draft.referenceUrls.map(
+                            (item, itemIndex) =>
+                              itemIndex === index + 1 ? path : item
+                          ),
+                        })
+                    }}
+                  >
+                    파일 선택
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() =>
+                      setDraft({
+                        ...draft,
+                        referenceUrls: draft.referenceUrls.filter(
+                          (_, itemIndex) => itemIndex !== index + 1
+                        ),
+                      })
+                    }
+                  >
+                    삭제
+                  </Button>
+                </div>
+              ))}
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={draft.referenceUrls.length >= 30}
+                  onClick={() =>
+                    setDraft({
+                      ...draft,
+                      referenceUrls: [...draft.referenceUrls, ""],
+                    })
+                  }
+                >
+                  링크 추가
+                </Button>
+                {draft.openLinks !== "never" && (
+                  <select
+                    aria-label="링크 자동 실행 시점"
+                    className="h-9 rounded-md border bg-background px-2 text-xs"
+                    value={draft.openLinks}
+                    onChange={(e) =>
+                      setDraft({
+                        ...draft,
+                        openLinks: e.target.value as CalendarEvent["openLinks"],
+                      })
+                    }
+                  >
+                    <option value="at-start">일정 시각에</option>
+                    <option value="on-notification">알림 클릭 시</option>
+                  </select>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                웹 주소를 입력하거나 파일 선택으로 로컬 파일을 추가할 수
+                있습니다. 알림과 자동 실행은 앱이 실행 중일 때 동작합니다.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-4">
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={draft.notifyOS}
+                  onChange={(e) =>
+                    setDraft({ ...draft, notifyOS: e.target.checked })
+                  }
+                />
+                OS 알림
+              </label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={draft.notifyInApp}
+                  onChange={(e) =>
+                    setDraft({ ...draft, notifyInApp: e.target.checked })
+                  }
+                />
+                앱 내 알림
+              </label>
+            </div>
             {(error || serverError) && (
               <p role="alert" className="text-sm text-destructive">
                 {error || serverError}

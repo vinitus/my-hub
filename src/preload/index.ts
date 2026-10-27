@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { electronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
-import type { CalendarAPI } from "../shared/calendar"
+import type { CalendarAPI, CalendarReminder } from "../shared/calendar"
 import type { ShortcutsAPI } from "../shared/shortcuts"
 import type { WeatherAPI } from "../shared/weather"
 import type { CodexAPI } from "../shared/codex"
@@ -26,6 +26,16 @@ const calendar: CalendarAPI = {
   load: () => ipcRenderer.invoke("calendar:load"),
   save: (request) => ipcRenderer.invoke("calendar:save", request),
   remove: (request) => ipcRenderer.invoke("calendar:remove", request),
+  openLinks: (id) => ipcRenderer.invoke("calendar:open-links", id),
+  chooseFile: () => ipcRenderer.invoke("calendar:choose-file"),
+  onReminder: (callback) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      reminder: CalendarReminder
+    ) => callback(reminder)
+    ipcRenderer.on("calendar:reminder", listener)
+    return () => ipcRenderer.removeListener("calendar:reminder", listener)
+  },
 }
 const shortcuts: ShortcutsAPI & {
   inspectFileDrop: (file: File) => ReturnType<ShortcutsAPI["inspectDrop"]>

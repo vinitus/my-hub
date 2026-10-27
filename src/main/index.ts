@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from "electron"
 import { join } from "node:path"
 import { electronApp, optimizer, is } from "@electron-toolkit/utils"
 
-// The custom build should emit this module as ESM at out/main/index.js.
+// The development launcher emits this module as ESM at out/main/index.js.
 const mainDirectory = import.meta.dirname
 
 function createWindow(): void {
@@ -25,7 +25,26 @@ function createWindow(): void {
 
   mainWindow.on("ready-to-show", () => {
     mainWindow.show()
+    if (is.dev) console.log("[dev] Electron window ready.")
   })
+
+  mainWindow.webContents.on("preload-error", (_, path, error) => {
+    console.error("[electron] Preload failed:", path, error)
+  })
+
+  mainWindow.webContents.on(
+    "did-fail-load",
+    (_, code, description, url, isMainFrame) => {
+      if (isMainFrame) {
+        console.error(
+          "[electron] Renderer failed to load:",
+          code,
+          description,
+          url
+        )
+      }
+    }
+  )
 
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://") || url.startsWith("http://")) {
@@ -34,7 +53,7 @@ function createWindow(): void {
     return { action: "deny" }
   })
 
-  // Set this URL in the custom development launcher after Vite is ready.
+  // scripts/dev.mjs passes the actual URL after Vite starts listening.
   const rendererUrl = process.env["ELECTRON_RENDERER_URL"]
   if (is.dev && rendererUrl) {
     void mainWindow.loadURL(rendererUrl)
@@ -43,21 +62,38 @@ function createWindow(): void {
   }
 }
 
-void app.whenReady().then(() => {
-  electronApp.setAppUserModelId("com.electron.app")
+const isPrimaryInstance = !is.dev || app.requestSingleInstanceLock()
 
-  app.on("browser-window-created", (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+if (!isPrimaryInstance) {
+  console.error(
+    "[dev] App is already running. Close the existing Electron window and retry."
+  )
+  app.quit()
+} else {
+  if (is.dev) {
+    app.on("second-instance", () => {
+      const existingWindow = BrowserWindow.getAllWindows()[0]
+      if (existingWindow?.isMinimized()) existingWindow.restore()
+      existingWindow?.focus()
+    })
+  }
+
+  void app.whenReady().then(() => {
+    electronApp.setAppUserModelId("com.electron.app")
+
+    app.on("browser-window-created", (_, window) => {
+      optimizer.watchWindowShortcuts(window)
+    })
+
+    ipcMain.on("ping", () => console.log("pong"))
+    createWindow()
+
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
   })
 
-  ipcMain.on("ping", () => console.log("pong"))
-  createWindow()
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  app.on("window-all-closed", () => {
+    if (process.platform !== "darwin") app.quit()
   })
-})
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit()
-})
+}

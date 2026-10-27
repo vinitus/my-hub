@@ -1,23 +1,61 @@
 # Electron + React + TypeScript + Vite + shadcn/ui
 
 기존 shadcn 대시보드와 루트 의존성 버전을 유지한 Electron 소스 이식 프로젝트입니다.
-`electron-vite`는 사용하지 않습니다. Main/preload 빌드와 Electron 실행·재시작 자동화는 직접 구성할 영역으로 남겨 두었습니다.
+`electron-vite`는 사용하지 않습니다. `scripts/dev.mjs`가 Vite API로 개발용 main/preload를 빌드하고 Electron을 실행합니다.
 
 ## 현재 제공하는 명령
 
 ```bash
 pnpm install
-pnpm dev          # Vite renderer 개발 서버만 실행
+pnpm dev          # main/preload 개발 빌드 → Vite 서버 → Electron 창 실행
 pnpm typecheck    # main/preload 및 renderer 타입 검사
 pnpm build        # 타입 검사 후 renderer만 out/renderer에 빌드
 pnpm preview      # renderer를 브라우저에서 미리 보기
 pnpm lint
 ```
 
-`pnpm dev`, `pnpm build`, `pnpm preview`는 Electron을 실행하거나 main/preload를 빌드하지 않습니다.
-브라우저 미리 보기에는 `window.electron`, `window.api`가 주입되지 않습니다.
+`pnpm dev`는 Electron 창에서 대시보드를 엽니다. Renderer 수정은 Vite HMR로 반영됩니다. Main/preload 수정 후에는 `Ctrl+C`로 종료하고 `pnpm dev`를 다시 실행합니다.
+Electron 프로세스가 종료되면 Vite 서버도 종료합니다. macOS에서 창만 닫으면 앱은 계속 실행될 수 있으므로 앱 종료 또는 `Ctrl+C`를 사용합니다.
 
-## 직접 작성할 빌드·실행 구성의 연결 지점
+Windows에서 Electron은 한글 오류를 UTF-8 바이트로 출력합니다. 자식 프로세스의 stderr를 터미널에 직접 연결하면 코드 페이지에 따라 `액세스가 거부되었습니다`가 깨져 보였습니다. 개발 실행기는 stderr를 UTF-8로 읽어 출력합니다. 콘솔 코드 페이지를 변경하지 않습니다.
+
+동일한 앱을 두 번 실행했을 때 `Unable to move the cache`, `Gpu Cache Creation failed: -2` 오류도 재현했습니다. 두 프로세스가 같은 Chromium 캐시 경로에 접근한 상황입니다. 개발 앱은 한 인스턴스만 실행되도록 변경했습니다. 이미 이전 버전의 앱이 열려 있다면 창을 닫고 다시 `pnpm dev`를 실행하세요. `Port 5173 is in use`는 Vite 서버의 포트 충돌 메시지이며, 다른 서비스가 해당 포트를 사용해도 표시될 수 있습니다.
+
+`pnpm build`는 아직 renderer만 빌드하고, `pnpm preview`는 renderer의 브라우저 미리 보기입니다. 브라우저 미리 보기에는 `window.electron`, `window.api`가 주입되지 않습니다.
+
+## `pnpm dev`를 실행해도 Electron 창이 열리지 않았던 원인
+
+2026-09-21에 Vite 8.2.2와 현재 프로젝트 설정으로 확인했습니다.
+
+### 원인
+
+`[vite] (client) [optimizer] bundling dependencies...`는 의존성 사전 번들링이 1초 이상 걸릴 때 표시하는 진행 로그입니다. 이 버전은 완료 메시지를 기본 로그 수준에 출력하지 않으므로, 작업이 끝나도 이 문구가 마지막 줄에 남을 수 있습니다. 개발 서버는 파일 변경과 브라우저 요청을 기다리며 계속 실행됩니다.
+
+실제 누락은 `package.json`의 `dev` 명령이 `vite`만 실행하고 있었다는 점입니다. Main/preload 빌드, Electron 프로세스 실행, 개발 서버 URL 전달이 연결되지 않아 **Vite 서버가 정상이어도 Electron 창은 열리지 않았습니다.**
+
+이전 검증은 HTTP 응답까지만 확인해서 Electron 실행 누락을 놓쳤습니다. 브라우저 자동 열기는 이 문제를 해결하지 않으므로 제거했습니다.
+
+### 수정 내용
+
+- `pnpm dev`가 `node scripts/dev.mjs`를 실행하도록 변경했습니다.
+- Main을 `out/main/index.js`(ESM), preload를 `out/preload/index.cjs`(CommonJS)로 먼저 빌드합니다.
+- Vite 서버가 준비되면 실제 주소를 `ELECTRON_RENDERER_URL`에 넣어 Electron을 실행합니다. 기본 포트가 사용 중이면 Vite가 선택한 포트를 그대로 전달합니다.
+- Electron 창 준비, preload 오류, 화면 로딩 실패를 터미널에 표시합니다.
+- 최초 실행 시 Electron 실행 파일이 없으면 Electron 패키지가 다운로드합니다. 다운로드 오류가 발생하면 터미널에 오류를 표시하고 실행을 중단합니다.
+
+### 실행 확인 방법
+
+```bash
+pnpm dev
+```
+
+Electron 창이 열리고 터미널에 `[dev] Electron window ready.`가 표시되는지 확인합니다. 서버를 종료할 때는 `Ctrl+C`를 누릅니다.
+
+창이 열려도 화면이 비어 있다면 F12로 Electron 개발자 도구를 열어 Console과 Network를 확인합니다. `Outdated Optimize Dep` 또는 최적화 캐시 관련 오류가 확인된 경우에는 서버를 종료한 뒤 `pnpm dev --force`로 Vite 캐시를 다시 생성할 수 있습니다. 일반 실행에는 이 옵션이 필요하지 않습니다.
+
+참고: [Vite 8.2.2 optimizer 구현](https://github.com/vitejs/vite/blob/v8.2.2/packages/vite/src/node/optimizer/index.ts).
+
+## 빌드·실행 구성의 연결 지점
 
 | 입력                      | 필요한 출력               | 형식                    |
 | ------------------------- | ------------------------- | ----------------------- |
@@ -28,9 +66,9 @@ pnpm lint
 - 루트의 `type: module`과 `main: ./out/main/index.js`를 기준으로 구성합니다.
 - Main/preload 빌드에서 `electron`과 Node 내장 모듈은 번들에 포함하지 않습니다.
 - `@electron-toolkit/utils`, `@electron-toolkit/preload`는 원본 스캐폴딩의 런타임 유틸리티입니다. `electron-vite`와 별개이며 dependencies에 선언되어 있습니다.
-- 개발 실행기는 Vite 서버가 준비된 뒤 실제 주소를 `ELECTRON_RENDERER_URL`에 넣고 Electron을 시작해야 합니다.
+- `scripts/dev.mjs`가 Vite 서버 준비 후 실제 주소를 `ELECTRON_RENDERER_URL`에 넣고 Electron을 시작합니다.
 - 해당 환경변수가 없거나 패키징된 앱에서는 `out/renderer/index.html`을 읽습니다.
-- Main/preload 변경 감지, 빌드 순서, Electron 재시작 및 종료 처리는 직접 구현해야 합니다.
+- 개발용 main/preload는 시작할 때 한 번 빌드합니다. 해당 소스의 변경 감지·자동 재시작과 프로덕션 빌드 구성은 추가 구현할 영역입니다.
 - `resources/icon.png`는 `app.getAppPath()` 기준으로 읽으므로 별도의 `?asset` 플러그인이 필요하지 않습니다.
 - `window.electron`에는 toolkit API, `window.api`에는 앱별 API를 노출합니다. 타입 선언은 `src/preload/index.d.ts`에 있습니다.
 

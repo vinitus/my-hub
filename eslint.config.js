@@ -10,6 +10,13 @@ import reactRefresh from "eslint-plugin-react-refresh"
 export default defineConfig([
   globalIgnores(["dist", "out", "electron-scaffolding"]),
   {
+    files: ["scripts/**/*.mjs"],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: globals.node,
+    },
+  },
+  {
     files: ["**/*.{ts,tsx}"],
     extends: [js.configs.recommended, tseslint.configs.recommended],
     languageOptions: {

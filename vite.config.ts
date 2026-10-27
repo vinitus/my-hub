@@ -10,6 +10,9 @@ export default defineConfig({
   root: fromRoot("./src/renderer"),
   base: "./",
   publicDir: fromRoot("./public"),
+  server: {
+    open: false,
+  },
   plugins: [
     react(),
     tailwindcss(),

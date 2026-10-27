@@ -5,6 +5,8 @@ import { NoteWorkspace } from "@/features/notes/note-workspace"
 import { useNote } from "@/features/notes/use-note"
 import { ChatWorkspace } from "@/features/chat/chat-workspace"
 import { lazy, Suspense, useState } from "react"
+import { NAVIGATION_ITEMS, type AppView } from "@/lib/navigation"
+import { useNavigationShortcuts } from "@/hooks/use-navigation-shortcuts"
 
 const CalendarWorkspace = lazy(
   () => import("@/features/calendar/calendar-workspace")
@@ -12,26 +14,19 @@ const CalendarWorkspace = lazy(
 const ShortcutWorkspace = lazy(
   () => import("@/features/shortcuts/shortcut-workspace")
 )
-type View = "chat" | "notes" | "calendar" | "shortcuts"
-const viewTitles: Record<View, string> = {
-  chat: "채팅",
-  notes: "메모",
-  calendar: "캘린더",
-  shortcuts: "바로가기",
-}
-
 // shadcn dashboard-01을 바탕으로 만든 앱 레이아웃. 구조 안내: ../README.md
 // SidebarProvider의 CSS 변수는 사이드바와 SiteHeader에서 함께 사용한다.
 export function App() {
-  const [view, setView] = useState<View>("chat")
+  const [view, setView] = useState<AppView>("chat")
   const [calendarVisited, setCalendarVisited] = useState(false)
   const [shortcutsVisited, setShortcutsVisited] = useState(false)
   const memo = useNote(view === "notes")
-  const navigate = (next: View) => {
+  const navigate = (next: AppView) => {
     if (next === "calendar") setCalendarVisited(true)
     if (next === "shortcuts") setShortcutsVisited(true)
     setView(next)
   }
+  const showNavigationNumbers = useNavigationShortcuts(navigate)
   return (
     <SidebarProvider
       className="h-svh overflow-hidden"
@@ -45,6 +40,7 @@ export function App() {
       <AppSidebar
         variant="inset"
         activeView={view}
+        showNavigationNumbers={showNavigationNumbers}
         onNavigate={navigate}
         onNewNote={() => {
           navigate("notes")
@@ -66,7 +62,9 @@ export function App() {
         onRefresh={() => void memo.refresh()}
       />
       <SidebarInset className="min-h-0 overflow-hidden">
-        <SiteHeader title={viewTitles[view]} />
+        <SiteHeader
+          title={NAVIGATION_ITEMS.find((item) => item.id === view)!.label}
+        />
 
         <div
           className={

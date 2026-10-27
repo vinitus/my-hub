@@ -1,5 +1,11 @@
 # Renderer 작업 안내
 
+워크스페이스 메뉴와 번호는 `src/lib/navigation.ts`에서 함께 관리한다.
+Ctrl+1 바로가기, Ctrl+2 채팅, Ctrl+3 메모, Ctrl+4 캘린더로 이동한다.
+`src/hooks/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안
+사이드바에 번호를 표시한다. 키를 놓거나 창 포커스를 잃으면 번호를 숨긴다.
+등록/수정 모달이 열린 동안에는 화면 이동 단축키를 적용하지 않는다.
+
 `src/features/shortcuts`는 프로그램·폴더·웹사이트 바로가기를 관리한다.
 대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.
 

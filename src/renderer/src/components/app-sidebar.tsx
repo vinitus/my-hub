@@ -7,14 +7,12 @@ import {
   SunIcon,
   FolderCogIcon,
   RefreshCwIcon,
-  CalendarDaysIcon,
-  MessageSquareIcon,
-  LayoutGridIcon,
 } from "lucide-react"
 import type { NoteLibrarySnapshot } from "../../../shared/notes"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useTheme } from "@/components/theme-provider"
+import { NAVIGATION_ITEMS, type AppView } from "@/lib/navigation"
 import {
   Sidebar,
   SidebarContent,
@@ -37,8 +35,9 @@ type Props = ComponentProps<typeof Sidebar> & {
   onSelectNote: (name: string) => void
   onChooseDirectory: () => void
   onRefresh: () => void
-  activeView: "chat" | "notes" | "calendar" | "shortcuts"
-  onNavigate: (view: "chat" | "notes" | "calendar" | "shortcuts") => void
+  activeView: AppView
+  onNavigate: (view: AppView) => void
+  showNavigationNumbers: boolean
 }
 
 // 메모의 문서 상태는 App/useNote에서 관리한다. 사이드바는 같은 파일 작업을 호출한다.
@@ -54,6 +53,7 @@ export function AppSidebar({
   onRefresh,
   activeView,
   onNavigate,
+  showNavigationNumbers,
   ...props
 }: Props) {
   const { theme, setTheme } = useTheme()
@@ -81,46 +81,25 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>워크스페이스</SidebarGroupLabel>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={activeView === "shortcuts"}
-                tooltip="바로가기"
-                onClick={() => onNavigate("shortcuts")}
-              >
-                <LayoutGridIcon />
-                <span>바로가기</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={activeView === "chat"}
-                tooltip="채팅"
-                onClick={() => onNavigate("chat")}
-              >
-                <MessageSquareIcon />
-                <span>채팅</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={activeView === "notes"}
-                tooltip="메모"
-                onClick={() => onNavigate("notes")}
-              >
-                <FileTextIcon />
-                <span>메모</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                isActive={activeView === "calendar"}
-                tooltip="캘린더"
-                onClick={() => onNavigate("calendar")}
-              >
-                <CalendarDaysIcon />
-                <span>캘린더</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {NAVIGATION_ITEMS.map(({ id, label, number, icon: Icon }) => (
+              <SidebarMenuItem key={id}>
+                <SidebarMenuButton
+                  isActive={activeView === id}
+                  tooltip={`${label} (Ctrl+${number})`}
+                  aria-keyshortcuts={`Control+${number}`}
+                  onClick={() => onNavigate(id)}
+                >
+                  <Icon />
+                  <span>{label}</span>
+                  <kbd
+                    aria-hidden="true"
+                    className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded border border-sidebar-foreground/20 bg-sidebar font-mono text-[11px] text-sidebar-foreground/70 ${showNavigationNumbers ? "visible" : "invisible"}`}
+                  >
+                    {number}
+                  </kbd>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroup>
         {activeView === "notes" && (

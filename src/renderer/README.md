@@ -219,6 +219,7 @@ pnpm test:shortcuts
 pnpm test:weather
 pnpm test:codex
 pnpm lint
+pnpm test:fsd      # FSD import 경계의 허용·차단 회귀 테스트
 pnpm build
 corepack pnpm build-storybook
 pnpm dev          # main/preload를 다시 빌드하고 Electron 창 실행
@@ -246,3 +247,12 @@ props와 고정 fixture로 동작해 Electron API나 실제 계정·파일을 �
 
 위 실행 검증은 실제 사용자 파일·로그인·OS 프로그램 실행을 사용하지 않았다.
 빌드에는 기준선부터 있던 500KB 초과 청크 경고가 남아 있다.
+
+## FSD 요구사항 재검증 (2026-10-28)
+
+- `app → pages → widgets → features → entities → shared` 구조와 public API를 전체 renderer lint로 검사했다. 위반은 없다.
+- 화면 선택과 방문 상태, lazy page import, Ctrl+O/K 및 모달 제한은 app에 남아 있다. 공통 위젯은 props로 조립하고 CalendarStore 인스턴스를 공유한다.
+- main/preload 및 루트 `src/shared`의 IPC 계약은 이번 재검증에서 변경하지 않았다. 기존 store와 UI 소스를 유지하며 라우터·상태 관리 패키지를 추가하지 않았다.
+- `pnpm test:fsd`로 별칭·상대·동적·타입 import, re-export, public API, 같은 레이어 slice, native/IPC 경계와 bootstrap을 포함한 27개 사례를 반복 검증할 수 있다.
+- typecheck, lint, renderer build, 기존 도메인 테스트 81개와 FSD 테스트 27개, Storybook 정적 빌드가 통과했다. 500KB 청크 경고는 기존과 같다.
+- 이 재검증의 자동 테스트는 실제 사용자 계정·OS 알림·프로그램 실행을 사용하지 않는다. 기존 수동 검증 기록은 위 절에 별도로 보존한다.

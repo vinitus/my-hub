@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "test:notes": "node scripts/test-notes.mjs",
     "test:calendar": "node scripts/test-notes.mjs calendar",
+    "test:shortcuts": "node scripts/test-notes.mjs shortcuts",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",

@@ -9,6 +9,7 @@ import {
   RefreshCwIcon,
   CalendarDaysIcon,
   MessageSquareIcon,
+  LayoutGridIcon,
 } from "lucide-react"
 import type { NoteLibrarySnapshot } from "../../../shared/notes"
 import { Input } from "@/components/ui/input"
@@ -36,8 +37,8 @@ type Props = ComponentProps<typeof Sidebar> & {
   onSelectNote: (name: string) => void
   onChooseDirectory: () => void
   onRefresh: () => void
-  activeView: "chat" | "notes" | "calendar"
-  onNavigate: (view: "chat" | "notes" | "calendar") => void
+  activeView: "chat" | "notes" | "calendar" | "shortcuts"
+  onNavigate: (view: "chat" | "notes" | "calendar" | "shortcuts") => void
 }
 
 // 메모의 문서 상태는 App/useNote에서 관리한다. 사이드바는 같은 파일 작업을 호출한다.
@@ -80,6 +81,16 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>워크스페이스</SidebarGroupLabel>
           <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={activeView === "shortcuts"}
+                tooltip="바로가기"
+                onClick={() => onNavigate("shortcuts")}
+              >
+                <LayoutGridIcon />
+                <span>바로가기</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 isActive={activeView === "chat"}
@@ -218,7 +229,9 @@ export function AppSidebar({
             ? (library?.directory ?? "로컬 Markdown 메모")
             : activeView === "chat"
               ? "대화는 이 기기에 저장됩니다."
-              : "일정은 이 기기에 저장됩니다."}
+              : activeView === "shortcuts"
+                ? "프로그램 · 폴더 · 웹사이트"
+                : "일정은 이 기기에 저장됩니다."}
         </p>
       </SidebarFooter>
     </Sidebar>

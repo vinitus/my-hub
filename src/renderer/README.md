@@ -1,5 +1,8 @@
 # Renderer 작업 안내
 
+`src/features/shortcuts`는 프로그램·폴더·웹사이트 바로가기를 관리한다.
+대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.
+
 앱 첫 화면은 `src/features/chat`의 채팅이다. 대화 입력과 로컬 기록만 제공하며,
 AI/메모/캘린더 실행 연결 지점은 [채팅 구조 안내](src/features/chat/README.md)를 참고한다.
 

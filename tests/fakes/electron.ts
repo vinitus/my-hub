@@ -3,6 +3,19 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 
 export const app = {
+  iconPaths: [] as string[],
+  iconEmpty: false,
+  iconError: false,
+  iconResults: new Map<string, "empty" | "error">(),
+  getFileIcon: async (path: string) => {
+    app.iconPaths.push(path)
+    if (app.iconError || app.iconResults.get(path) === "error")
+      throw new Error("아이콘 읽기 실패")
+    return {
+      isEmpty: () => app.iconEmpty || app.iconResults.get(path) === "empty",
+      toDataURL: () => "data:image/png;base64,dGVzdA==",
+    }
+  },
   paths: {
     documents: join(tmpdir(), "my-hub-test-documents"),
     userData: join(tmpdir(), "my-hub-test-user-data"),
@@ -18,6 +31,7 @@ export const ipcMain = Object.assign(new EventEmitter(), {
   removeHandler: (channel: string) => handlers.delete(channel),
 })
 export const dialog = {
+  openProperties: [] as string[],
   openDefaultPath: undefined as string | undefined,
   saveDefaultPath: "",
   openResult: { canceled: true, filePaths: [] as string[] },
@@ -25,9 +39,10 @@ export const dialog = {
   response: 2,
   showOpenDialog: async (
     _window: unknown,
-    options: { defaultPath?: string }
+    options: { defaultPath?: string; properties?: string[] }
   ) => {
     dialog.openDefaultPath = options.defaultPath
+    dialog.openProperties = options.properties ?? []
     return dialog.openResult
   },
   showSaveDialog: async (
@@ -38,6 +53,30 @@ export const dialog = {
     return dialog.saveResult
   },
   showMessageBox: async () => ({ response: dialog.response }),
+}
+// 실제 프로그램/브라우저를 실행하지 않고 요청과 OS 오류 처리만 검증한다.
+export const shell = {
+  shortcutDetails: new Map<
+    string,
+    { target: string; icon?: string; iconIndex?: number }
+  >(),
+  readShortcutLink: (path: string) => {
+    const details = shell.shortcutDetails.get(path)
+    if (!details) throw new Error("바로가기를 읽을 수 없습니다.")
+    return details
+  },
+  openedPaths: [] as string[],
+  openedUrls: [] as string[],
+  pathError: "",
+  externalError: null as Error | null,
+  openPath: async (path: string) => {
+    shell.openedPaths.push(path)
+    return shell.pathError
+  },
+  openExternal: async (url: string) => {
+    shell.openedUrls.push(url)
+    if (shell.externalError) throw shell.externalError
+  },
 }
 export class BrowserWindow extends EventEmitter {
   closed = false

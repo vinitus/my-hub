@@ -1,7 +1,8 @@
-import { contextBridge, ipcRenderer } from "electron"
+import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { electronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
 import type { CalendarAPI } from "../shared/calendar"
+import type { ShortcutsAPI } from "../shared/shortcuts"
 
 const notes: NotesAPI = {
   library: () => ipcRenderer.invoke("notes:library"),
@@ -24,7 +25,28 @@ const calendar: CalendarAPI = {
   save: (request) => ipcRenderer.invoke("calendar:save", request),
   remove: (request) => ipcRenderer.invoke("calendar:remove", request),
 }
-const api = { notes, calendar }
+const shortcuts: ShortcutsAPI & {
+  inspectFileDrop: (file: File) => ReturnType<ShortcutsAPI["inspectDrop"]>
+} = {
+  icon: (request) => ipcRenderer.invoke("shortcuts:icon", request),
+  inspectDrop: (request) =>
+    ipcRenderer.invoke("shortcuts:inspect-drop", request),
+  inspectFileDrop: async (file) => {
+    // File 객체는 IPC로 보낼 수 없으므로 preload에서 실제 파일 경로를 얻는다.
+    const target = webUtils.getPathForFile(file)
+    if (!target) throw new Error("실제 파일이나 폴더를 끌어 놓아 주세요.")
+    return ipcRenderer.invoke("shortcuts:inspect-drop", {
+      kind: "path",
+      target,
+    })
+  },
+  load: () => ipcRenderer.invoke("shortcuts:load"),
+  choose: (kind) => ipcRenderer.invoke("shortcuts:choose", kind),
+  save: (request) => ipcRenderer.invoke("shortcuts:save", request),
+  remove: (request) => ipcRenderer.invoke("shortcuts:remove", request),
+  launch: (request) => ipcRenderer.invoke("shortcuts:launch", request),
+}
+const api = { notes, calendar, shortcuts }
 
 if (process.contextIsolated) {
   try {

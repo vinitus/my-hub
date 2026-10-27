@@ -12,6 +12,7 @@ node_modules
 dist
 dist-ssr
 out
+storybook-static
 # Local Windows shortcut samples used for manual verification.
 /*.lnk
 .eslintcache

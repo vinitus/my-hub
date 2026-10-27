@@ -5,3 +5,6 @@ allowBuilds:
   electron-winstaller: false
   esbuild: true
   msw: false
+
+minimumReleaseAgeExclude:
+  - mdast-util-to-markdown@2.2.1

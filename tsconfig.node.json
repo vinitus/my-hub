@@ -1,5 +1,11 @@
 {
-  "include": ["vite.config.ts", "src/main/**/*", "src/preload/**/*"],
+  "include": [
+    "vite.config.ts",
+    ".storybook/main.ts",
+    ".storybook/vite.config.ts",
+    "src/main/**/*",
+    "src/preload/**/*"
+  ],
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "es2023",

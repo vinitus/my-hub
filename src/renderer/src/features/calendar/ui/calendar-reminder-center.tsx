@@ -1,21 +1,27 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/shared/ui/button"
 import type { CalendarReminder } from "../../../../../shared/calendar"
 
 export function CalendarReminderCenter() {
-  const [items, setItems] = useState<CalendarReminder[]>([])
+  const [items, setItems] = useState<
+    (CalendarReminder & { notificationId: number })[]
+  >([])
+  const nextNotificationId = useRef(0)
   const api = window.api?.calendar
   useEffect(() => {
     if (!api?.onReminder) return
     return api.onReminder((reminder) => {
-      setItems((current) => [...current.slice(-3), reminder])
+      setItems((current) => [
+        ...current.slice(-3),
+        { ...reminder, notificationId: nextNotificationId.current++ },
+      ])
     })
   }, [api])
   return (
     <div className="pointer-events-none fixed right-4 bottom-4 z-[60] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
-      {items.map((item, index) => (
+      {items.map((item) => (
         <div
-          key={`${item.id}-${index}`}
+          key={item.notificationId}
           role="status"
           className="pointer-events-auto rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg"
         >
@@ -31,7 +37,10 @@ export function CalendarReminderCenter() {
               variant="ghost"
               onClick={() =>
                 setItems((current) =>
-                  current.filter((_, currentIndex) => currentIndex !== index)
+                  current.filter(
+                    (currentItem) =>
+                      currentItem.notificationId !== item.notificationId
+                  )
                 )
               }
             >

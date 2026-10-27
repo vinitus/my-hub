@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import type { CalendarEvent } from "../../../../../shared/calendar"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -31,7 +31,11 @@ export function EventSheet({
   onClose,
   serverError,
 }: Props) {
-  const [draft, setDraft] = useState(() => eventDraft(event))
+  const nextLinkId = useRef(event.referenceUrls.length)
+  const [draft, setDraft] = useState(() => ({
+    ...eventDraft(event),
+    referenceUrls: event.referenceUrls.map((value, id) => ({ id, value })),
+  }))
   const [error, setError] = useState("")
   const [confirmDelete, setConfirmDelete] = useState(false)
   return (
@@ -56,7 +60,15 @@ export function EventSheet({
             try {
               if (
                 await onSave(
-                  eventFromDraft(draft, existing ? event : undefined)
+                  eventFromDraft(
+                    {
+                      ...draft,
+                      referenceUrls: draft.referenceUrls.map(
+                        (link) => link.value
+                      ),
+                    },
+                    existing ? event : undefined
+                  )
                 )
               )
                 onClose()
@@ -189,13 +201,21 @@ export function EventSheet({
                   type="text"
                   maxLength={2048}
                   placeholder="URL 또는 로컬 파일 경로"
-                  value={draft.referenceUrls[0] ?? ""}
+                  value={draft.referenceUrls[0]?.value ?? ""}
                   onChange={(e) => {
                     const rest = draft.referenceUrls.slice(1)
                     setDraft({
                       ...draft,
                       referenceUrls: e.target.value
-                        ? [e.target.value, ...rest]
+                        ? [
+                            {
+                              id:
+                                draft.referenceUrls[0]?.id ??
+                                nextLinkId.current++,
+                              value: e.target.value,
+                            },
+                            ...rest,
+                          ]
                         : rest,
                     })
                   }}
@@ -209,7 +229,15 @@ export function EventSheet({
                     if (path)
                       setDraft({
                         ...draft,
-                        referenceUrls: [path, ...draft.referenceUrls.slice(1)],
+                        referenceUrls: [
+                          {
+                            id:
+                              draft.referenceUrls[0]?.id ??
+                              nextLinkId.current++,
+                            value: path,
+                          },
+                          ...draft.referenceUrls.slice(1),
+                        ],
                       })
                   }}
                 >
@@ -230,22 +258,21 @@ export function EventSheet({
                 </label>
               </div>
               {draft.referenceUrls.slice(1).map((url, index) => (
-                <div
-                  key={`${index}-${url}`}
-                  className="flex items-center gap-2"
-                >
+                <div key={url.id} className="flex items-center gap-2">
                   <Input
                     type="text"
                     maxLength={2048}
                     aria-label={`참고 링크 ${index + 2}`}
                     placeholder="URL 또는 로컬 파일 경로"
-                    value={url}
+                    value={url.value}
                     onChange={(e) =>
                       setDraft({
                         ...draft,
                         referenceUrls: draft.referenceUrls.map(
                           (item, itemIndex) =>
-                            itemIndex === index + 1 ? e.target.value : item
+                            itemIndex === index + 1
+                              ? { ...item, value: e.target.value }
+                              : item
                         ),
                       })
                     }
@@ -261,7 +288,9 @@ export function EventSheet({
                           ...draft,
                           referenceUrls: draft.referenceUrls.map(
                             (item, itemIndex) =>
-                              itemIndex === index + 1 ? path : item
+                              itemIndex === index + 1
+                                ? { ...item, value: path }
+                                : item
                           ),
                         })
                     }}
@@ -294,7 +323,10 @@ export function EventSheet({
                   onClick={() =>
                     setDraft({
                       ...draft,
-                      referenceUrls: [...draft.referenceUrls, ""],
+                      referenceUrls: [
+                        ...draft.referenceUrls,
+                        { id: nextLinkId.current++, value: "" },
+                      ],
                     })
                   }
                 >

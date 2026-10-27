@@ -6,7 +6,11 @@ import { useRender } from "@base-ui/react/use-render"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { useIsMobile } from "@/shared/lib/use-mobile"
-import { SidebarContext, useSidebar, type SidebarContextProps } from "@/shared/lib/use-sidebar"
+import {
+  SidebarContext,
+  useSidebar,
+  type SidebarContextProps,
+} from "@/shared/lib/use-sidebar"
 import { cn } from "@/shared/lib/utils"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -19,11 +23,7 @@ import {
   SheetTitle,
 } from "@/shared/ui/sheet"
 import { Skeleton } from "@/shared/ui/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/shared/ui/tooltip"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -81,8 +81,10 @@ function SidebarProvider({
       if (
         event.defaultPrevented ||
         (event.target instanceof HTMLElement &&
-          (event.target.isContentEditable || event.target.closest("input, textarea, select")))
-      ) return
+          (event.target.isContentEditable ||
+            event.target.closest("input, textarea, select")))
+      )
+        return
       if (
         event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
         (event.metaKey || event.ctrlKey)
@@ -591,10 +593,7 @@ function SidebarMenuSkeleton({
 }: React.ComponentProps<"div"> & {
   showIcon?: boolean
 }) {
-  // Random width between 50 to 90%.
-  const [width] = React.useState(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`
-  })
+  const width = "70%"
 
   return (
     <div

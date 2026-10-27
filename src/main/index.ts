@@ -1,3 +1,4 @@
+import { registerTodos } from "./todos"
 import { app, shell, BrowserWindow, ipcMain } from "electron"
 import { join } from "node:path"
 import { electronApp, optimizer, is } from "@electron-toolkit/utils"
@@ -28,6 +29,7 @@ function createWindow(): void {
     },
   })
 
+  registerTodos(mainWindow)
   registerNotes(mainWindow)
   registerCalendar(mainWindow)
   registerShortcuts(mainWindow)

@@ -1,3 +1,4 @@
+import type { TodosAPI } from "../shared/todos"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { electronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
@@ -85,7 +86,12 @@ const codex: CodexAPI = {
     }
   },
 }
-const api = { notes, calendar, shortcuts, weather, codex }
+const todos: TodosAPI = {
+  load: () => ipcRenderer.invoke("todos:load"),
+  save: (request) => ipcRenderer.invoke("todos:save", request),
+  remove: (request) => ipcRenderer.invoke("todos:remove", request),
+}
+const api = { notes, calendar, shortcuts, weather, codex, todos }
 
 if (process.contextIsolated) {
   try {

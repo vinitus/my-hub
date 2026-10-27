@@ -14,6 +14,7 @@ import type { CodexConnection } from "../../../shared/codex"
 import { NAVIGATION_ITEMS, type AppView } from "@/app/config/navigation"
 import { useNavigationShortcuts } from "@/app/model/use-navigation-shortcuts"
 
+const TodoWorkspace = lazy(() => import("@/pages/todos"))
 const CalendarWorkspace = lazy(
   () => import("@/pages/calendar")
 )
@@ -91,12 +92,14 @@ export function App() {
     window.addEventListener("keydown", openSettings, true)
     return () => window.removeEventListener("keydown", openSettings, true)
   }, [])
+  const [todosVisited, setTodosVisited] = useState(false)
   const [calendarVisited, setCalendarVisited] = useState(false)
   const [shortcutsVisited, setShortcutsVisited] = useState(false)
   const memo = useNote(
     view === "notes" && !commandOpen && !settingsOpen && !codexPromptOpen
   )
   const navigate = (next: AppView) => {
+    if (next === "todos") setTodosVisited(true)
     if (next === "calendar") setCalendarVisited(true)
     if (next === "shortcuts") setShortcutsVisited(true)
     setView(next)
@@ -169,6 +172,23 @@ export function App() {
               }
             >
               <ShortcutWorkspace active={view === "shortcuts"} />
+            </Suspense>
+          </div>
+        )}
+        {todosVisited && (
+          <div
+            className={
+              view === "todos" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+            }
+          >
+            <Suspense
+              fallback={
+                <p role="status" className="p-6 text-sm text-muted-foreground">
+                  할일을 불러오는 중…
+                </p>
+              }
+            >
+              <TodoWorkspace />
             </Suspense>
           </div>
         )}

@@ -1,3 +1,4 @@
+import type { TodosAPI } from "../shared/todos"
 import type { ElectronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
 import type { CalendarAPI } from "../shared/calendar"
@@ -9,6 +10,7 @@ declare global {
   interface Window {
     electron: ElectronAPI
     api: {
+      todos: TodosAPI
       notes: NotesAPI
       calendar: CalendarAPI
       weather: WeatherAPI

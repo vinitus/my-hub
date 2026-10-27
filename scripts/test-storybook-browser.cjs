@@ -219,6 +219,71 @@ app.whenReady().then(async () => {
           true,
           `${story.id}: label is not connected to a control`
         )
+        if (story.importPath.endsWith("todo-workspace.stories.tsx")) {
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.documentElement.scrollWidth <= innerWidth`
+            ),
+            true,
+            `${story.id}: TODO overflows viewport`
+          )
+          if (theme === "light" && story.name === "Empty") {
+            await win.webContents.executeJavaScript(`(() => {
+              const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+              for (const [selector, value] of [['input[type=text]', 'UI TODO'], ['input[type=date]', '2026-11-02']]) {
+                const input = document.querySelector(selector);
+                set.call(input, value);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            })()`)
+            await delay(50)
+            await win.webContents.executeJavaScript(
+              `document.querySelector('button[type=submit]').click()`
+            )
+            await delay(50)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelectorAll('#storybook-root li').length`
+              ),
+              1
+            )
+            await win.webContents.executeJavaScript(
+              `document.querySelector('#storybook-root li input[type=checkbox]').click()`
+            )
+            await delay(50)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('#storybook-root li input').checked`
+              ),
+              true
+            )
+            await win.webContents.executeJavaScript(
+              `document.querySelector('#storybook-root li button[aria-label$="수정"]').click()`
+            )
+            await delay(50)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('input[type=text]').value`
+              ),
+              "UI TODO"
+            )
+            await win.webContents.executeJavaScript(
+              `document.querySelector('button[type=submit]').click()`
+            )
+            await delay(50)
+            await win.webContents.executeJavaScript(
+              `document.querySelector('#storybook-root li button[aria-label$="삭제"]').click()`
+            )
+            await delay(50)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelectorAll('#storybook-root li').length`
+              ),
+              0
+            )
+            console.log("PASS TODO create, complete, edit and delete")
+          }
+        }
         if (
           theme === "light" &&
           story.importPath.endsWith("settings-sheet.stories.tsx") &&

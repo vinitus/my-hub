@@ -4,6 +4,7 @@ import type { NotesAPI } from "../shared/notes"
 import type { CalendarAPI } from "../shared/calendar"
 import type { ShortcutsAPI } from "../shared/shortcuts"
 import type { WeatherAPI } from "../shared/weather"
+import type { CodexAPI } from "../shared/codex"
 
 const notes: NotesAPI = {
   library: () => ipcRenderer.invoke("notes:library"),
@@ -55,7 +56,25 @@ const weather: WeatherAPI = {
   current: (location, force = false) =>
     ipcRenderer.invoke("weather:current", { location, force }),
 }
-const api = { notes, calendar, shortcuts, weather }
+const codex: CodexAPI = {
+  check: () => ipcRenderer.invoke("codex:check"),
+  connect: () => ipcRenderer.invoke("codex:connect"),
+  cancel: () => ipcRenderer.invoke("codex:cancel"),
+  preferences: () => ipcRenderer.invoke("codex:preferences"),
+  savePreferences: (preferences) =>
+    ipcRenderer.invoke("codex:save-preferences", preferences),
+  onChange: (callback) => {
+    const listener = (
+      _event: Electron.IpcRendererEvent,
+      state: Parameters<typeof callback>[0]
+    ) => callback(state)
+    ipcRenderer.on("codex:changed", listener)
+    return () => {
+      ipcRenderer.removeListener("codex:changed", listener)
+    }
+  },
+}
+const api = { notes, calendar, shortcuts, weather, codex }
 
 if (process.contextIsolated) {
   try {

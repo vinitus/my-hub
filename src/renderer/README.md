@@ -13,6 +13,9 @@ Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
 `Ctrl+O`로도 열 수 있다. `App.tsx`에서 처리하며 다른 모달이 열려 있으면 중첩해서 열지 않는다.
 라이트/다크/시스템 테마는 기존 `ThemeProvider`, 메모 폴더 변경은 `App.tsx`의 `useNote`를 사용한다.
 설정이 열린 동안에는 메모 파일 단축키를 비활성화하며 자동 저장은 계속 동작한다.
+설정의 **AI 연결 → Codex**는 로컬 Codex 설치/계정 확인과 브라우저 로그인을 제공한다.
+구조와 인증 범위는 [Codex 연결 안내](src/features/settings/README.md)를 참고한다.
+현재는 계정 연결과 모델·생각 수준 설정까지 제공한다. Ctrl+K의 일정/메모 실행은 `quick-command/command-runner.ts`의 안내 상태를 유지한다.
 
 `src/features/shortcuts`는 프로그램·폴더·웹사이트 바로가기를 관리한다.
 대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.

@@ -1,5 +1,6 @@
 import { FolderCogIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { CodexConnectionPanel } from "./codex-connection"
 import { useTheme } from "@/components/theme-provider"
 import {
   Sheet,
@@ -40,7 +41,7 @@ export function SettingsSheet({
         <SheetHeader>
           <SheetTitle>설정</SheetTitle>
           <SheetDescription>
-            앱 테마와 메모 저장 폴더를 설정합니다.
+            앱 테마, 메모 저장 폴더와 AI 연결을 설정합니다.
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-6">
@@ -100,6 +101,7 @@ export function SettingsSheet({
               </p>
             )}
           </section>
+          <CodexConnectionPanel active={open} />
         </div>
       </SheetContent>
     </Sheet>

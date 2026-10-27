@@ -5,6 +5,7 @@ import { registerNotes } from "./notes"
 import { registerCalendar } from "./calendar"
 import { registerShortcuts } from "./shortcuts"
 import { registerWeather } from "./weather"
+import { registerCodex } from "./codex"
 
 // The development launcher emits this module as ESM at out/main/index.js.
 const mainDirectory = import.meta.dirname
@@ -31,6 +32,7 @@ function createWindow(): void {
   registerCalendar(mainWindow)
   registerShortcuts(mainWindow)
   registerWeather(mainWindow)
+  registerCodex(mainWindow)
 
   mainWindow.on("ready-to-show", () => {
     mainWindow.show()

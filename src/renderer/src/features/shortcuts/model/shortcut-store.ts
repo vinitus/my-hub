@@ -54,6 +54,7 @@ export class ShortcutStore {
         this.api.load,
         this.api.save,
         this.api.remove,
+        this.api.reorder,
         this.api.choose,
         this.api.launch,
       ].some((fn) => typeof fn !== "function")
@@ -108,6 +109,32 @@ export class ShortcutStore {
       (api) => api.remove({ id, expectedRevision }),
       "바로가기를 삭제했습니다."
     )
+  reorder = async (ids: string[], expectedRevision: string) => {
+    const previous = this.state.snapshot
+    if (this.state.busy || this.state.loading || !previous) return false
+    const byId = new Map(previous.items.map((item) => [item.id, item]))
+    const canReorder =
+      ids.length === previous.items.length &&
+      new Set(ids).size === ids.length &&
+      ids.every((id) => byId.has(id))
+    if (!canReorder)
+      return this.action(
+        (api) => api.reorder({ ids, expectedRevision }),
+        "???? ??? ??????."
+      )
+    if (ids.every((id, index) => previous.items[index]?.id === id)) return true
+
+    // ??? ?? ??? ?? ????, IPC ??? ??? ???? ????.
+    const optimistic = { ...previous, items: ids.map((id) => byId.get(id)!) }
+    this.publish({ snapshot: optimistic })
+    const saved = await this.action(
+      (api) => api.reorder({ ids, expectedRevision }),
+      "???? ??? ??????."
+    )
+    if (!saved && this.state.snapshot === optimistic)
+      this.publish({ snapshot: previous })
+    return saved
+  }
   launch = async (item: Shortcut) => {
     const expectedRevision = this.state.snapshot?.revision ?? ""
     const launched = await this.action(

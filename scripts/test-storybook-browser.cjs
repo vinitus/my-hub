@@ -415,6 +415,38 @@ app.whenReady().then(async () => {
         if (
           theme === "light" &&
           story.importPath.endsWith("/shortcut-tile.stories.tsx") &&
+          story.name === "Reorderable"
+        ) {
+          const before = await win.webContents.executeJavaScript(
+            `document.querySelector('[data-testid="reorderable-shortcuts"]').dataset.order`
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('[aria-label$="순서 이동"]').focus()`
+          )
+          for (const [key, code] of [
+            [" ", "Space"],
+            ["ArrowDown", "ArrowDown"],
+            [" ", "Space"],
+          ]) {
+            await win.webContents.executeJavaScript(
+              `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: ${JSON.stringify(key)}, code: ${JSON.stringify(code)}, bubbles: true }))`
+            )
+            await delay(50)
+          }
+          await delay(100)
+          const after = await win.webContents.executeJavaScript(
+            `document.querySelector('[data-testid="reorderable-shortcuts"]').dataset.order`
+          )
+          assert.notEqual(
+            after,
+            before,
+            "keyboard drag must reorder the shortcuts"
+          )
+          console.log("PASS keyboard shortcut reorder")
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/shortcut-tile.stories.tsx") &&
           story.name === "Website"
         ) {
           await win.webContents.executeJavaScript(`(() => {

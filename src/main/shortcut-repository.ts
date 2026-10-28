@@ -13,6 +13,7 @@ import {
   ShortcutSchema,
   ShortcutSaveSchema,
   ShortcutIdSchema,
+  ShortcutReorderSchema,
   type ShortcutsAPI,
   type ShortcutSnapshot,
 } from "../shared/shortcuts"
@@ -110,6 +111,19 @@ export class ShortcutRepository {
     return this.mutate(parsed.data.expectedRevision, async (items) =>
       items.filter((item) => item.id !== parsed.data.id)
     )
+  }
+  reorder: ShortcutsAPI["reorder"] = async (request) => {
+    const parsed = ShortcutReorderSchema.safeParse(request)
+    if (!parsed.success) throw new Error("Invalid shortcut order.")
+    return this.mutate(parsed.data.expectedRevision, async (items) => {
+      const byId = new Map(items.map((item) => [item.id, item]))
+      if (
+        parsed.data.ids.length !== items.length ||
+        parsed.data.ids.some((id) => !byId.has(id))
+      )
+        throw new Error("Shortcut order does not match the saved list.")
+      return parsed.data.ids.map((id) => byId.get(id)!)
+    })
   }
 
   // 실행 시 renderer가 임의의 경로나 URL을 전달하지 못하게 등록된 ID만 받는다.

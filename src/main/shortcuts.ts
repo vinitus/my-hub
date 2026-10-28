@@ -32,6 +32,9 @@ export function registerShortcuts(window: BrowserWindow) {
   handle("shortcuts:remove", (request) =>
     repository.remove(request as Parameters<typeof repository.remove>[0])
   )
+  handle("shortcuts:reorder", (request) =>
+    repository.reorder(request as Parameters<typeof repository.reorder>[0])
+  )
   handle("shortcuts:choose", async (request) => {
     const kind = ShortcutKindSchema.parse(request)
     if (kind === "website") throw new Error("웹사이트는 주소를 입력해 주세요.")

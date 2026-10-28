@@ -2,9 +2,12 @@ import type { ReactNode } from "react"
 import {
   ArrowUpRightIcon,
   ExternalLinkIcon,
+  GripVerticalIcon,
   PencilIcon,
   Trash2Icon,
 } from "lucide-react"
+import { useSortable } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 import { Button } from "@/shared/ui/button"
 import {
   ContextMenu,
@@ -14,6 +17,16 @@ import {
   ContextMenuTrigger,
 } from "@/shared/ui/context-menu"
 import { SHORTCUT_LABELS, type Shortcut } from "../../../../../shared/shortcuts"
+type ShortcutTileProps = {
+  item: Shortcut
+  disabled: boolean
+  icon: ReactNode
+  onLaunch: () => void
+  onEdit: () => void
+  onDelete: () => void
+  dragHandle?: ReactNode
+}
+
 export function ShortcutTile({
   item,
   disabled,
@@ -21,14 +34,8 @@ export function ShortcutTile({
   onLaunch,
   onEdit,
   onDelete,
-}: {
-  item: Shortcut
-  disabled: boolean
-  icon: ReactNode
-  onLaunch: () => void
-  onEdit: () => void
-  onDelete: () => void
-}) {
+  dragHandle,
+}: ShortcutTileProps) {
   return (
     <ContextMenu>
       <ContextMenuTrigger className="group relative block rounded-xl border bg-card transition-colors hover:border-foreground/25">
@@ -56,6 +63,7 @@ export function ShortcutTile({
               </span>
             </span>
           </button>
+          {dragHandle}
           <Button
             variant="ghost"
             size="icon-xs"
@@ -89,5 +97,57 @@ export function ShortcutTile({
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
+  )
+}
+
+export function SortableShortcutTile({
+  sortable = true,
+  ...props
+}: ShortcutTileProps & { sortable?: boolean }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+    isSorting,
+  } = useSortable({ id: props.item.id, disabled: !sortable || props.disabled })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className="relative"
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition: isSorting ? transition : undefined,
+        zIndex: isDragging ? 1 : undefined,
+      }}
+    >
+      <ShortcutTile
+        {...props}
+        dragHandle={
+          <Button
+            ref={setActivatorNodeRef}
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="absolute top-3 right-11 cursor-grab touch-none active:cursor-grabbing"
+            aria-label={`${props.item.name} 순서 이동`}
+            title={
+              sortable
+                ? "드래그해서 순서 이동"
+                : "전체 목록에서 순서를 이동할 수 있습니다"
+            }
+            disabled={!sortable || props.disabled}
+            {...attributes}
+            {...listeners}
+          >
+            <GripVerticalIcon />
+          </Button>
+        }
+      />
+    </div>
   )
 }

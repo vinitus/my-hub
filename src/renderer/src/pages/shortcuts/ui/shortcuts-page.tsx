@@ -12,6 +12,21 @@ import {
   LayoutGridIcon,
   UploadIcon,
 } from "lucide-react"
+import {
+  closestCenter,
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  rectSortingStrategy,
+  sortableKeyboardCoordinates,
+  SortableContext,
+} from "@dnd-kit/sortable"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import {
@@ -25,7 +40,7 @@ import {
   ShortcutSheet,
   readShortcutDrop,
   ShortcutIcon,
-  ShortcutTile,
+  SortableShortcutTile,
 } from "@/features/shortcuts"
 
 type Editor = {
@@ -53,6 +68,10 @@ export default function ShortcutWorkspace({
   const [dropBusy, setDropBusy] = useState(false)
   const [dropError, setDropError] = useState("")
   const dragDepth = useRef(0)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
   const disabled = state.loading || state.busy || dropBusy || !state.snapshot
   const items = state.snapshot?.items ?? []
   const filtered = items.filter(
@@ -90,6 +109,25 @@ export default function ShortcutWorkspace({
       revision: state.snapshot.revision,
       confirmDelete: true,
     })
+  }
+  function reorder(event: DragEndEvent) {
+    if (
+      !event.over ||
+      event.active.id === event.over.id ||
+      !state.snapshot ||
+      disabled ||
+      query.trim() ||
+      kind !== "all"
+    )
+      return
+    const oldIndex = items.findIndex((item) => item.id === event.active.id)
+    const newIndex = items.findIndex((item) => item.id === event.over!.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const next = arrayMove(items, oldIndex, newIndex)
+    void store.reorder(
+      next.map((item) => item.id),
+      state.snapshot.revision
+    )
   }
   async function drop(event: DragEvent<HTMLElement>) {
     // File과 URL은 await 전에 읽고, 기본 파일 열기/브라우저 이동을 막는다.
@@ -249,26 +287,36 @@ export default function ShortcutWorkspace({
               바로가기를 불러오는 중…
             </p>
           ) : filtered.length ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {filtered.map((item) => {
-                return (
-                  <ShortcutTile
-                    key={item.id}
-                    item={item}
-                    disabled={disabled}
-                    icon={
-                      <ShortcutIcon
-                        item={item}
-                        revision={state.snapshot!.revision}
-                      />
-                    }
-                    onLaunch={() => void store.launch(item)}
-                    onEdit={() => edit(item)}
-                    onDelete={() => confirmDelete(item)}
-                  />
-                )
-              })}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={reorder}
+            >
+              <SortableContext
+                items={filtered.map((item) => item.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {filtered.map((item) => (
+                    <SortableShortcutTile
+                      key={item.id}
+                      item={item}
+                      disabled={disabled}
+                      sortable={!query.trim() && kind === "all"}
+                      icon={
+                        <ShortcutIcon
+                          item={item}
+                          revision={state.snapshot!.revision}
+                        />
+                      }
+                      onLaunch={() => void store.launch(item)}
+                      onEdit={() => edit(item)}
+                      onDelete={() => confirmDelete(item)}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           ) : (
             <div className="flex flex-col items-center py-20 text-center">
               <span className="mb-5 flex size-14 items-center justify-center rounded-2xl border bg-muted/30">

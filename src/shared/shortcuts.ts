@@ -74,6 +74,15 @@ export const ShortcutSaveSchema = z
 export const ShortcutIdSchema = z
   .object({ id: z.uuid(), expectedRevision: z.string().max(100) })
   .strict()
+export const ShortcutReorderSchema = z
+  .object({
+    ids: z.array(z.uuid()).max(500),
+    expectedRevision: z.string().max(100),
+  })
+  .strict()
+  .refine((request) => new Set(request.ids).size === request.ids.length, {
+    message: "諛붾줈媛湲곕뒗 以묐났?섏? ?딉땲??",
+  })
 export type ShortcutSelection = { name: string; target: string }
 export const ShortcutDropSchema = z
   .object({
@@ -93,6 +102,9 @@ export type ShortcutsAPI = {
   ) => Promise<ShortcutSnapshot>
   remove: (
     request: z.infer<typeof ShortcutIdSchema>
+  ) => Promise<ShortcutSnapshot>
+  reorder: (
+    request: z.infer<typeof ShortcutReorderSchema>
   ) => Promise<ShortcutSnapshot>
   launch: (request: z.infer<typeof ShortcutIdSchema>) => Promise<void>
 }

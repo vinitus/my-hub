@@ -58,6 +58,7 @@ const shortcuts: ShortcutsAPI & {
   choose: (kind) => ipcRenderer.invoke("shortcuts:choose", kind),
   save: (request) => ipcRenderer.invoke("shortcuts:save", request),
   remove: (request) => ipcRenderer.invoke("shortcuts:remove", request),
+  reorder: (request) => ipcRenderer.invoke("shortcuts:reorder", request),
   launch: (request) => ipcRenderer.invoke("shortcuts:launch", request),
 }
 const weather: WeatherAPI = {

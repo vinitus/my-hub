@@ -149,7 +149,29 @@ test("바로가기 CRUD와 재실행 복원, 수정 후 순서 유지와 임시 
       snapshot.items.map((item) => item.id),
       [first.id, second.id]
     )
+    snapshot = await repository.reorder({
+      ids: [second.id, first.id],
+      expectedRevision: snapshot.revision,
+    })
+    assert.deepEqual(
+      snapshot.items.map((item) => item.id),
+      [second.id, first.id]
+    )
     assert.deepEqual(await new ShortcutRepository(dir).load(), snapshot)
+    await assert.rejects(
+      repository.reorder({
+        ids: [first.id],
+        expectedRevision: snapshot.revision,
+      }),
+      /order does not match/
+    )
+    await assert.rejects(
+      repository.reorder({
+        ids: [first.id, first.id],
+        expectedRevision: snapshot.revision,
+      }),
+      /Invalid shortcut order/
+    )
     snapshot = await repository.remove({
       id: first.id,
       expectedRevision: snapshot.revision,
@@ -271,6 +293,7 @@ test("IPC는 발신자를 확인하고 등록된 항목만 OS에 전달하며 �
       "load",
       "save",
       "remove",
+      "reorder",
       "choose",
       "launch",
       "inspect-drop",
@@ -288,7 +311,14 @@ test("IPC는 발신자를 확인하고 등록된 항목만 OS에 전달하며 �
       shortcut: item,
       expectedRevision: "missing",
     })) as Awaited<ReturnType<ShortcutsAPI["load"]>>
-    await call("launch", { id: item.id, expectedRevision: snapshot.revision })
+    const reordered = (await call("reorder", {
+      ids: [item.id],
+      expectedRevision: snapshot.revision,
+    })) as typeof snapshot
+    await call("launch", {
+      id: item.id,
+      expectedRevision: reordered.revision,
+    })
     assert.deepEqual(shell.openedUrls, [item.target])
     await assert.rejects(
       call("launch", {
@@ -365,6 +395,55 @@ test("파일·폴더 선택과 취소는 저장·실행 없이 결과만 반환�
 })
 
 test("화면 저장·실행 실패 시 목록을 유지하고 중복 실행을 차단한다", async () => {
+  test("shortcut order updates immediately and rolls back when persistence fails", async () => {
+    const first = website()
+    const second = website()
+    const snapshot = {
+      items: [first, second],
+      revision: "r1",
+      path: "shortcuts.json",
+    }
+    let call = 0
+    let resolveSave!: (saved: typeof snapshot) => void
+    const store = new ShortcutStore({
+      icon: async () => null,
+      inspectDrop: async () => first,
+      load: async () => snapshot,
+      choose: async () => null,
+      save: async () => snapshot,
+      remove: async () => snapshot,
+      reorder: async () => {
+        if (call++ > 0) throw new Error("persist failed")
+        return new Promise((resolve) => {
+          resolveSave = (saved) => resolve(saved)
+        })
+      },
+      launch: async () => {},
+    })
+    await store.initialize()
+    const reverse = [second.id, first.id]
+    const pending = store.reorder(reverse, snapshot.revision)
+    assert.deepEqual(
+      store.getSnapshot().snapshot?.items.map((item) => item.id),
+      reverse,
+      "the displayed order must update before the IPC save completes"
+    )
+    resolveSave({ ...snapshot, revision: "r2", items: [second, first] })
+    assert.equal(await pending, true)
+
+    const restoring = store.reorder([first.id, second.id], "r2")
+    assert.deepEqual(
+      store.getSnapshot().snapshot?.items.map((item) => item.id),
+      [first.id, second.id]
+    )
+    assert.equal(await restoring, false)
+    assert.deepEqual(
+      store.getSnapshot().snapshot?.items.map((item) => item.id),
+      reverse,
+      "a failed save must restore the last persisted order"
+    )
+  })
+
   const item = website()
   const snapshot = { items: [item], revision: "r1", path: "shortcuts.json" }
   let release!: () => void
@@ -379,6 +458,9 @@ test("화면 저장·실행 실패 시 목록을 유지하고 중복 실행을 �
     },
     remove: async () => {
       throw new Error("삭제 실패")
+    },
+    reorder: async () => {
+      throw new Error("reorder failed")
     },
     launch: async () => {
       count++
@@ -412,9 +494,19 @@ test("최근 바로가기는 성공한 실행만 중복 없이 최근 다섯 개
     choose: async () => null,
     save: async () => snapshot,
     remove: async () => snapshot,
+    reorder: async ({ ids }) => ({
+      ...snapshot,
+      items: ids.map((id) => items.find((item) => item.id === id)!),
+    }),
     launch: async () => {},
   })
   await store.initialize()
+  const reorderedIds = items.map((item) => item.id).reverse()
+  assert.equal(await store.reorder(reorderedIds, snapshot.revision), true)
+  assert.deepEqual(
+    store.getSnapshot().snapshot?.items.map((item) => item.id),
+    reorderedIds
+  )
   for (const item of items) assert.equal(await store.launch(item), true)
   assert.deepEqual(
     store.getSnapshot().recentIds,

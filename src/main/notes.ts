@@ -48,6 +48,19 @@ export function registerNotes(window: BrowserWindow) {
     checkSender(event)
     return library.snapshot()
   })
+  ipcMain.handle("notes:set-favorite", async (event, request: unknown) => {
+    checkSender(event)
+    if (
+      !request ||
+      typeof request !== "object" ||
+      !("path" in request) ||
+      typeof request.path !== "string" ||
+      !("favorite" in request) ||
+      typeof request.favorite !== "boolean"
+    )
+      throw new Error("즐겨찾기할 메모를 확인해 주세요.")
+    return library.setFavorite(request.path, request.favorite)
+  })
   ipcMain.handle("notes:choose-directory", async (event) => {
     checkSender(event)
     if (fileOperation) throw new Error("파일 작업이 진행 중입니다.")
@@ -225,6 +238,7 @@ export function registerNotes(window: BrowserWindow) {
     for (const channel of [
       "notes:open",
       "notes:library",
+      "notes:set-favorite",
       "notes:choose-directory",
       "notes:open-library",
       "notes:save",

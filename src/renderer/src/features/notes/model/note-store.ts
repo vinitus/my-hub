@@ -3,7 +3,10 @@ import type {
   NoteLibrarySnapshot,
   NotesAPI,
 } from "../../../../../shared/notes"
-import { DEFAULT_NOTE_NAME, normalizeNoteName } from "../../../../../shared/notes"
+import {
+  DEFAULT_NOTE_NAME,
+  normalizeNoteName,
+} from "../../../../../shared/notes"
 import { assertSupportedMarkdown } from "../lib/markdown"
 
 type Note = {
@@ -272,6 +275,18 @@ export class NoteStore {
     } catch (error) {
       if (version === this.refreshVersion)
         this.publish({ libraryError: message(error) })
+    }
+  }
+
+  setFavorite = async (path: string, favorite: boolean) => {
+    if (!this.api) return false
+    try {
+      const library = await this.api.setFavorite({ path, favorite })
+      this.publish({ library, libraryError: "" })
+      return true
+    } catch (error) {
+      this.publish({ libraryError: message(error) })
+      return false
     }
   }
 

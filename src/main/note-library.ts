@@ -9,7 +9,7 @@ import {
   unlink,
   rename,
 } from "node:fs/promises"
-import { join, isAbsolute, basename, extname } from "node:path"
+import { join, isAbsolute, basename, dirname, extname } from "node:path"
 import { randomUUID } from "node:crypto"
 import {
   DEFAULT_NOTE_NAME,
@@ -22,9 +22,11 @@ export class NoteLibrary {
   private readonly paths: { documents: string; userData: string }
   private directoryPromise: Promise<string> | undefined
   private readonly settingsPath: string
+  private readonly favoritesPath: string
   constructor(paths: { documents: string; userData: string }) {
     this.paths = paths
     this.settingsPath = join(paths.userData, "notes-settings.json")
+    this.favoritesPath = join(paths.userData, "note-favorites.json")
   }
 
   directory() {
@@ -96,6 +98,7 @@ export class NoteLibrary {
 
   async snapshot(): Promise<NoteLibrarySnapshot> {
     const directory = await this.directory()
+    const favorites = await this.readFavorites()
     const entries = await readdir(directory, { withFileTypes: true })
     const notes = await Promise.all(
       entries
@@ -110,6 +113,7 @@ export class NoteLibrary {
               name: entry.name,
               path,
               modifiedAt: (await stat(path)).mtimeMs,
+              ...(favorites.has(path) ? { favorite: true } : {}),
             }
           } catch (error) {
             if ((error as NodeJS.ErrnoException).code === "ENOENT") return null
@@ -125,6 +129,55 @@ export class NoteLibrary {
           (a, b) => b.modifiedAt - a.modifiedAt || a.name.localeCompare(b.name)
         ),
     }
+  }
+
+  private async readFavorites() {
+    try {
+      const value: unknown = JSON.parse(
+        await readFile(this.favoritesPath, "utf8")
+      )
+      if (
+        !value ||
+        typeof value !== "object" ||
+        !("paths" in value) ||
+        !Array.isArray(value.paths) ||
+        !value.paths.every((path) => typeof path === "string")
+      )
+        throw new Error("메모 즐겨찾기 설정이 올바르지 않습니다.")
+      return new Set(value.paths)
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT")
+        return new Set<string>()
+      throw error
+    }
+  }
+
+  async setFavorite(path: string, favorite: boolean) {
+    const directory = await this.directory()
+    if (!isAbsolute(path) || dirname(path) !== directory)
+      throw new Error("현재 메모 폴더의 항목만 즐겨찾기할 수 있습니다.")
+    const entry = (await this.snapshot()).notes.find(
+      (note) => note.path === path
+    )
+    if (!entry) throw new Error("메모 목록에서 파일을 선택해 주세요.")
+    const paths = await this.readFavorites()
+    if (favorite) paths.add(path)
+    else paths.delete(path)
+    await mkdir(this.paths.userData, { recursive: true })
+    const temporary = join(
+      this.paths.userData,
+      `.note-favorites-${randomUUID()}.tmp`
+    )
+    try {
+      await writeFile(temporary, JSON.stringify({ paths: [...paths] }), {
+        encoding: "utf8",
+        flag: "wx",
+      })
+      await rename(temporary, this.favoritesPath)
+    } finally {
+      await unlink(temporary).catch(() => {})
+    }
+    return this.snapshot()
   }
 
   async open(name: string) {

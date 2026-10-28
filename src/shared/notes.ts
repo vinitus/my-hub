@@ -13,7 +13,12 @@ export type SaveNoteRequest = {
   name?: string
 }
 
-export type NoteSummary = { name: string; path: string; modifiedAt: number }
+export type NoteSummary = {
+  name: string
+  path: string
+  modifiedAt: number
+  favorite?: boolean
+}
 export type NoteLibrarySnapshot = { directory: string; notes: NoteSummary[] }
 
 export type NotesAPI = {
@@ -23,6 +28,10 @@ export type NotesAPI = {
   open: () => Promise<NoteFile | null>
   save: (request: SaveNoteRequest) => Promise<NoteFile | null>
   rename: (request: { id: string; name: string }) => Promise<NoteFile>
+  setFavorite: (request: {
+    path: string
+    favorite: boolean
+  }) => Promise<NoteLibrarySnapshot>
   confirmReplace: () => Promise<"save" | "discard" | "cancel">
   setDirty: (dirty: boolean) => void
   onSaveBeforeClose: (callback: () => void) => () => void

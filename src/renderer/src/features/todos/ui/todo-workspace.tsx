@@ -1,5 +1,5 @@
 ﻿import { useId, useState } from "react"
-import { PencilIcon, Trash2Icon } from "lucide-react"
+import { PencilIcon, StarIcon, Trash2Icon } from "lucide-react"
 import type { Todo } from "../../../../../shared/todos"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -41,6 +41,7 @@ function TodoForm({
           title: title.trim(),
           dueDate,
           completed,
+          favorite: item?.favorite ?? false,
         })
         if (saved) {
           setTitle("")
@@ -122,7 +123,11 @@ export function TodoWorkspace({
         filter === "all" ||
         (filter === "completed" ? item.completed : !item.completed)
     )
-    .toSorted((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .toSorted(
+      (a, b) =>
+        Number(!!b.favorite) - Number(!!a.favorite) ||
+        a.dueDate.localeCompare(b.dueDate)
+    )
   const filterId = useId()
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4 md:p-6">
@@ -201,6 +206,25 @@ export function TodoWorkspace({
                       · {item.completed ? "완료" : "미완료"}
                     </p>
                   </div>
+                  <Button
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={`${item.title} 즐겨찾기 ${item.favorite ? "해제" : "추가"}`}
+                    aria-pressed={item.favorite}
+                    disabled={busy}
+                    onClick={() =>
+                      void onSave(
+                        { ...item, favorite: !item.favorite },
+                        revision
+                      )
+                    }
+                  >
+                    <StarIcon
+                      className={
+                        item.favorite ? "fill-current text-amber-500" : ""
+                      }
+                    />
+                  </Button>
                   <Button
                     size="icon-sm"
                     variant="ghost"

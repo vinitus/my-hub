@@ -155,6 +155,9 @@ export function App() {
           navigate("notes")
           void memo.openNote(name)
         }}
+        onToggleNoteFavorite={(path, favorite) => {
+          void memo.setFavorite(path, favorite)
+        }}
         onOpenSettings={() => {
           setSettingsOpen(true)
         }}

@@ -70,6 +70,7 @@ export function useNote(shortcutsEnabled = true) {
     open: store.open,
     openNote: store.openNote,
     refresh: store.refresh,
+    setFavorite: store.setFavorite,
     chooseDirectory: store.chooseDirectory,
     report: store.report,
   }

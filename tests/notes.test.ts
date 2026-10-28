@@ -278,6 +278,7 @@ async function fixture() {
     open: () => invoke("notes:open"),
     save: (request) => invoke("notes:save", request),
     rename: (request) => invoke("notes:rename", request),
+    setFavorite: (request) => invoke("notes:set-favorite", request),
     confirmReplace: () => invoke("notes:confirm-replace"),
     setDirty: (dirty) => {
       ipcMain.emit("notes:dirty", window.event(), dirty)
@@ -344,6 +345,20 @@ test("기본 폴더 생성, 저장 목록, 중복 이름 보존과 폴더 설정
     assert.equal(first!.name, "같은 제목.md")
     assert.equal(second!.name, "같은 제목 (2).md")
     assert.equal(await readMarkdown(first!.path), "첫 메모")
+    const favoriteLibrary = await f.api.setFavorite({
+      path: first!.path,
+      favorite: true,
+    })
+    assert.equal(
+      favoriteLibrary.notes.find((note) => note.path === first!.path)?.favorite,
+      true
+    )
+    assert.equal(
+      (await new NoteLibrary(app.paths).snapshot()).notes.find(
+        (note) => note.path === first!.path
+      )?.favorite,
+      true
+    )
     await writeFile(join(initial.directory, "무시.txt"), "text")
     await mkdir(join(initial.directory, "폴더.md"))
     assert.equal((await f.api.library()).notes.length, 2)

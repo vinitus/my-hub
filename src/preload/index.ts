@@ -15,6 +15,7 @@ const notes: NotesAPI = {
   open: () => ipcRenderer.invoke("notes:open"),
   save: (request) => ipcRenderer.invoke("notes:save", request),
   rename: (request) => ipcRenderer.invoke("notes:rename", request),
+  setFavorite: (request) => ipcRenderer.invoke("notes:set-favorite", request),
   confirmReplace: () => ipcRenderer.invoke("notes:confirm-replace"),
   setDirty: (dirty) => ipcRenderer.send("notes:dirty", dirty),
   onSaveBeforeClose: (callback) => {

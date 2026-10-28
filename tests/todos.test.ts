@@ -14,6 +14,7 @@ const todo = (): Todo => ({
   title: "할일",
   dueDate: "2026-10-30",
   completed: false,
+  favorite: false,
 })
 test("제목·실제 날짜·완료 여부를 검증한다", () => {
   assert.equal(TodoSchema.parse({ ...todo(), title: "  제목  " }).title, "제목")
@@ -38,11 +39,23 @@ test("추가·수정·완료·삭제를 저장하고 재시작 시 복원한다"
       expectedRevision: snapshot.revision,
     })
     snapshot = await repo.save({
-      todo: { ...item, title: "수정", dueDate: "2026-11-01", completed: true },
+      todo: {
+        ...item,
+        title: "수정",
+        dueDate: "2026-11-01",
+        completed: true,
+        favorite: true,
+      },
       expectedRevision: snapshot.revision,
     })
     assert.deepEqual((await new TodoRepository(dir).load()).items, [
-      { ...item, title: "수정", dueDate: "2026-11-01", completed: true },
+      {
+        ...item,
+        title: "수정",
+        dueDate: "2026-11-01",
+        completed: true,
+        favorite: true,
+      },
     ])
     snapshot = await repo.remove({
       id: item.id,

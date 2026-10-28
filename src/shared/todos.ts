@@ -10,6 +10,7 @@ export const TodoSchema = z
       .max(200, "제목은 200자 이내로 입력해 주세요."),
     dueDate: z.iso.date("올바른 마감일을 입력해 주세요."),
     completed: z.boolean(),
+    favorite: z.boolean().optional(),
   })
   .strict()
 export type Todo = z.infer<typeof TodoSchema>

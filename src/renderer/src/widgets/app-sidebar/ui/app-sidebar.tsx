@@ -12,6 +12,7 @@ import {
   RefreshCwIcon,
   CopyIcon,
   ExternalLinkIcon,
+  StarIcon,
 } from "lucide-react"
 import type { NoteLibrarySnapshot } from "../../../../../shared/notes"
 import { Input } from "@/shared/ui/input"
@@ -50,6 +51,7 @@ type Props<View extends string> = ComponentProps<typeof Sidebar> & {
   ready: boolean
   currentPath?: string
   onSelectNote: (name: string) => void
+  onToggleNoteFavorite: (path: string, favorite: boolean) => void
   onOpenSettings: () => void
   onRefresh: () => void
   activeView: View
@@ -69,6 +71,7 @@ export function AppSidebar<View extends string>({
   ready,
   currentPath,
   onSelectNote,
+  onToggleNoteFavorite,
   onOpenSettings,
   onRefresh,
   activeView,
@@ -78,9 +81,15 @@ export function AppSidebar<View extends string>({
 }: Props<View>) {
   const [query, setQuery] = useState("")
   const notes =
-    library?.notes.filter((note) =>
-      note.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
-    ) ?? []
+    library?.notes
+      .filter((note) =>
+        note.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
+      )
+      .toSorted(
+        (a, b) =>
+          Number(!!b.favorite) - Number(!!a.favorite) ||
+          b.modifiedAt - a.modifiedAt
+      ) ?? []
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader className="px-2 pt-2 pb-0">{scheduleStatus}</SidebarHeader>
@@ -167,9 +176,25 @@ export function AppSidebar<View extends string>({
                         >
                           <FileTextIcon />
                           <span>{note.name.replace(/\.md$/i, "")}</span>
+                          {note.favorite && (
+                            <StarIcon
+                              aria-hidden="true"
+                              className="ml-auto size-3 fill-current text-amber-500"
+                            />
+                          )}
                         </SidebarMenuButton>
                       </ContextMenuTrigger>
                       <ContextMenuContent>
+                        <ContextMenuItem
+                          onClick={() =>
+                            onToggleNoteFavorite(note.path, !note.favorite)
+                          }
+                        >
+                          <StarIcon
+                            className={note.favorite ? "fill-current" : ""}
+                          />
+                          {note.favorite ? "즐겨찾기 해제" : "즐겨찾기에 추가"}
+                        </ContextMenuItem>
                         <ContextMenuItem
                           disabled={busy}
                           onClick={() => onSelectNote(note.name)}

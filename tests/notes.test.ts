@@ -320,6 +320,88 @@ function memoryDraft(initial: unknown = null) {
   }
 }
 
+test("낙서장 저장은 기존 메모를 보존하고 메모 저장 경로로 파일과 목록을 갱신한다", async () => {
+  const f = await fixture()
+  const store = new NoteStore(f.api, memoryDraft(), 60_000)
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    store.change("기존 메모의 미저장 내용")
+    const originalKey = store.getSnapshot().note.key
+    const first = await store.saveText("# 낙서장\n\n첫 내용")
+    assert.equal(first?.saved, true)
+    assert.notEqual(first?.key, originalKey)
+    const firstFile = store.getSnapshot().note.file!
+    assert.equal(await readMarkdown(firstFile.path), "# 낙서장\n\n첫 내용")
+    const entries = store.getSnapshot().library!.notes
+    assert.equal(entries.length, 2)
+    const original = entries.find((entry) => entry.path !== firstFile.path)!
+    assert.equal(await readMarkdown(original.path), "기존 메모의 미저장 내용")
+
+    const second = await store.saveText("# 낙서장\n\n수정 내용", first)
+    assert.equal(second?.saved, true)
+    assert.equal(second?.key, first?.key)
+    assert.equal(store.getSnapshot().library!.notes.length, 2)
+    assert.equal(await readMarkdown(firstFile.path), "# 낙서장\n\n수정 내용")
+
+    store.change("메모 화면에서 별도로 수정한 내용")
+    const third = await store.saveText("낙서장의 다음 내용", second)
+    assert.equal(third?.saved, true)
+    assert.notEqual(third?.key, second?.key)
+    assert.equal(
+      await readMarkdown(firstFile.path),
+      "메모 화면에서 별도로 수정한 내용"
+    )
+    assert.equal(store.getSnapshot().library!.notes.length, 3)
+    assert.equal(
+      await readMarkdown(store.getSnapshot().note.file!.path),
+      "낙서장의 다음 내용"
+    )
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("낙서장 전달 전 저장 실패는 기존 메모를 유지하고 새 메모 저장 실패도 재시도할 수 있다", async () => {
+  const f = await fixture()
+  let fail = true
+  const store = new NoteStore(
+    {
+      ...f.api,
+      save: (request) => {
+        if (fail) return Promise.reject(new Error("저장 실패"))
+        return f.api.save(request)
+      },
+    },
+    memoryDraft(),
+    60_000
+  )
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    store.change("보존해야 할 메모")
+    const key = store.getSnapshot().note.key
+    assert.equal(await store.saveText("낙서장"), undefined)
+    assert.equal(store.getSnapshot().note.key, key)
+    assert.equal(store.getSnapshot().note.markdown, "보존해야 할 메모")
+    fail = false
+    assert.equal(await store.save(), true)
+    fail = true
+    const failed = await store.saveText("낙서장")
+    assert.equal(failed?.saved, false)
+    assert.equal(store.getSnapshot().note.markdown, "낙서장")
+    fail = false
+    const retried = await store.saveText("낙서장", failed)
+    assert.equal(retried?.saved, true)
+    assert.equal(retried?.key, failed?.key)
+    assert.equal(store.getSnapshot().library!.notes.length, 2)
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
 test("기본 폴더 생성, 저장 목록, 중복 이름 보존과 폴더 설정 유지", async () => {
   const f = await fixture()
   try {

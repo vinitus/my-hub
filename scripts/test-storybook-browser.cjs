@@ -171,7 +171,7 @@ app.whenReady().then(async () => {
             await win.webContents.executeJavaScript(
               `document.querySelector('[role="status"]').textContent`
             ),
-            "Ctrl+S로 저장",
+            "Ctrl+S로 메모 저장",
             "typing must not save the scratchpad"
           )
           await win.webContents.executeJavaScript(
@@ -192,8 +192,8 @@ app.whenReady().then(async () => {
             story.name === "Save Error"
               ? "파일에 접근할 수 없습니다."
               : story.name === "Inactive"
-                ? "Ctrl+S로 저장"
-                : "저장했습니다.",
+                ? "Ctrl+S로 메모 저장"
+                : "메모로 저장했습니다.",
             "Ctrl+S must respect the active page and surface save errors"
           )
           await win.webContents.executeJavaScript(

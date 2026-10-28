@@ -327,6 +327,28 @@ export class NoteStore {
   }
   save = (saveAs = false) => this.run(() => this.persist(saveAs))
 
+  // 외부 작성 내용을 메모로 받아 기존 저장·복원·목록 갱신 경로를 사용한다.
+  // 전달 후 다른 메모를 열었거나 본문이 바뀌었다면 별도 메모로 보존한다.
+  saveText = (
+    markdown: string,
+    previous: { key: string; markdown: string } | null = null
+  ) =>
+    this.run(async () => {
+      if (!this.api)
+        throw new Error("파일 저장은 Electron 앱에서 사용할 수 있습니다.")
+      assertSupportedMarkdown(markdown)
+      const current = this.state.note
+      const reuse =
+        current.key === previous?.key && current.markdown === previous.markdown
+      if (!reuse) {
+        if (hasNoteChanges(current) && !(await this.persist())) return
+        this.setNote(emptyNote(markdown), { error: "", autosavePaused: false })
+      } else this.change(markdown)
+      const key = this.state.note.key
+      const saved = await this.persist()
+      return { key, markdown, saved }
+    })
+
   rename = (value: string) =>
     this.run(async () => {
       const name = normalizeNoteName(value)

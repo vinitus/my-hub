@@ -152,7 +152,7 @@ export function HomePage({
           role="status"
           className="min-h-8 py-2 text-right text-xs text-muted-foreground"
         >
-          {saving ? "저장 중…" : saved ? "저장했습니다." : "Ctrl+S로 저장"}
+          {saving ? "저장 중…" : saved ? "메모로 저장했습니다." : "Ctrl+S로 메모 저장"}
         </div>
       </div>
       <div className="shrink-0 border-t py-2">

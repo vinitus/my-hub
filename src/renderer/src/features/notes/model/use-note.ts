@@ -65,6 +65,7 @@ export function useNote(shortcutsEnabled = true) {
     error: state.error || state.libraryError || state.draftError,
     change: store.change,
     save: store.save,
+    saveText: store.saveText,
     rename: store.rename,
     newNote: store.newNote,
     open: store.open,

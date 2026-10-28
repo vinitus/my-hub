@@ -75,20 +75,19 @@ export function App() {
     if (next === "shortcuts") setShortcutsVisited(true)
     setView(next)
   }
-  const [scratchpadFileId, setScratchpadFileId] = useState<string | null>(null)
+  const [scratchpadNote, setScratchpadNote] = useState<{
+    key: string
+    markdown: string
+  } | null>(null)
   const saveScratchpad = async (text: string) => {
-    if (!window.api?.notes)
-      throw new Error("파일 저장은 Electron 앱에서 사용할 수 있습니다.")
-    const file = await window.api.notes.save({
-      id: scratchpadFileId,
-      markdown: text,
-      name: "낙서장.md",
-      saveAs: scratchpadFileId === null,
-    })
-    if (!file) return false
-    setScratchpadFileId(file.id)
-    void memo.refresh()
-    return true
+    const result = await memo.saveText(text, scratchpadNote)
+    if (result)
+      setScratchpadNote({ key: result.key, markdown: result.markdown })
+    if (!result?.saved)
+      throw new Error(
+        "메모로 저장하지 못했습니다. 메모 화면의 저장 상태를 확인해 주세요."
+      )
+    return result.saved
   }
   const createTodo = () => {
     setTodoCreateRequest((request) => request + 1)

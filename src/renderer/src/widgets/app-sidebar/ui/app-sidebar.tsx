@@ -183,7 +183,10 @@ export function AppSidebar<View extends string>({
             >
               <SettingsIcon />
               <span>설정</span>
-              <kbd className="ml-auto text-xs text-muted-foreground">
+              <kbd
+                aria-hidden="true"
+                className={`ml-auto text-xs text-muted-foreground ${showNavigationNumbers ? "visible" : "invisible"}`}
+              >
                 Ctrl O
               </kbd>
             </SidebarMenuButton>

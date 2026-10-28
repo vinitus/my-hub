@@ -508,7 +508,7 @@ app.whenReady().then(async () => {
             )
             await delay(100)
             initial = await sizes()
-            assert.equal(Math.round(initial.left), 360)
+            assert.equal(Math.round(initial.left), 300)
             assert.equal(Math.round(initial.right), 320)
             assert.equal(
               initial.writes,
@@ -519,7 +519,7 @@ app.whenReady().then(async () => {
           if (story.name === "Default" || story.name === "Restored") {
             assert.equal(
               Math.round(initial.left),
-              story.name === "Default" ? 288 : 360
+              story.name === "Default" ? 288 : 300
             )
             assert.equal(
               Math.round(initial.right),
@@ -575,8 +575,15 @@ app.whenReady().then(async () => {
               await delay(100)
             }
             await drag("왼쪽 사이드바 크기 조절", 60)
+            assert.equal(
+              Math.round((await sizes()).left),
+              320,
+              "left drag must stop at its 320px maximum"
+            )
             assert.ok(
-              Math.abs((await sizes()).left - initial.left - 60) < 2,
+              Math.abs(
+                (await sizes()).left - Math.min(initial.left + 60, 320)
+              ) < 2,
               `left drag: ${JSON.stringify({ initial, after: await sizes() })}`
             )
             await drag("오른쪽 현황 패널 크기 조절", -50)

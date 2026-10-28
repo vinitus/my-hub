@@ -48,17 +48,17 @@ test("설정 초기 조회와 이전은 한 번만 실행하며 대기 중 사�
   )
   const first = store.initialize()
   assert.equal(store.initialize(), first)
-  const update = store.update({ leftSidebarWidth: 360, theme: "light" })
+  const update = store.update({ leftSidebarWidth: 300, theme: "light" })
   await Promise.resolve()
   resolveRead({ ...DEFAULT_APP_SETTINGS })
   assert.equal(await update, true)
   assert.equal(reads, 1)
   assert.deepEqual(changes, [
     { theme: "dark" },
-    { leftSidebarWidth: 360, theme: "light" },
+    { leftSidebarWidth: 300, theme: "light" },
   ])
   assert.equal(store.getSnapshot().settings.theme, "light")
-  assert.equal(store.getSnapshot().settings.leftSidebarWidth, 360)
+  assert.equal(store.getSnapshot().settings.leftSidebarWidth, 300)
   assert.equal(theme.read(), null)
   assert.equal(store.getSnapshot().ready, true)
 })
@@ -83,12 +83,12 @@ test("실패한 설정 저장은 직전 값을 유지하고 다음 변경을 순
   fail = false
   assert.deepEqual(
     await Promise.all([
-      store.update({ leftSidebarWidth: 340 }),
+      store.update({ leftSidebarWidth: 310 }),
       store.update({ rightPanelWidth: 310 }),
     ]),
     [true, true]
   )
-  assert.equal(store.getSnapshot().settings.leftSidebarWidth, 340)
+  assert.equal(store.getSnapshot().settings.leftSidebarWidth, 310)
   assert.equal(store.getSnapshot().settings.rightPanelWidth, 310)
   assert.equal(store.getSnapshot().error, "")
 })
@@ -98,7 +98,7 @@ test("테마 이전이 실패하면 이전 값을 보존하고 브라우저 설�
   let fail = true
   const store = new AppSettingsStore(
     {
-      read: async () => ({ ...DEFAULT_APP_SETTINGS, leftSidebarWidth: 400 }),
+      read: async () => ({ ...DEFAULT_APP_SETTINGS, leftSidebarWidth: 320 }),
       update: async (patch) => {
         if (fail) throw new Error("이전 실패")
         return { ...DEFAULT_APP_SETTINGS, ...patch }
@@ -109,7 +109,7 @@ test("테마 이전이 실패하면 이전 값을 보존하고 브라우저 설�
   await store.initialize()
   assert.equal(legacy.read(), "dark")
   assert.match(store.getSnapshot().error, /이전 실패/)
-  assert.equal(store.getSnapshot().settings.leftSidebarWidth, 400)
+  assert.equal(store.getSnapshot().settings.leftSidebarWidth, 320)
   fail = false
   assert.equal(await store.update({ theme: "light" }), true)
   assert.equal(legacy.read(), null)
@@ -128,7 +128,7 @@ test("이전 브라우저 저장소에 접근할 수 없어도 파일 설정을 
       read: async () => ({
         ...DEFAULT_APP_SETTINGS,
         theme: "dark",
-        leftSidebarWidth: 400,
+        leftSidebarWidth: 320,
       }),
       update: async () => {
         throw new Error("호출되면 안 됨")
@@ -144,7 +144,7 @@ test("이전 브라우저 저장소에 접근할 수 없어도 파일 설정을 
   )
   await store.initialize()
   assert.equal(store.getSnapshot().settings.theme, "dark")
-  assert.equal(store.getSnapshot().settings.leftSidebarWidth, 400)
+  assert.equal(store.getSnapshot().settings.leftSidebarWidth, 320)
   assert.equal(store.getSnapshot().error, "")
 })
 
@@ -155,12 +155,12 @@ test("앱 설정은 기본값을 제공하고 변경을 병합해 파일에 저�
     assert.deepEqual(await repository.read(), DEFAULT_APP_SETTINGS)
     const next = await repository.update({
       theme: "dark",
-      leftSidebarWidth: 360,
+      leftSidebarWidth: 300,
     })
     assert.deepEqual(next, {
       ...DEFAULT_APP_SETTINGS,
       theme: "dark",
-      leftSidebarWidth: 360,
+      leftSidebarWidth: 300,
     })
     assert.deepEqual(
       JSON.parse(await readFile(join(directory, "app-settings.json"), "utf8")),
@@ -177,6 +177,7 @@ test("잘못된 설정 변경은 거부하고 손상된 설정 원본을 보존�
   try {
     const repository = new AppSettingsRepository(directory)
     await assert.rejects(repository.update({ leftSidebarWidth: 100 }))
+    await assert.rejects(repository.update({ leftSidebarWidth: 321 }))
     const path = join(directory, "app-settings.json")
     await writeFile(path, "broken")
     await assert.rejects(
@@ -184,6 +185,35 @@ test("잘못된 설정 변경은 거부하고 손상된 설정 원본을 보존�
       /원본 파일을 보존/
     )
     assert.equal(await readFile(path, "utf8"), "broken")
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test("이전 좌측 너비는 320px로 보정하고 다른 설정을 보존한 채 다음 저장에 반영한다", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "my-hub-settings-width-"))
+  try {
+    const path = join(directory, "app-settings.json")
+    const previous = {
+      ...DEFAULT_APP_SETTINGS,
+      theme: "dark",
+      leftSidebarWidth: 640,
+      rightPanelWidth: 350,
+      sidebarOpen: false,
+    }
+    await writeFile(path, JSON.stringify(previous))
+    const repository = new AppSettingsRepository(directory)
+    assert.deepEqual(await repository.read(), {
+      ...previous,
+      leftSidebarWidth: 320,
+    })
+    const next = await repository.update({ rightPanelOpen: false })
+    assert.deepEqual(next, {
+      ...previous,
+      leftSidebarWidth: 320,
+      rightPanelOpen: false,
+    })
+    assert.deepEqual(JSON.parse(await readFile(path, "utf8")), next)
   } finally {
     await rm(directory, { recursive: true, force: true })
   }

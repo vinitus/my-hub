@@ -1,14 +1,27 @@
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import { randomUUID } from "node:crypto"
+import { z } from "zod"
 import { app, ipcMain, type BrowserWindow } from "electron"
 import {
   AppSettingsPatchSchema,
   AppSettingsSchema,
   DEFAULT_APP_SETTINGS,
+  APP_PANEL_WIDTHS,
   type AppSettings,
   type AppSettingsPatch,
 } from "../shared/app-settings"
+
+// 이전 버전의 유효한 너비(최대 640px)는 읽을 때 새 상한으로 보정한다.
+// 새 변경 요청은 AppSettingsPatchSchema의 320px 제한을 그대로 적용한다.
+const StoredAppSettingsSchema = AppSettingsSchema.extend({
+  leftSidebarWidth: z
+    .number()
+    .int()
+    .min(APP_PANEL_WIDTHS.left.min)
+    .max(640)
+    .transform((width) => Math.min(width, APP_PANEL_WIDTHS.left.max)),
+})
 
 export class AppSettingsRepository {
   private readonly directory: string
@@ -25,7 +38,7 @@ export class AppSettingsRepository {
       const raw = await readFile(this.path, "utf8")
       if (Buffer.byteLength(raw) > 16 * 1024)
         throw new Error("앱 설정 파일이 너무 큽니다.")
-      return AppSettingsSchema.parse(JSON.parse(raw))
+      return StoredAppSettingsSchema.parse(JSON.parse(raw))
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT")
         return { ...DEFAULT_APP_SETTINGS }

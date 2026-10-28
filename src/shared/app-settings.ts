@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 export const APP_PANEL_WIDTHS = {
-  left: { min: 200, max: 640, default: 288 },
+  left: { min: 200, max: 320, default: 288 },
   right: { min: 200, max: 480, default: 280 },
 } as const
 

@@ -42,7 +42,7 @@ function InteractiveLayout(args: ComponentProps<typeof WorkspaceLayout>) {
               onClick={() => {
                 setSettings({
                   ...DEFAULT_APP_SETTINGS,
-                  leftSidebarWidth: 360,
+                  leftSidebarWidth: 300,
                   rightPanelWidth: 320,
                 })
                 setReady(true)
@@ -104,7 +104,7 @@ export const Restored: Story = {
   args: {
     settings: {
       ...DEFAULT_APP_SETTINGS,
-      leftSidebarWidth: 360,
+      leftSidebarWidth: 300,
       rightPanelWidth: 320,
     },
   },

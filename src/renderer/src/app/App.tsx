@@ -1,7 +1,8 @@
 import { TodoStore } from "@/features/todos"
 import { AppSidebar } from "@/widgets/app-sidebar"
 import { SiteHeader } from "@/widgets/site-header"
-import { LiveScheduleStatus } from "@/widgets/live-status"
+import { LiveScheduleStatus, LiveStatusPanel } from "@/widgets/live-status"
+import { ShortcutStore } from "@/features/shortcuts"
 import { WeatherWidget } from "@/features/weather"
 import { SidebarInset, SidebarProvider } from "@/shared/ui/sidebar"
 import { NotesPage } from "@/pages/notes"
@@ -9,19 +10,19 @@ import { CalendarReminderCenter } from "@/features/calendar"
 import { CalendarStore } from "@/entities/calendar-event"
 import { useNote } from "@/features/notes"
 import { QuickCommand } from "@/features/quick-command"
-import { SettingsSheet, readCodexSetupChoice, CodexSetupPrompt } from "@/features/settings"
+import {
+  SettingsSheet,
+  readCodexSetupChoice,
+  CodexSetupPrompt,
+} from "@/features/settings"
 import { lazy, Suspense, useEffect, useEffectEvent, useState } from "react"
 import type { CodexConnection } from "../../../shared/codex"
 import { NAVIGATION_ITEMS, type AppView } from "@/app/config/navigation"
 import { useNavigationShortcuts } from "@/app/model/use-navigation-shortcuts"
 
 const TodoWorkspace = lazy(() => import("@/pages/todos"))
-const CalendarWorkspace = lazy(
-  () => import("@/pages/calendar")
-)
-const ShortcutWorkspace = lazy(
-  () => import("@/pages/shortcuts")
-)
+const CalendarWorkspace = lazy(() => import("@/pages/calendar"))
+const ShortcutWorkspace = lazy(() => import("@/pages/shortcuts"))
 // shadcn dashboard-01을 바탕으로 만든 앱 레이아웃. 구조 안내: ../../README.md
 // SidebarProvider의 CSS 변수는 사이드바와 SiteHeader에서 함께 사용한다.
 export function App() {
@@ -33,11 +34,20 @@ export function App() {
   const [commandOpen, setCommandOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [todoStore] = useState(() => new TodoStore(window.api?.todos))
-  const [calendarStore] = useState(() => new CalendarStore(window.api?.calendar))
-  useEffect(() => window.api?.commands?.onChange((domains) => {
-    if (domains.includes("calendar")) void calendarStore.refresh()
-    if (domains.includes("todos")) void todoStore.refresh()
-  }), [calendarStore, todoStore])
+  const [calendarStore] = useState(
+    () => new CalendarStore(window.api?.calendar)
+  )
+  const [shortcutStore] = useState(
+    () => new ShortcutStore(window.api?.shortcuts)
+  )
+  useEffect(
+    () =>
+      window.api?.commands?.onChange((domains) => {
+        if (domains.includes("calendar")) void calendarStore.refresh()
+        if (domains.includes("todos")) void todoStore.refresh()
+      }),
+    [calendarStore, todoStore]
+  )
   const [codexSetup, setCodexSetup] = useState<"intro" | "login" | null>(() => {
     if (!window.api?.codex) return null
     const choice = readCodexSetupChoice()
@@ -156,65 +166,91 @@ export function App() {
           onQuickCommand={() => setCommandOpen(true)}
         />
 
-        {/* 창 전체 대신 메모 본문만 스크롤한다. 상위 flex 요소의 min-h-0도 유지한다. */}
-        <div
-          className={
-            view === "notes" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-          }
-        >
-          <NotesPage memo={memo} />
+        <div className="relative flex min-h-0 flex-1">
+          <div className="flex min-w-0 flex-1 flex-col">
+            {/* 창 전체 대신 메모 본문만 스크롤한다. 상위 flex 요소의 min-h-0도 유지한다. */}
+            <div
+              className={
+                view === "notes" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+              }
+            >
+              <NotesPage memo={memo} />
+            </div>
+            {shortcutsVisited && (
+              <div
+                className={
+                  view === "shortcuts"
+                    ? "flex min-h-0 flex-1 flex-col"
+                    : "hidden"
+                }
+              >
+                <Suspense
+                  fallback={
+                    <p
+                      role="status"
+                      className="p-6 text-sm text-muted-foreground"
+                    >
+                      바로가기를 불러오는 중…
+                    </p>
+                  }
+                >
+                  <ShortcutWorkspace
+                    active={view === "shortcuts"}
+                    store={shortcutStore}
+                  />
+                </Suspense>
+              </div>
+            )}
+            {todosVisited && (
+              <div
+                className={
+                  view === "todos" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+                }
+              >
+                <Suspense
+                  fallback={
+                    <p
+                      role="status"
+                      className="p-6 text-sm text-muted-foreground"
+                    >
+                      할일을 불러오는 중…
+                    </p>
+                  }
+                >
+                  <TodoWorkspace store={todoStore} />
+                </Suspense>
+              </div>
+            )}
+            {calendarVisited && (
+              <div
+                className={
+                  view === "calendar"
+                    ? "flex min-h-0 flex-1 flex-col"
+                    : "hidden"
+                }
+              >
+                <Suspense
+                  fallback={
+                    <p
+                      role="status"
+                      className="p-6 text-sm text-muted-foreground"
+                    >
+                      캘린더를 불러오는 중…
+                    </p>
+                  }
+                >
+                  <CalendarWorkspace store={calendarStore} />
+                </Suspense>
+              </div>
+            )}
+          </div>
+          <LiveStatusPanel
+            calendarStore={calendarStore}
+            shortcutStore={shortcutStore}
+            onOpenCalendar={() => navigate("calendar")}
+            onOpenShortcuts={() => navigate("shortcuts")}
+          />
         </div>
-        {shortcutsVisited && (
-          <div
-            className={
-              view === "shortcuts" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-            }
-          >
-            <Suspense
-              fallback={
-                <p role="status" className="p-6 text-sm text-muted-foreground">
-                  바로가기를 불러오는 중…
-                </p>
-              }
-            >
-              <ShortcutWorkspace active={view === "shortcuts"} />
-            </Suspense>
-          </div>
-        )}
-        {todosVisited && (
-          <div
-            className={
-              view === "todos" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-            }
-          >
-            <Suspense
-              fallback={
-                <p role="status" className="p-6 text-sm text-muted-foreground">
-                  할일을 불러오는 중…
-                </p>
-              }
-            >
-              <TodoWorkspace store={todoStore} />
-            </Suspense>
-          </div>
-        )}
-        {calendarVisited && (
-          <div
-            className={
-              view === "calendar" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-            }
-          >
-            <Suspense
-              fallback={
-                <p role="status" className="p-6 text-sm text-muted-foreground">
-                  캘린더를 불러오는 중…
-                </p>
-              }
-            >
-              <CalendarWorkspace store={calendarStore} />
-            </Suspense>
-          </div>
-        )}
       </SidebarInset>
       <QuickCommand open={commandOpen} onOpenChange={setCommandOpen} />
       <CalendarReminderCenter />

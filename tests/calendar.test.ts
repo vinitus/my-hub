@@ -11,6 +11,7 @@ import {
 import { CalendarRepository } from "../src/main/calendar-repository"
 import { registerCalendar } from "../src/main/calendar"
 import { CalendarStore } from "../src/renderer/src/entities/calendar-event/model/calendar-store"
+import { panelSchedule } from "../src/renderer/src/widgets/live-status/model/panel-status"
 import {
   eventDraft,
   eventFromDraft,
@@ -33,6 +34,76 @@ function sample(): CalendarEvent {
     end: "2026-10-27T10:00:00+09:00",
   }
 }
+
+test("우측 현황은 진행 중·지난 일정을 빼고 오늘 일정과 실행 예정 대상을 분리한다", () => {
+  const now = new Date(2026, 9, 27, 8, 30).getTime()
+  const timed = (
+    id: string,
+    minutes: number,
+    overrides: Partial<CalendarEvent> = {}
+  ) =>
+    ({
+      ...sample(),
+      id,
+      start: new Date(now + minutes * 60_000).toISOString(),
+      end: new Date(now + (minutes + 60) * 60_000).toISOString(),
+      ...overrides,
+    }) as CalendarEvent
+  const events = [
+    timed("ongoing", -10, {
+      referenceUrls: ["https://example.com/ongoing"],
+      openLinks: "at-start",
+    }),
+    timed("later", 120, {
+      referenceUrls: ["C:\\Documents\\자료.pdf"],
+      openLinks: "on-notification",
+    }),
+    timed("next", 30, {
+      referenceUrls: ["https://example.com"],
+      openLinks: "at-start",
+    }),
+    timed("never", 40, {
+      referenceUrls: ["https://example.com/never"],
+      openLinks: "never",
+    }),
+    timed("empty", 50, { openLinks: "at-start" }),
+    timed("tomorrow", 1440, {
+      referenceUrls: ["https://example.com/tomorrow"],
+      openLinks: "at-start",
+    }),
+    timed("past", -120),
+    timed("now", 0),
+  ]
+  const result = panelSchedule(events, now)
+  assert.deepEqual(
+    result.today.map((event) => event.id),
+    ["next", "never", "empty", "later"]
+  )
+  assert.deepEqual(
+    result.executions.map((event) => event.id),
+    ["next", "later", "tomorrow"]
+  )
+  assert.equal(events[0].id, "ongoing", "입력 배열의 순서를 바꾸지 않는다")
+  assert.deepEqual(panelSchedule(events, now + 2 * 86400_000), {
+    today: [],
+    executions: [],
+  })
+  const allDay = {
+    ...sample(),
+    allDay: true,
+    start: "2026-10-27",
+    end: "2026-10-28",
+    referenceUrls: ["https://example.com"],
+    openLinks: "at-start",
+  } as CalendarEvent
+  assert.equal(panelSchedule([allDay], now).today.length, 0)
+  assert.equal(panelSchedule([allDay], now).executions.length, 1)
+  assert.equal(
+    panelSchedule([allDay], new Date(2026, 9, 27, 9).getTime()).executions
+      .length,
+    0
+  )
+})
 
 test("제목, 실제 날짜, 종료 순서와 저장 형식을 검사한다", () => {
   const valid = sample()

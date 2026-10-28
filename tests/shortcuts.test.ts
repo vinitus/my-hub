@@ -399,6 +399,35 @@ test("화면 저장·실행 실패 시 목록을 유지하고 중복 실행을 �
   assert.equal(store.getSnapshot().snapshot, snapshot)
   assert.equal(store.getSnapshot().busy, false)
   assert.match(store.getSnapshot().error, /실행 실패/)
+  assert.deepEqual(store.getSnapshot().recentIds, [])
+})
+
+test("최근 바로가기는 성공한 실행만 중복 없이 최근 다섯 개를 공유한다", async () => {
+  const items = Array.from({ length: 6 }, website)
+  const snapshot = { items, revision: "r1", path: "shortcuts.json" }
+  const store = new ShortcutStore({
+    icon: async () => null,
+    inspectDrop: async () => items[0],
+    load: async () => snapshot,
+    choose: async () => null,
+    save: async () => snapshot,
+    remove: async () => snapshot,
+    launch: async () => {},
+  })
+  await store.initialize()
+  for (const item of items) assert.equal(await store.launch(item), true)
+  assert.deepEqual(
+    store.getSnapshot().recentIds,
+    items
+      .slice(1)
+      .reverse()
+      .map((item) => item.id)
+  )
+  await store.launch(items[3])
+  assert.deepEqual(
+    store.getSnapshot().recentIds,
+    [items[3], items[5], items[4], items[2], items[1]].map((item) => item.id)
+  )
 })
 
 test("이전 preload에서는 재시작을 안내한다", async () => {

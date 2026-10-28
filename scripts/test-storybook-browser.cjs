@@ -107,6 +107,53 @@ app.whenReady().then(async () => {
           theme === "dark",
           `${story.id}: toolbar theme was not applied`
         )
+        if (
+          story.importPath.endsWith("/status-panel.stories.tsx") &&
+          story.name === "Populated"
+        ) {
+          const panel = await win.webContents.executeJavaScript(`(() => {
+            const today = document.querySelector('[aria-label="오늘의 일정"]').innerText;
+            const executions = document.querySelector('[aria-label="예정된 실행"]').innerText;
+            return { today, executions, width: document.querySelector('aside').getBoundingClientRect().width, overflow: document.documentElement.scrollWidth > innerWidth };
+          })()`)
+          assert.ok(panel.today.includes("기획 회의"))
+          assert.ok(!panel.today.includes("진행 중이라 숨겨지는 일정"))
+          assert.ok(!panel.today.includes("내일 일정"))
+          assert.ok(panel.executions.includes("시작 시 자동 실행"))
+          assert.ok(panel.executions.includes("알림 클릭 시 실행"))
+          assert.ok(panel.executions.includes("회의자료.pdf"))
+          assert.ok(!panel.executions.includes("자동 실행 안 함"))
+          assert.equal(panel.width, 280)
+          assert.equal(panel.overflow, false)
+          await win.webContents.executeJavaScript(
+            `Array.from(document.querySelectorAll('[aria-label="최근 사용한 바로가기"] button')).find(b => b.textContent.includes('프로젝트 문서')).click()`
+          )
+          await delay(30)
+          assert.ok(
+            await win.webContents.executeJavaScript(
+              `document.body.innerText.includes('프로젝트 문서 실행 요청')`
+            )
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('[aria-label="현황 패널 접기"]').click()`
+          )
+          await delay(30)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('aside').getBoundingClientRect().width`
+            ),
+            40
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('[aria-label="현황 패널 펼치기"]').click()`
+          )
+          await delay(30)
+          assert.ok(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[aria-label="현황 패널 접기"]').getAttribute('aria-expanded') === 'true'`
+            )
+          )
+        }
         if (story.importPath.endsWith("schedule-status-card.stories.tsx")) {
           const card = await win.webContents.executeJavaScript(
             `(() => { const node = document.querySelector('[aria-label="일정 현황"]'); return { text: node.innerText, height: node.getBoundingClientRect().height, overflow: node.scrollWidth > node.clientWidth } })()`

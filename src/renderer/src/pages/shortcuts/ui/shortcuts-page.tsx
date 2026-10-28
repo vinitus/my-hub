@@ -31,10 +31,15 @@ import {
 type Editor = { item: Shortcut; existing: boolean; revision: string }
 export default function ShortcutWorkspace({
   active = true,
+  store: providedStore,
 }: {
   active?: boolean
+  store?: ShortcutStore
 }) {
-  const [store] = useState(() => new ShortcutStore(window.api?.shortcuts))
+  const [localStore] = useState(
+    () => providedStore ?? new ShortcutStore(window.api?.shortcuts)
+  )
+  const store = providedStore ?? localStore
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [query, setQuery] = useState("")
   const [kind, setKind] = useState<ShortcutKind | "all">("all")

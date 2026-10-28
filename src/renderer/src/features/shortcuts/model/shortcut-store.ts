@@ -10,6 +10,7 @@ type State = {
   busy: boolean
   error: string
   notice: string
+  recentIds: string[]
 }
 export function shortcutError(error: unknown) {
   return error instanceof Error
@@ -27,6 +28,7 @@ export class ShortcutStore {
     busy: false,
     error: "",
     notice: "",
+    recentIds: [],
   }
   private readonly listeners = new Set<() => void>()
   private initialization: Promise<void> | undefined
@@ -106,12 +108,22 @@ export class ShortcutStore {
       (api) => api.remove({ id, expectedRevision }),
       "바로가기를 삭제했습니다."
     )
-  launch = (item: Shortcut) => {
+  launch = async (item: Shortcut) => {
     const expectedRevision = this.state.snapshot?.revision ?? ""
-    return this.action(
+    const launched = await this.action(
       (api) => api.launch({ id: item.id, expectedRevision }),
       `${item.name} 열기 요청을 보냈습니다.`
     )
+    // 앱 실행 중의 사용 이력만 유지한다. 삭제한 항목은 소비자가 최신 목록과 대조한다.
+    if (launched) {
+      this.publish({
+        recentIds: [
+          item.id,
+          ...this.state.recentIds.filter((id) => id !== item.id),
+        ].slice(0, 5),
+      })
+    }
+    return launched
   }
   choose = async (kind: "program" | "folder") => this.requireAPI().choose(kind)
 }

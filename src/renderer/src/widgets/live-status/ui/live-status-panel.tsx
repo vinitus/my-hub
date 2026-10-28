@@ -8,6 +8,9 @@ export function LiveStatusPanel({
   calendarStore,
   shortcutStore,
   todoStore,
+  open,
+  width,
+  onOpenChange,
   onOpenCalendar,
   onOpenShortcuts,
   onOpenTodos,
@@ -15,6 +18,9 @@ export function LiveStatusPanel({
   calendarStore: CalendarStore
   shortcutStore: ShortcutStore
   todoStore: TodoStore
+  open: boolean
+  width: number
+  onOpenChange: (open: boolean) => void
   onOpenCalendar: () => void
   onOpenShortcuts: () => void
   onOpenTodos: () => void
@@ -29,7 +35,6 @@ export function LiveStatusPanel({
   )
   const todos = useSyncExternalStore(todoStore.subscribe, todoStore.getSnapshot)
   const [now, setNow] = useState(() => Date.now())
-  const [open, setOpen] = useState(true)
 
   useEffect(() => {
     void calendarStore.initialize()
@@ -57,7 +62,8 @@ export function LiveStatusPanel({
   return (
     <StatusPanel
       open={open}
-      onOpenChange={setOpen}
+      width={width}
+      onOpenChange={onOpenChange}
       events={calendar.snapshot?.events ?? []}
       shortcuts={recent}
       todos={todos.snapshot?.items ?? []}
@@ -73,11 +79,13 @@ export function LiveStatusPanel({
       onLaunch={(item) => void shortcutStore.launch(item)}
       onOpenCalendar={() => {
         onOpenCalendar()
-        if (!window.matchMedia("(min-width: 1024px)").matches) setOpen(false)
+        if (!window.matchMedia("(min-width: 1024px)").matches)
+          onOpenChange(false)
       }}
       onOpenShortcuts={() => {
         onOpenShortcuts()
-        if (!window.matchMedia("(min-width: 1024px)").matches) setOpen(false)
+        if (!window.matchMedia("(min-width: 1024px)").matches)
+          onOpenChange(false)
       }}
       onToggleTodo={(todo, completed) =>
         void todoStore.save(
@@ -87,7 +95,8 @@ export function LiveStatusPanel({
       }
       onOpenTodos={() => {
         onOpenTodos()
-        if (!window.matchMedia("(min-width: 1024px)").matches) setOpen(false)
+        if (!window.matchMedia("(min-width: 1024px)").matches)
+          onOpenChange(false)
       }}
     />
   )

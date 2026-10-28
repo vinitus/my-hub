@@ -9,6 +9,8 @@ type ThemeProviderProps = {
   defaultTheme?: Theme
   storageKey?: string
   disableTransitionOnChange?: boolean
+  theme?: Theme
+  onThemeChange?: (theme: Theme) => void
 }
 
 type ThemeProviderState = {
@@ -77,16 +79,18 @@ function isEditableTarget(target: EventTarget | null) {
   return false
 }
 
-// 테마 설정은 localStorage에 저장하고 html의 light/dark 클래스로 CSS에 반영한다.
+// 테마를 앱 설정 파일에 저장하고 이전 localStorage 값은 최초 실행 때 이전한다.
 // system 모드일 때만 OS 테마 변경을 따라간다. 소비자는 이 파일의 useTheme을 사용한다.
 export function ThemeProvider({
   children,
   defaultTheme = "system",
   storageKey = "theme",
   disableTransitionOnChange = true,
+  theme: controlledTheme,
+  onThemeChange,
   ...props
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = React.useState<Theme>(() => {
+  const [internalTheme, setInternalTheme] = React.useState<Theme>(() => {
     const storedTheme = localStorage.getItem(storageKey)
     if (isTheme(storedTheme)) {
       return storedTheme
@@ -94,13 +98,15 @@ export function ThemeProvider({
 
     return defaultTheme
   })
+  const theme = controlledTheme ?? internalTheme
 
   const setTheme = React.useCallback(
     (nextTheme: Theme) => {
       localStorage.setItem(storageKey, nextTheme)
-      setThemeState(nextTheme)
+      setInternalTheme(nextTheme)
+      onThemeChange?.(nextTheme)
     },
-    [storageKey]
+    [storageKey, onThemeChange]
   )
 
   const applyTheme = React.useCallback(
@@ -194,11 +200,13 @@ export function ThemeProvider({
       }
 
       if (isTheme(event.newValue)) {
-        setThemeState(event.newValue)
+        setInternalTheme(event.newValue)
+        onThemeChange?.(event.newValue)
         return
       }
 
-      setThemeState(defaultTheme)
+      setInternalTheme(defaultTheme)
+      onThemeChange?.(defaultTheme)
     }
 
     window.addEventListener("storage", handleStorageChange)
@@ -206,7 +214,7 @@ export function ThemeProvider({
     return () => {
       window.removeEventListener("storage", handleStorageChange)
     }
-  }, [defaultTheme, storageKey])
+  }, [defaultTheme, onThemeChange, storageKey])
 
   const value = React.useMemo(
     () => ({

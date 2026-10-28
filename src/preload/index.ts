@@ -7,6 +7,7 @@ import type { CalendarAPI, CalendarReminder } from "../shared/calendar"
 import type { ShortcutsAPI } from "../shared/shortcuts"
 import type { WeatherAPI } from "../shared/weather"
 import type { CodexAPI } from "../shared/codex"
+import type { AppSettingsAPI } from "../shared/app-settings"
 
 const notes: NotesAPI = {
   library: () => ipcRenderer.invoke("notes:library"),
@@ -110,7 +111,20 @@ const commands: CommandAPI = {
     }
   },
 }
-const api = { commands, notes, calendar, shortcuts, weather, codex, todos }
+const settings: AppSettingsAPI = {
+  read: () => ipcRenderer.invoke("settings:read"),
+  update: (patch) => ipcRenderer.invoke("settings:update", patch),
+}
+const api = {
+  commands,
+  notes,
+  calendar,
+  shortcuts,
+  weather,
+  codex,
+  todos,
+  settings,
+}
 
 if (process.contextIsolated) {
   try {

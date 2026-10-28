@@ -15,6 +15,7 @@
     "test:notes": "node scripts/test-notes.mjs",
     "test:commands": "node scripts/test-notes.mjs commands",
     "test:todos": "node scripts/test-notes.mjs todos",
+    "test:settings": "node scripts/test-notes.mjs settings",
     "test:calendar": "node scripts/test-notes.mjs calendar",
     "test:shortcuts": "node scripts/test-notes.mjs shortcuts",
     "test:weather": "node scripts/test-notes.mjs weather",

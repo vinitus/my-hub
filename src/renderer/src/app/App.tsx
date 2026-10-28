@@ -19,6 +19,7 @@ import { lazy, Suspense, useEffect, useEffectEvent, useState } from "react"
 import type { CodexConnection } from "../../../shared/codex"
 import { NAVIGATION_ITEMS, type AppView } from "@/app/config/navigation"
 import { useNavigationShortcuts } from "@/app/model/use-navigation-shortcuts"
+import { useAppSettings } from "./providers/app-settings-provider"
 
 const TodoWorkspace = lazy(() => import("@/pages/todos"))
 const CalendarWorkspace = lazy(() => import("@/pages/calendar"))
@@ -26,6 +27,7 @@ const ShortcutWorkspace = lazy(() => import("@/pages/shortcuts"))
 // shadcn dashboard-01을 바탕으로 만든 앱 레이아웃. 구조 안내: ../../README.md
 // SidebarProvider의 CSS 변수는 사이드바와 SiteHeader에서 함께 사용한다.
 export function App() {
+  const { settings, updateSettings, error: settingsError } = useAppSettings()
   const [selectedView, setView] = useState<AppView>("notes")
   // 개발 중 Fast Refresh가 제거된 채팅 메뉴의 상태를 유지해도 메모로 돌아간다.
   const view = NAVIGATION_ITEMS.some((item) => item.id === selectedView)
@@ -124,9 +126,11 @@ export function App() {
   return (
     <SidebarProvider
       className="h-svh overflow-hidden"
+      open={settings.sidebarOpen}
+      onOpenChange={(sidebarOpen) => void updateSettings({ sidebarOpen })}
       style={
         {
-          "--sidebar-width": "calc(var(--spacing) * 72)",
+          "--sidebar-width": `${settings.leftSidebarWidth}px`,
           "--header-height": "calc(var(--spacing) * 12)",
         } as React.CSSProperties
       }
@@ -251,6 +255,11 @@ export function App() {
             calendarStore={calendarStore}
             shortcutStore={shortcutStore}
             todoStore={todoStore}
+            open={settings.rightPanelOpen}
+            width={settings.rightPanelWidth}
+            onOpenChange={(rightPanelOpen) =>
+              void updateSettings({ rightPanelOpen })
+            }
             onOpenCalendar={() => navigate("calendar")}
             onOpenShortcuts={() => navigate("shortcuts")}
             onOpenTodos={() => navigate("todos")}
@@ -267,6 +276,7 @@ export function App() {
         busy={memo.busy}
         error={memo.error}
         onChooseDirectory={() => void memo.chooseDirectory()}
+        settingsError={settingsError}
       />
       {codexSetup !== null && (
         <CodexSetupPrompt

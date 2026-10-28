@@ -10,6 +10,7 @@ import { registerCalendar } from "./calendar"
 import { registerShortcuts } from "./shortcuts"
 import { registerWeather } from "./weather"
 import { registerCodex } from "./codex"
+import { registerAppSettings } from "./app-settings"
 
 // The development launcher emits this module as ESM at out/main/index.js.
 const mainDirectory = import.meta.dirname
@@ -35,6 +36,7 @@ function createWindow(): void {
   const calendarRepository = new CalendarRepository(app.getPath("userData"))
   const todoRepository = new TodoRepository(app.getPath("userData"))
   registerTodos(mainWindow, todoRepository)
+  registerAppSettings(mainWindow)
   registerNotes(mainWindow)
   const refreshReminders = registerCalendar(mainWindow, calendarRepository)
   registerShortcuts(mainWindow)

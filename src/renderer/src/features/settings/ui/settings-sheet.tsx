@@ -26,6 +26,7 @@ export function SettingsSheet({
   ready,
   busy,
   error,
+  settingsError = "",
   onChooseDirectory,
 }: {
   connectionPanel?: React.ReactNode
@@ -35,6 +36,7 @@ export function SettingsSheet({
   ready: boolean
   busy: boolean
   error: string
+  settingsError?: string
   onChooseDirectory: () => void
 }) {
   const sectionId = useId()
@@ -49,6 +51,11 @@ export function SettingsSheet({
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-6">
+          {settingsError && (
+            <p role="alert" className="text-sm text-destructive">
+              {settingsError}
+            </p>
+          )}
           <section
             aria-labelledby={`${sectionId}-settings-theme`}
             className="space-y-3"

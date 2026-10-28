@@ -13,6 +13,7 @@ if (
     "codex",
     "todos",
     "commands",
+    "settings",
   ].includes(suite)
 )
   throw new Error("Unknown test suite")

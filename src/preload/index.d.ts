@@ -6,6 +6,7 @@ import type { CalendarAPI } from "../shared/calendar"
 import type { ShortcutsAPI } from "../shared/shortcuts"
 import type { WeatherAPI } from "../shared/weather"
 import type { CodexAPI } from "../shared/codex"
+import type { AppSettingsAPI } from "../shared/app-settings"
 
 declare global {
   interface Window {
@@ -17,6 +18,7 @@ declare global {
       calendar: CalendarAPI
       weather: WeatherAPI
       codex: CodexAPI
+      settings: AppSettingsAPI
       shortcuts: ShortcutsAPI & {
         inspectFileDrop: (file: File) => ReturnType<ShortcutsAPI["inspectDrop"]>
       }

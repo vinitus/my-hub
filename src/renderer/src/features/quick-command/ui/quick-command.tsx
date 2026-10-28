@@ -11,6 +11,9 @@ import {
 import { Button } from "@/shared/ui/button"
 import {
   executeCommand,
+  applyCommand,
+  undoCommand,
+  discardCommand,
   MAX_COMMAND_LENGTH,
   type CommandResult,
 } from "../model/command-runner"
@@ -20,21 +23,31 @@ type Task = {
   input: string
   status: CommandResult["status"] | "running"
   message: string
+  preview?: CommandResult["preview"]
+  undoToken?: string
 }
 
 export function QuickCommand({
   open,
   onOpenChange,
   runCommand = executeCommand,
+  apply = applyCommand,
+  undo = undoCommand,
+  discard = discardCommand,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   runCommand?: typeof executeCommand
+  apply?: typeof applyCommand
+  undo?: typeof undoCommand
+  discard?: typeof discardCommand
 }) {
   const [draft, setDraft] = useState("")
   const [task, setTask] = useState<Task | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const busyRef = useRef(false)
   const running = task?.status === "running"
+  const reviewing = task?.status === "preview"
 
   const toggle = useEffectEvent((event: KeyboardEvent) => {
     if (
@@ -65,7 +78,8 @@ export function QuickCommand({
 
   async function submit() {
     const input = draft.trim()
-    if (!input || running) return
+    if (!input || busyRef.current || reviewing) return
+    busyRef.current = true
     const id = crypto.randomUUID()
     setTask({
       id,
@@ -93,6 +107,48 @@ export function QuickCommand({
             }
           : current
       )
+    } finally {
+      busyRef.current = false
+    }
+  }
+  async function resolveTask(action: "apply" | "undo" | "discard") {
+    const token = action === "undo" ? task?.undoToken : task?.preview?.token
+    if (!task || !token || busyRef.current) return
+    busyRef.current = true
+    const current = task
+    setTask({
+      ...current,
+      status: "running",
+      message:
+        action === "undo"
+          ? "변경을 되돌리고 있습니다."
+          : action === "discard"
+            ? "변경을 취소하고 있습니다."
+            : "변경을 저장하고 있습니다.",
+    })
+    try {
+      const result =
+        action === "discard"
+          ? (await discard(token),
+            {
+              status: "success" as const,
+              message: "변경하지 않고 취소했습니다.",
+              changed: [],
+            })
+          : await (action === "undo" ? undo : apply)(token)
+      setTask({ id: current.id, input: current.input, ...result })
+    } catch (error) {
+      setTask({
+        id: current.id,
+        input: current.input,
+        status: "error",
+        message:
+          error instanceof Error
+            ? error.message
+            : "처리 결과를 확인하지 못했습니다. 목록을 확인해 주세요.",
+      })
+    } finally {
+      busyRef.current = false
     }
   }
   const StatusIcon =
@@ -104,15 +160,17 @@ export function QuickCommand({
   const statusLabel =
     task?.status === "running"
       ? "처리 중"
-      : task?.status === "success"
-        ? "완료"
-        : task?.status === "needs-connection"
-          ? "AI 연결 필요"
-          : task?.status === "clarification"
-            ? "추가 설명 필요"
-            : task?.status === "partial"
-              ? "일부 저장됨"
-              : "처리 실패"
+      : task?.status === "preview"
+        ? "변경 확인"
+        : task?.status === "success"
+          ? "완료"
+          : task?.status === "needs-connection"
+            ? "AI 연결 필요"
+            : task?.status === "clarification"
+              ? "추가 설명 필요"
+              : task?.status === "partial"
+                ? "일부 저장됨"
+                : "처리 실패"
 
   return (
     <>
@@ -126,7 +184,8 @@ export function QuickCommand({
             <Dialog.Title className="sr-only">빠른 AI 입력</Dialog.Title>
             <Dialog.Description className="sr-only">
               캘린더 일정이나 할일 요청을 입력하세요. Enter로 전송하고 Escape로
-              닫습니다. 요청과 현재 일정·할일 정보가 연결된 AI로 전송됩니다.
+              닫습니다. 변경은 미리보기를 확인한 뒤 적용합니다. 요청과 현재
+              일정·할일 정보가 연결된 AI로 전송됩니다.
             </Dialog.Description>
             <form
               className="flex items-center gap-2"
@@ -170,7 +229,7 @@ export function QuickCommand({
                 type="submit"
                 size="icon-sm"
                 aria-label="요청 전송"
-                disabled={!draft.trim() || running}
+                disabled={!draft.trim() || running || reviewing}
               >
                 <ArrowUpIcon />
               </Button>
@@ -181,7 +240,7 @@ export function QuickCommand({
       {task && (
         <aside
           aria-label="AI 작업 상태"
-          className="fixed right-4 bottom-4 z-40 w-[calc(100%-2rem)] max-w-sm rounded-xl border bg-popover p-4 text-popover-foreground shadow-lg sm:right-6 sm:bottom-6"
+          className="fixed right-4 bottom-4 z-40 max-h-[calc(100svh-2rem)] w-[calc(100%-2rem)] max-w-sm overflow-auto rounded-xl border bg-popover p-4 text-popover-foreground shadow-lg sm:right-6 sm:bottom-6"
         >
           <div className="flex items-start gap-3">
             <StatusIcon
@@ -205,7 +264,7 @@ export function QuickCommand({
                 {task.message}
               </p>
             </div>
-            {!running && (
+            {!running && !reviewing && (
               <Button
                 variant="ghost"
                 size="icon-xs"
@@ -216,7 +275,59 @@ export function QuickCommand({
               </Button>
             )}
           </div>
-          {!running && task.status !== "success" && (
+          {reviewing && task.preview && (
+            <div className="mt-3">
+              <ol
+                aria-label="변경 미리보기"
+                className="max-h-64 space-y-3 overflow-auto text-xs"
+              >
+                {task.preview.changes.map((change) => (
+                  <li
+                    key={`${change.domain}:${change.id}`}
+                    className="rounded-md border p-2"
+                  >
+                    <p className="font-medium">
+                      {change.domain === "calendar" ? "일정" : "할일"}{" "}
+                      {change.operation === "create"
+                        ? "추가"
+                        : change.operation === "remove"
+                          ? "삭제"
+                          : "수정"}
+                    </p>
+                    <p className="mt-1 break-words whitespace-pre-wrap text-muted-foreground">
+                      변경 전: {change.before ?? "없음"}
+                    </p>
+                    <p className="mt-1 break-words whitespace-pre-wrap">
+                      변경 후: {change.after ?? "삭제됨"}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" onClick={() => void resolveTask("apply")}>
+                  변경 적용
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void resolveTask("discard")}
+                >
+                  변경 취소
+                </Button>
+              </div>
+            </div>
+          )}
+          {!running && task.undoToken && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => void resolveTask("undo")}
+            >
+              실행 취소
+            </Button>
+          )}
+          {!running && !reviewing && task.status !== "success" && (
             <Button
               variant="ghost"
               size="sm"

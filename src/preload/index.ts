@@ -93,6 +93,9 @@ const todos: TodosAPI = {
   remove: (request) => ipcRenderer.invoke("todos:remove", request),
 }
 const commands: CommandAPI = {
+  apply: (token) => ipcRenderer.invoke("commands:apply", token),
+  discard: (token) => ipcRenderer.invoke("commands:discard", token),
+  undo: (token) => ipcRenderer.invoke("commands:undo", token),
   execute: (input) => ipcRenderer.invoke("commands:execute", input),
   onChange: (callback) => {
     const listener = (

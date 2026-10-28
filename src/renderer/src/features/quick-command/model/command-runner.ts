@@ -25,3 +25,13 @@ export async function executeCommand(input: string): Promise<CommandResult> {
     await window.api.commands.execute(parsed.data)
   )
 }
+
+export async function applyCommand(token: string): Promise<CommandResult> {
+  return CommandResultSchema.parse(await window.api.commands.apply(token))
+}
+export async function undoCommand(token: string): Promise<CommandResult> {
+  return CommandResultSchema.parse(await window.api.commands.undo(token))
+}
+export async function discardCommand(token: string): Promise<void> {
+  await window.api.commands.discard(token)
+}

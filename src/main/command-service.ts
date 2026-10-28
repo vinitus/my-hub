@@ -72,9 +72,37 @@ export function validateCommandPlan(
   }
 }
 
+type ValidatedAction = {
+  domain: "calendar" | "todos"
+  operation: "create" | "update" | "remove"
+  id: string
+  event: CalendarSnapshot["events"][number] | null
+  todo: TodoSnapshot["items"][number] | null
+}
+type Batch = {
+  token: string
+  actions: ValidatedAction[]
+  calendar: CalendarSnapshot
+  todos: TodoSnapshot
+}
+
+function describe(
+  item:
+    | CalendarSnapshot["events"][number]
+    | TodoSnapshot["items"][number]
+    | undefined
+) {
+  if (!item) return null
+  if ("dueDate" in item)
+    return `${item.title}\n마감: ${item.dueDate} · ${item.completed ? "완료" : "미완료"}`
+  return `${item.title}\n${item.allDay ? "종일 · 종료일 제외 " : ""}${item.start} → ${item.end}\n${item.description}\n색상: ${item.color}`
+}
+
 export class CommandService {
   private running = false
   private disposed = false
+  private pending: Batch | null = null
+  private undoBatch: Batch | null = null
   private readonly calendar: Pick<
     CalendarRepository,
     "load" | "save" | "remove"
@@ -104,39 +132,43 @@ export class CommandService {
   }
   dispose() {
     this.disposed = true
+    this.pending = null
+    this.undoBatch = null
     this.planner.dispose()
+  }
+  private error(message: string): CommandResult {
+    return { status: "error", message, changed: [] }
+  }
+  private async assertCurrent(batch: Batch) {
+    const [calendar, todos] = await Promise.all([
+      this.calendar.load(),
+      this.todos.load(),
+    ])
+    if (
+      calendar.revision !== batch.calendar.revision ||
+      todos.revision !== batch.todos.revision
+    )
+      throw new Error(
+        "목록이 변경되었습니다. 최신 목록을 확인하고 다시 요청해 주세요."
+      )
+  }
+  discard = async (token: unknown): Promise<void> => {
+    if (!this.running && this.pending?.token === token) this.pending = null
   }
   execute = async (request: unknown): Promise<CommandResult> => {
     const parsed = CommandInputSchema.safeParse(request)
-    if (!parsed.success)
-      return {
-        status: "error",
-        message: "요청을 500자 이내로 입력해 주세요.",
-        changed: [],
-      }
-    if (this.running)
-      return {
-        status: "error",
-        message: "이전 AI 요청이 처리 중입니다.",
-        changed: [],
-      }
-    if (this.disposed)
-      return {
-        status: "error",
-        message: "작업 창이 종료되었습니다.",
-        changed: [],
-      }
+    if (!parsed.success) return this.error("요청을 500자 이내로 입력해 주세요.")
+    if (this.running) return this.error("이전 AI 요청이 처리 중입니다.")
+    if (this.disposed) return this.error("작업 창이 종료되었습니다.")
     this.running = true
-    const domains = new Set<"calendar" | "todos">()
-    const applied: string[] = []
+    this.pending = null
+    this.undoBatch = null
     try {
-      const loaded = await Promise.all([
+      const [calendar, todos, preferences] = await Promise.all([
         this.calendar.load(),
         this.todos.load(),
         this.settings.read(),
       ])
-      let [calendar, todos] = loaded
-      const preferences = loaded[2]
       const now = this.now()
       const context = JSON.stringify({
         request: parsed.data,
@@ -170,20 +202,72 @@ export class CommandService {
           message: plan.message,
           changed: [],
         }
-      // 첫 쓰기 전에 모든 payload와 양쪽 revision을 확인한다. 이후 쓰기도 각 repository에서 revision을 검사한다.
-      const [latestCalendar, latestTodos] = await Promise.all([
-        this.calendar.load(),
-        this.todos.load(),
-      ])
-      if (
-        latestCalendar.revision !== calendar.revision ||
-        latestTodos.revision !== todos.revision
+      const batch = { token: randomUUID(), actions, calendar, todos }
+      await this.assertCurrent(batch)
+      if (this.disposed) throw new Error("작업 창이 종료되었습니다.")
+      this.pending = batch
+      return {
+        status: "preview",
+        message: plan.message,
+        changed: [],
+        preview: {
+          token: batch.token,
+          changes: actions.map((action) => ({
+            id: action.id,
+            domain: action.domain,
+            operation: action.operation,
+            before: describe(
+              action.domain === "calendar"
+                ? calendar.events.find((item) => item.id === action.id)
+                : todos.items.find((item) => item.id === action.id)
+            ),
+            after: describe(action.event ?? action.todo ?? undefined),
+          })),
+        },
+      }
+    } catch (error) {
+      return {
+        ...this.error(this.errorMessage(error)),
+        status: error instanceof NeedsConnection ? "needs-connection" : "error",
+      }
+    } finally {
+      this.running = false
+    }
+  }
+  apply = (token: unknown): Promise<CommandResult> => this.commit(token, false)
+  undo = (token: unknown): Promise<CommandResult> => this.commit(token, true)
+
+  private errorMessage(error: unknown) {
+    return error instanceof z.ZodError
+      ? "AI 작업 계획이 올바르지 않아 변경하지 않았습니다."
+      : error instanceof Error
+        ? error.message
+        : "작업을 처리하지 못했습니다."
+  }
+  private async commit(token: unknown, undo: boolean): Promise<CommandResult> {
+    if (this.running) return this.error("이전 AI 요청이 처리 중입니다.")
+    if (this.disposed) return this.error("작업 창이 종료되었습니다.")
+    const batch = undo ? this.undoBatch : this.pending
+    if (!batch || batch.token !== token)
+      return this.error(
+        "작업이 만료되었거나 이미 처리되었습니다. 다시 요청해 주세요."
       )
-        throw new Error(
-          "해석 중 목록이 변경되었습니다. 최신 목록을 확인하고 다시 요청해 주세요."
-        )
-      for (const action of actions) {
+    this.running = true
+    // 토큰은 한 번만 소비한다. renderer는 계획이나 revision을 지정할 수 없다.
+    if (undo) this.undoBatch = null
+    else this.pending = null
+    let { calendar, todos } = batch
+    const domains = new Set<"calendar" | "todos">()
+    const applied: string[] = []
+    const inverses: ValidatedAction[] = []
+    try {
+      await this.assertCurrent(batch)
+      for (const action of batch.actions) {
         if (this.disposed) throw new Error("작업 창이 종료되었습니다.")
+        const previousEvent = calendar.events.find(
+          (item) => item.id === action.id
+        )
+        const previousTodo = todos.items.find((item) => item.id === action.id)
         if (action.domain === "calendar") {
           calendar =
             action.operation === "remove"
@@ -207,37 +291,50 @@ export class CommandService {
                   expectedRevision: todos.revision,
                 })
         }
+        inverses.unshift({
+          ...action,
+          operation:
+            action.operation === "create"
+              ? "remove"
+              : action.operation === "remove"
+                ? "create"
+                : "update",
+          event: action.domain === "calendar" ? (previousEvent ?? null) : null,
+          todo: action.domain === "todos" ? (previousTodo ?? null) : null,
+        })
         domains.add(action.domain)
         applied.push(
-          `${action.domain === "calendar" ? "일정" : "할일"} ${action.operation === "create" ? "추가" : action.operation === "update" ? "수정" : "삭제"}: ${action.todo?.title ?? action.event?.title ?? action.id}`
+          `${action.domain === "calendar" ? "일정" : "할일"} ${undo ? "복원" : action.operation === "create" ? "추가" : action.operation === "update" ? "수정" : "삭제"}: ${action.todo?.title ?? action.event?.title ?? previousTodo?.title ?? previousEvent?.title ?? action.id}`
         )
       }
       return {
         status: "success",
-        message: `${applied.length}건 저장 완료\n${applied.join("\n")}\n${plan.message}`,
+        message: `${applied.length}건 ${undo ? "실행 취소" : "저장"} 완료\n${applied.join("\n")}`,
         changed: [...domains],
+        ...this.rememberUndo(undo, inverses, calendar, todos),
       }
     } catch (error) {
-      const message =
-        error instanceof z.ZodError
-          ? "AI 작업 계획이 올바르지 않아 변경하지 않았습니다."
-          : error instanceof Error
-            ? error.message
-            : "AI 작업 계획이 올바르지 않아 변경하지 않았습니다."
       return {
-        status: applied.length
-          ? "partial"
-          : error instanceof NeedsConnection
-            ? "needs-connection"
-            : "error",
-        message: applied.length
-          ? `${applied.length}건만 저장했습니다.\n${applied.join("\n")}\n나머지 작업은 중단했습니다. 전체 요청을 다시 보내면 중복될 수 있습니다.\n${message}`
-          : message,
+        status: applied.length ? "partial" : "error",
         changed: [...domains],
+        message: applied.length
+          ? `${applied.length}건만 ${undo ? "복원" : "저장"}했습니다.\n${applied.join("\n")}\n나머지 작업은 중단했습니다. 전체 요청을 다시 보내면 중복될 수 있습니다.\n${this.errorMessage(error)}`
+          : this.errorMessage(error),
+        ...this.rememberUndo(undo, inverses, calendar, todos),
       }
     } finally {
       this.running = false
       if (domains.size) this.changed([...domains])
     }
+  }
+  private rememberUndo(
+    undo: boolean,
+    actions: ValidatedAction[],
+    calendar: CalendarSnapshot,
+    todos: TodoSnapshot
+  ) {
+    if (undo || !actions.length || this.disposed) return {}
+    this.undoBatch = { token: randomUUID(), actions, calendar, todos }
+    return { undoToken: this.undoBatch.token }
   }
 }

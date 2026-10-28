@@ -14,14 +14,38 @@ export const CommandResultSchema = z
       "error",
       "clarification",
       "partial",
+      "preview",
     ]),
     message: z.string().max(10000),
+    preview: z
+      .object({
+        token: z.uuid(),
+        changes: z
+          .array(
+            z
+              .object({
+                id: z.uuid(),
+                domain: z.enum(["calendar", "todos"]),
+                operation: z.enum(["create", "update", "remove"]),
+                before: z.string().nullable(),
+                after: z.string().nullable(),
+              })
+              .strict()
+          )
+          .max(20),
+      })
+      .strict()
+      .optional(),
+    undoToken: z.uuid().optional(),
     changed: z.array(z.enum(["calendar", "todos"])),
   })
   .strict()
 export type CommandResult = z.infer<typeof CommandResultSchema>
 export type CommandAPI = {
   execute: (input: string) => Promise<CommandResult>
+  apply: (token: string) => Promise<CommandResult>
+  discard: (token: string) => Promise<void>
+  undo: (token: string) => Promise<CommandResult>
   onChange: (
     callback: (domains: CommandResult["changed"]) => void
   ) => () => void

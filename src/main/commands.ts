@@ -16,16 +16,25 @@ export function registerCommands(
     if (domains.includes("calendar")) refreshReminders()
     window.webContents.send("commands:changed", domains)
   })
-  ipcMain.handle("commands:execute", (event, input: unknown) => {
-    if (
-      event.sender !== window.webContents ||
-      event.senderFrame !== window.webContents.mainFrame
-    )
-      throw new Error("허용되지 않은 요청입니다.")
-    return service.execute(input)
-  })
+  const methods = {
+    execute: service.execute,
+    apply: service.apply,
+    discard: service.discard,
+    undo: service.undo,
+  }
+  for (const [method, handle] of Object.entries(methods)) {
+    ipcMain.handle(`commands:${method}`, (event, input: unknown) => {
+      if (
+        event.sender !== window.webContents ||
+        event.senderFrame !== window.webContents.mainFrame
+      )
+        throw new Error("허용되지 않은 요청입니다.")
+      return handle(input)
+    })
+  }
   window.on("closed", () => {
     service.dispose()
-    ipcMain.removeHandler("commands:execute")
+    for (const method of Object.keys(methods))
+      ipcMain.removeHandler(`commands:${method}`)
   })
 }

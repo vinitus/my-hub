@@ -1,14 +1,27 @@
-import { useState, type ComponentProps, type ComponentType, type ReactNode } from "react"
+import {
+  useState,
+  type ComponentProps,
+  type ComponentType,
+  type ReactNode,
+} from "react"
 import {
   FileTextIcon,
   FilePlus2Icon,
   FolderOpenIcon,
   SettingsIcon,
   RefreshCwIcon,
+  CopyIcon,
+  ExternalLinkIcon,
 } from "lucide-react"
 import type { NoteLibrarySnapshot } from "../../../../../shared/notes"
 import { Input } from "@/shared/ui/input"
 import { Button } from "@/shared/ui/button"
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/shared/ui/context-menu"
 import {
   Sidebar,
   SidebarContent,
@@ -70,9 +83,7 @@ export function AppSidebar<View extends string>({
     ) ?? []
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader className="px-2 pt-2 pb-0">
-        {scheduleStatus}
-      </SidebarHeader>
+      <SidebarHeader className="px-2 pt-2 pb-0">{scheduleStatus}</SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>워크스페이스</SidebarGroupLabel>
@@ -146,15 +157,36 @@ export function AppSidebar<View extends string>({
               <SidebarMenu>
                 {notes.map((note) => (
                   <SidebarMenuItem key={note.path}>
-                    <SidebarMenuButton
-                      title={`${note.name}\n${new Date(note.modifiedAt).toLocaleString()}`}
-                      isActive={note.path === currentPath}
-                      disabled={busy}
-                      onClick={() => onSelectNote(note.name)}
-                    >
-                      <FileTextIcon />
-                      <span>{note.name.replace(/\.md$/i, "")}</span>
-                    </SidebarMenuButton>
+                    <ContextMenu>
+                      <ContextMenuTrigger className="w-full rounded-md">
+                        <SidebarMenuButton
+                          title={`${note.name}\n${new Date(note.modifiedAt).toLocaleString()}`}
+                          isActive={note.path === currentPath}
+                          disabled={busy}
+                          onClick={() => onSelectNote(note.name)}
+                        >
+                          <FileTextIcon />
+                          <span>{note.name.replace(/\.md$/i, "")}</span>
+                        </SidebarMenuButton>
+                      </ContextMenuTrigger>
+                      <ContextMenuContent>
+                        <ContextMenuItem
+                          disabled={busy}
+                          onClick={() => onSelectNote(note.name)}
+                        >
+                          <ExternalLinkIcon />
+                          열기
+                        </ContextMenuItem>
+                        <ContextMenuItem
+                          onClick={() =>
+                            void navigator.clipboard.writeText(note.path)
+                          }
+                        >
+                          <CopyIcon />
+                          파일 경로 복사
+                        </ContextMenuItem>
+                      </ContextMenuContent>
+                    </ContextMenu>
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
@@ -193,9 +225,7 @@ export function AppSidebar<View extends string>({
           </SidebarMenuItem>
         </SidebarMenu>
         {activeView === "todos" && (
-          <p
-            className="truncate px-2 text-xs leading-relaxed text-muted-foreground"
-          >
+          <p className="truncate px-2 text-xs leading-relaxed text-muted-foreground">
             할일은 이 기기에 저장됩니다.
           </p>
         )}

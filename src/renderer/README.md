@@ -22,6 +22,7 @@ Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
 
 앱 첫 화면은 메모다. AI 요청은 Ctrl+K로 여는 한 줄 모달에 입력하고,
 전송 후 우측 하단에서 작업 상태를 확인한다. 설정에서 ChatGPT를 연결한 뒤 사용할 수 있으며,
+변경 요청은 전후 미리보기를 확인하고 적용한다. 저장 후 최근 작업은 실행 취소할 수 있다.
 구조는 [빠른 입력 안내](src/features/quick-command/README.md)를 참고한다.
 
 캘린더 화면은 `src/pages/calendar`, 편집·알림은 `src/features/calendar`에 있으며 FullCalendar와 기존 shadcn UI를 사용한다.

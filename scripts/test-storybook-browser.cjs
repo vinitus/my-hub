@@ -303,6 +303,11 @@ app.whenReady().then(async () => {
             Clarification: "추가 설명 필요",
             Failure: "처리 실패",
             Partial: "일부 저장됨",
+            Preview: "변경 확인",
+            Discard: "변경 확인",
+            Undo: "완료",
+            "Apply Conflict": "변경 확인",
+            "Partial Undo": "일부 저장됨",
           }
           assert.equal(
             await win.webContents.executeJavaScript(
@@ -311,6 +316,53 @@ app.whenReady().then(async () => {
             true,
             `${story.id}: command result status`
           )
+          if (["Preview", "Discard", "Apply Conflict"].includes(story.name)) {
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[aria-label="변경 미리보기"]').children.length`
+              ),
+              2
+            )
+            const button = story.name === "Discard" ? "변경 취소" : "변경 적용"
+            await win.webContents.executeJavaScript(
+              `Array.from(document.querySelectorAll('aside button')).find(b => b.textContent === ${JSON.stringify(button)}).click()`
+            )
+            await delay(100)
+            const message =
+              story.name === "Discard"
+                ? "변경하지 않고 취소"
+                : story.name === "Apply Conflict"
+                  ? "목록이 변경"
+                  : "2건 저장 완료"
+            assert.ok(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('aside').innerText.includes(${JSON.stringify(message)})`
+              )
+            )
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[aria-label="변경 미리보기"]') === null`
+              ),
+              true
+            )
+          }
+          if (["Preview", "Undo", "Partial Undo"].includes(story.name)) {
+            await win.webContents.executeJavaScript(
+              `Array.from(document.querySelectorAll('aside button')).find(b => b.textContent === '실행 취소').click()`
+            )
+            await delay(100)
+            assert.ok(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('aside').innerText.includes('실행 취소 완료')`
+              )
+            )
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `Array.from(document.querySelectorAll('aside button')).some(b => b.textContent === '실행 취소')`
+              ),
+              false
+            )
+          }
           console.log(`PASS quick command ${story.name}`)
         }
         if (

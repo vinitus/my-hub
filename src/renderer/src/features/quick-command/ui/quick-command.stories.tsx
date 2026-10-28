@@ -10,6 +10,18 @@ const meta = {
   args: {
     open: true,
     onOpenChange: () => {},
+    apply: async (): Promise<CommandResult> => ({
+      status: "success",
+      message: "2건 저장 완료",
+      changed: ["calendar", "todos"],
+      undoToken: "00000000-0000-4000-8000-000000000002",
+    }),
+    undo: async (): Promise<CommandResult> => ({
+      status: "success",
+      message: "2건 실행 취소 완료",
+      changed: ["calendar", "todos"],
+    }),
+    discard: async () => {},
     runCommand: async (): Promise<CommandResult> => ({
       status: "success",
       message: "일정 1건 저장 완료",
@@ -65,6 +77,70 @@ export const Partial: Story = {
       status: "partial",
       message:
         "1건만 저장했습니다. 나머지 작업은 중단했습니다. 목록을 확인해 주세요.",
+      changed: ["todos"],
+    }),
+  },
+}
+
+const preview: CommandResult = {
+  status: "preview",
+  message: "회의 시간을 변경하고 보고서 할일을 삭제합니다.",
+  changed: [],
+  preview: {
+    token: "00000000-0000-4000-8000-000000000001",
+    changes: [
+      {
+        id: "00000000-0000-4000-8000-000000000003",
+        domain: "calendar",
+        operation: "update",
+        before:
+          "팀 회의\n2026-10-29T15:00:00+09:00 → 2026-10-29T16:00:00+09:00",
+        after: "팀 회의\n2026-10-29T16:00:00+09:00 → 2026-10-29T17:00:00+09:00",
+      },
+      {
+        id: "00000000-0000-4000-8000-000000000004",
+        domain: "todos",
+        operation: "remove",
+        before: "보고서 작성\n마감: 2026-10-30 · 미완료",
+        after: null,
+      },
+    ],
+  },
+}
+export const Preview: Story = { args: { runCommand: async () => preview } }
+export const Discard: Story = { args: { runCommand: async () => preview } }
+export const Undo: Story = {
+  args: {
+    runCommand: async () => ({
+      status: "success",
+      message: "2건 저장 완료",
+      changed: ["calendar", "todos"],
+      undoToken: "00000000-0000-4000-8000-000000000002",
+    }),
+  },
+}
+export const ApplyConflict: Story = {
+  args: {
+    runCommand: async () => preview,
+    apply: async () => ({
+      status: "error",
+      message:
+        "목록이 변경되었습니다. 최신 목록을 확인하고 다시 요청해 주세요.",
+      changed: [],
+    }),
+  },
+}
+export const PartialUndo: Story = {
+  args: {
+    runCommand: async () => ({
+      status: "partial",
+      message: "1건만 저장했습니다.",
+      changed: ["todos"],
+      undoToken: "00000000-0000-4000-8000-000000000002",
+    }),
+    undo: async () => ({
+      status: "success",
+      message: "1건 실행 취소 완료",
       changed: ["todos"],
     }),
   },

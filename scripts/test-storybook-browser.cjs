@@ -114,6 +114,105 @@ app.whenReady().then(async () => {
         )
         if (
           theme === "light" &&
+          story.importPath.endsWith("/home-page.stories.tsx")
+        ) {
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.activeElement === document.querySelector('textarea')`
+            ),
+            story.name !== "Inactive",
+            "scratchpad must focus on entry only while active"
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('textarea').hasAttribute('placeholder')`
+            ),
+            false
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('input').focus(); window.dispatchEvent(new Event('focus'))`
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.activeElement === document.querySelector('textarea')`
+            ),
+            story.name !== "Inactive",
+            "returning to the app must refocus only the active scratchpad"
+          )
+          await win.webContents.executeJavaScript(`
+            const dialog = document.createElement('div');
+            dialog.id = 'focus-test-dialog'; dialog.setAttribute('role', 'dialog'); dialog.setAttribute('data-open', '');
+            const input = document.createElement('input'); dialog.append(input); document.body.append(dialog); input.focus();
+            window.dispatchEvent(new Event('focus'));
+          `)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.activeElement === document.querySelector('#focus-test-dialog input')`
+            ),
+            true,
+            "window focus must not steal focus from an open dialog"
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('#focus-test-dialog').remove()`
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('textarea').focus()`
+          )
+          win.webContents.insertText("첫 줄\n두 번째 줄")
+          await delay(50)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('textarea').value`
+            ),
+            "첫 줄\n두 번째 줄",
+            "free writing must preserve newlines"
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[role="status"]').textContent`
+            ),
+            "Ctrl+S로 저장",
+            "typing must not save the scratchpad"
+          )
+          await win.webContents.executeJavaScript(
+            `window.dispatchEvent(new KeyboardEvent('keydown', {key:'s', ctrlKey:true, bubbles:true, cancelable:true}))`
+          )
+          await delay(50)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('textarea').value`
+            ),
+            "첫 줄\n두 번째 줄",
+            "saving must preserve the scratchpad text"
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[role="alert"]')?.textContent.trim() || document.querySelector('[role="status"]').textContent`
+            ),
+            story.name === "Save Error"
+              ? "파일에 접근할 수 없습니다."
+              : story.name === "Inactive"
+                ? "Ctrl+S로 저장"
+                : "저장했습니다.",
+            "Ctrl+S must respect the active page and surface save errors"
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('summary').click(); document.querySelector('input').focus()`
+          )
+          win.webContents.insertText("(1200 + 350) * 2")
+          await delay(50)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('output').textContent`
+            ),
+            "3,100"
+          )
+          console.log(
+            "PASS scratchpad explicit save, retained text and optional calculator"
+          )
+        }
+        if (
+          theme === "light" &&
           story.importPath.endsWith("/theme-provider.stories.tsx")
         ) {
           await win.webContents

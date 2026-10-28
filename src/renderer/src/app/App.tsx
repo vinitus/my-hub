@@ -75,10 +75,20 @@ export function App() {
     if (next === "shortcuts") setShortcutsVisited(true)
     setView(next)
   }
-  const saveQuickMemo = async (text: string) => {
-    const current = memo.note.markdown.trimEnd()
-    memo.change(current ? `${current}\n\n${text}` : text)
-    return (await memo.save()) === true
+  const [scratchpadFileId, setScratchpadFileId] = useState<string | null>(null)
+  const saveScratchpad = async (text: string) => {
+    if (!window.api?.notes)
+      throw new Error("파일 저장은 Electron 앱에서 사용할 수 있습니다.")
+    const file = await window.api.notes.save({
+      id: scratchpadFileId,
+      markdown: text,
+      name: "낙서장.md",
+      saveAs: scratchpadFileId === null,
+    })
+    if (!file) return false
+    setScratchpadFileId(file.id)
+    void memo.refresh()
+    return true
   }
   const createTodo = () => {
     setTodoCreateRequest((request) => request + 1)
@@ -183,11 +193,8 @@ export function App() {
           }
         >
           <HomePage
-            noteName={memo.note.name}
-            noteBusy={memo.busy}
-            noteError={memo.error}
-            onSaveMemo={saveQuickMemo}
-            onOpenNotes={() => navigate("notes")}
+            active={view === "home"}
+            onSave={saveScratchpad}
             onCreateTodo={createTodo}
             onCreateEvent={createEvent}
             onCreateShortcut={createShortcut}

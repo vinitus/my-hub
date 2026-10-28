@@ -5,12 +5,16 @@ const meta = {
   title: "홈/다용도 화면",
   component: HomePage,
   parameters: { layout: "fullscreen" },
+  decorators: [
+    (Story) => (
+      <div className="flex h-screen min-h-0 flex-col">
+        <Story />
+      </div>
+    ),
+  ],
   args: {
-    noteName: "회의 아이디어.md",
-    noteBusy: false,
-    noteError: "",
-    onSaveMemo: async () => true,
-    onOpenNotes: () => {},
+    active: true,
+    onSave: async () => true,
     onCreateTodo: () => {},
     onCreateEvent: () => {},
     onCreateShortcut: () => {},
@@ -22,7 +26,11 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const Default: Story = {}
-export const Saving: Story = { args: { noteBusy: true } }
+export const Inactive: Story = { args: { active: false } }
 export const SaveError: Story = {
-  args: { noteError: "메모 저장 폴더에 접근할 수 없습니다." },
+  args: {
+    onSave: async () => {
+      throw new Error("파일에 접근할 수 없습니다.")
+    },
+  },
 }

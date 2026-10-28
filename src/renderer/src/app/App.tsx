@@ -250,8 +250,10 @@ export function App() {
           <LiveStatusPanel
             calendarStore={calendarStore}
             shortcutStore={shortcutStore}
+            todoStore={todoStore}
             onOpenCalendar={() => navigate("calendar")}
             onOpenShortcuts={() => navigate("shortcuts")}
+            onOpenTodos={() => navigate("todos")}
           />
         </div>
       </SidebarInset>

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import type { CalendarEvent } from "../../../../../shared/calendar"
+import type { Todo } from "../../../../../shared/todos"
 import { StatusPanel, type StatusPanelProps } from "./status-panel"
 
 const now = new Date(2026, 9, 28, 8, 36).getTime()
@@ -28,6 +29,7 @@ function event(
 function InteractivePanel(args: StatusPanelProps) {
   const [open, setOpen] = useState(args.open)
   const [launched, setLaunched] = useState("")
+  const [completed, setCompleted] = useState("")
   return (
     <div className="relative flex h-[700px] w-full justify-end">
       {launched && (
@@ -35,11 +37,19 @@ function InteractivePanel(args: StatusPanelProps) {
           {launched} 실행 요청
         </span>
       )}
+      {completed && (
+        <span role="status" className="absolute bottom-2 left-36 text-xs">
+          {completed} 완료 요청
+        </span>
+      )}
       <StatusPanel
         {...args}
         open={open}
         onOpenChange={setOpen}
         onLaunch={(item) => setLaunched(item.name)}
+        onToggleTodo={(todo, isCompleted) =>
+          setCompleted(isCompleted ? todo.title : "")
+        }
       />
     </div>
   )
@@ -54,10 +64,13 @@ const meta = {
     now,
     events: [],
     shortcuts: [],
+    todos: [],
     onOpenChange: () => {},
     onLaunch: () => {},
     onOpenCalendar: () => {},
     onOpenShortcuts: () => {},
+    onOpenTodos: () => {},
+    onToggleTodo: () => {},
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof StatusPanel>
@@ -104,16 +117,31 @@ export const Populated: Story = {
         target: "C:\\Projects",
       },
     ],
+    todos: [
+      {
+        id: "7f35dce4-3e37-49d3-a39b-301d5e1fe63c",
+        title: "이번 주 일정 정리",
+        dueDate: "2026-10-30",
+        completed: false,
+        favorite: true,
+      },
+      {
+        id: "f20e749f-6a32-419b-aa56-12c242bda9ef",
+        title: "기한 없는 문서 초안 작성",
+        completed: false,
+      },
+    ] satisfies Todo[],
   },
 }
 export const Empty: Story = {}
 export const Loading: Story = {
-  args: { calendarLoading: true, shortcutsLoading: true },
+  args: { calendarLoading: true, shortcutsLoading: true, todosLoading: true },
 }
 export const Error: Story = {
   args: {
     calendarError: "일정을 불러오지 못했습니다.",
     shortcutsError: "바로가기를 불러오지 못했습니다.",
+    todosError: "할일을 불러오지 못했습니다.",
   },
 }
 export const Collapsed: Story = { args: { open: false } }

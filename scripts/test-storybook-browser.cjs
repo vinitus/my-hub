@@ -126,6 +126,15 @@ app.whenReady().then(async () => {
           assert.equal(panel.width, 280)
           assert.equal(panel.overflow, false)
           await win.webContents.executeJavaScript(
+            `document.querySelector('[aria-label="이번 주 일정 정리 완료"]').click()`
+          )
+          await delay(30)
+          assert.ok(
+            await win.webContents.executeJavaScript(
+              `document.body.innerText.includes('이번 주 일정 정리 완료 요청')`
+            )
+          )
+          await win.webContents.executeJavaScript(
             `Array.from(document.querySelectorAll('[aria-label="최근 사용한 바로가기"] button')).find(b => b.textContent.includes('프로젝트 문서')).click()`
           )
           await delay(30)

@@ -1,6 +1,7 @@
 import { useId } from "react"
 import {
   CalendarDaysIcon,
+  ListTodoIcon,
   ExternalLinkIcon,
   FolderIcon,
   GlobeIcon,
@@ -11,6 +12,7 @@ import {
 import { Button } from "@/shared/ui/button"
 import type { CalendarEvent } from "../../../../../shared/calendar"
 import type { Shortcut } from "../../../../../shared/shortcuts"
+import type { Todo } from "../../../../../shared/todos"
 import { panelSchedule } from "../model/panel-status"
 
 export type StatusPanelProps = {
@@ -18,15 +20,21 @@ export type StatusPanelProps = {
   onOpenChange: (open: boolean) => void
   events: CalendarEvent[]
   shortcuts: Shortcut[]
+  todos: Todo[]
   now: number
   calendarLoading?: boolean
   calendarError?: string
   shortcutsLoading?: boolean
   shortcutsError?: string
   shortcutsBusy?: boolean
+  todosLoading?: boolean
+  todosError?: string
+  todosBusy?: boolean
   onLaunch: (item: Shortcut) => void
   onOpenCalendar: () => void
   onOpenShortcuts: () => void
+  onToggleTodo: (todo: Todo, completed: boolean) => void
+  onOpenTodos: () => void
 }
 
 function eventTime(event: CalendarEvent, now: number) {
@@ -47,20 +55,33 @@ export function StatusPanel({
   onOpenChange,
   events,
   shortcuts,
+  todos,
   now,
   calendarLoading = false,
   calendarError = "",
   shortcutsLoading = false,
   shortcutsError = "",
   shortcutsBusy = false,
+  todosLoading = false,
+  todosError = "",
+  todosBusy = false,
   onLaunch,
   onOpenCalendar,
   onOpenShortcuts,
+  onToggleTodo,
+  onOpenTodos,
 }: StatusPanelProps) {
   const contentId = useId()
   const { today, executions } = panelSchedule(events, now)
   const calendarMessage =
     calendarError || (calendarLoading ? "일정 불러오는 중…" : "")
+  const pendingTodos = todos
+    .filter((todo) => !todo.completed)
+    .toSorted(
+      (a, b) =>
+        Number(!!b.favorite) - Number(!!a.favorite) ||
+        (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31")
+    )
   return (
     <aside
       aria-label="실시간 현황"
@@ -120,6 +141,68 @@ export function StatusPanel({
           ) : (
             <p className="text-xs text-muted-foreground">
               오늘 남은 일정이 없습니다.
+            </p>
+          )}
+        </section>
+        <section aria-label="할일" className="border-t py-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="flex items-center gap-2 text-xs font-medium">
+              <ListTodoIcon className="size-3.5" />
+              할일{" "}
+              <span className="text-muted-foreground">
+                {pendingTodos.length}
+              </span>
+            </h3>
+            <Button variant="ghost" size="xs" onClick={onOpenTodos}>
+              전체 보기
+            </Button>
+          </div>
+          {todosError ? (
+            <p role="alert" className="text-xs text-muted-foreground">
+              {todosError}
+            </p>
+          ) : todosLoading ? (
+            <p role="status" className="text-xs text-muted-foreground">
+              할일 불러오는 중…
+            </p>
+          ) : pendingTodos.length ? (
+            <>
+              <ul className="space-y-1">
+                {pendingTodos.slice(0, 6).map((todo) => (
+                  <li
+                    key={todo.id}
+                    className="flex min-w-0 items-start gap-2 rounded-md px-1 py-1.5"
+                  >
+                    <input
+                      type="checkbox"
+                      aria-label={`${todo.title} 완료`}
+                      checked={false}
+                      disabled={todosBusy}
+                      onChange={() => onToggleTodo(todo, true)}
+                      className="mt-0.5 size-3.5 shrink-0 accent-primary"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm" title={todo.title}>
+                        {todo.title}
+                      </p>
+                      {todo.dueDate && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          마감 {todo.dueDate}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {pendingTodos.length > 6 && (
+                <p className="mt-2 px-1 text-xs text-muted-foreground">
+                  외 {pendingTodos.length - 6}개
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              남은 할일이 없습니다.
             </p>
           )}
         </section>

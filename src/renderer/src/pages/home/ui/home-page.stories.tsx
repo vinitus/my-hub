@@ -14,7 +14,7 @@ const meta = {
   ],
   args: {
     active: true,
-    onSave: async () => true,
+    onSave: async (): Promise<boolean | { name: string }> => true,
     onCreateTodo: () => {},
     onCreateEvent: () => {},
     onCreateShortcut: () => {},
@@ -31,6 +31,22 @@ export const SaveError: Story = {
   args: {
     onSave: async () => {
       throw new Error("파일에 접근할 수 없습니다.")
+    },
+  },
+}
+
+export const AiTitle: Story = {
+  args: {
+    onSave: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      return { name: "분기별 회의 준비.md" }
+    },
+  },
+}
+export const AiUnavailable: Story = {
+  args: {
+    onSave: async () => {
+      throw new Error("설정에서 ChatGPT 계정을 연결해 주세요.")
     },
   },
 }

@@ -35,6 +35,7 @@ export type CodexConnection = {
 }
 
 export type CodexAPI = {
+  suggestNoteTitle: (markdown: string) => Promise<string>
   check: () => Promise<CodexConnection>
   connect: () => Promise<CodexConnection>
   disconnect: () => Promise<CodexConnection>

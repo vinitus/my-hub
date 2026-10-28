@@ -402,6 +402,97 @@ test("낙서장 전달 전 저장 실패는 기존 메모를 유지하고 새 �
   }
 })
 
+test("AI 제목으로 저장한 메모는 파일명을 갱신하고 제목 충돌 시 기존 본문을 보존한다", async () => {
+  const f = await fixture()
+  const store = new NoteStore(f.api, memoryDraft(), 60_000)
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    const first = await store.saveText(
+      "# 원문\n\n내용을 그대로 유지",
+      null,
+      "업무 계획"
+    )
+    assert.equal(first?.saved, true)
+    assert.equal(first?.name, "업무 계획.md")
+    const firstPath = store.getSnapshot().note.file!.path
+    assert.equal(await readMarkdown(firstPath), "# 원문\n\n내용을 그대로 유지")
+    const second = await store.saveText("수정한 원문", first, "회의 준비.md")
+    assert.equal(second?.saved, true)
+    assert.equal(second?.key, first?.key)
+    assert.equal(second?.name, "회의 준비.md")
+    await assert.rejects(readFile(firstPath))
+    const renamedPath = store.getSnapshot().note.file!.path
+    assert.equal(await readMarkdown(renamedPath), "수정한 원문")
+    assert.equal(store.getSnapshot().library!.notes.length, 1)
+    const other = (await f.api.save({
+      id: null,
+      name: "다른 메모.md",
+      markdown: "다른 원문",
+    }))!
+    assert.equal(
+      await store.saveText("덮어쓰면 안 되는 원문", second, "다른 메모.md"),
+      undefined
+    )
+    assert.equal(await readMarkdown(other.path), "다른 원문")
+    assert.equal(await readMarkdown(renamedPath), "수정한 원문")
+    assert.equal(store.getSnapshot().note.markdown, "수정한 원문")
+    assert.equal(
+      await store.saveText("유효하지 않은 제목", second, "../제목"),
+      undefined
+    )
+    assert.equal(store.getSnapshot().note.markdown, "수정한 원문")
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("AI 제목으로 파일명을 변경하는 동안 메모에서 입력한 본문을 덮어쓰지 않는다", async () => {
+  const f = await fixture()
+  let release!: () => void
+  let started!: () => void
+  const renaming = new Promise<void>((resolve) => {
+    started = resolve
+  })
+  const store = new NoteStore(
+    {
+      ...f.api,
+      rename: async (request) => {
+        started()
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
+        return f.api.rename(request)
+      },
+    },
+    memoryDraft(),
+    60_000
+  )
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    const first = await store.saveText("기존 본문", null, "처음 제목")
+    const saving = store.saveText("낙서장 본문", first, "새 제목")
+    await renaming
+    store.change("메모에서 추가로 입력한 본문")
+    release()
+    assert.equal((await saving)?.saved, false)
+    assert.equal(
+      store.getSnapshot().note.markdown,
+      "메모에서 추가로 입력한 본문"
+    )
+    assert.equal(await store.save(), true)
+    assert.equal(
+      await readMarkdown(store.getSnapshot().note.file!.path),
+      "메모에서 추가로 입력한 본문"
+    )
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
 test("기본 폴더 생성, 저장 목록, 중복 이름 보존과 폴더 설정 유지", async () => {
   const f = await fixture()
   try {

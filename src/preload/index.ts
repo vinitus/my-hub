@@ -72,6 +72,8 @@ const weather: WeatherAPI = {
     ipcRenderer.invoke("weather:current", { location, force }),
 }
 const codex: CodexAPI = {
+  suggestNoteTitle: (markdown) =>
+    ipcRenderer.invoke("codex:note-title", markdown),
   check: () => ipcRenderer.invoke("codex:check"),
   connect: () => ipcRenderer.invoke("codex:connect"),
   disconnect: () => ipcRenderer.invoke("codex:disconnect"),

@@ -31,6 +31,7 @@ export function adapter(status: CodexConnection["status"]): CodexAPI {
         : null,
   }
   return {
+    suggestNoteTitle: async () => "회의 아이디어.md",
     check: async () => state,
     connect: async () => state,
     disconnect: async () => ({

@@ -11,6 +11,8 @@ Enter로 전송하면 모달을 닫고 실제 Codex 요청을 처리해 우측 �
 - `model/command-runner.ts`: 제한된 `window.api.commands` 어댑터와 응답 검증.
 - 루트 `src/shared/command.ts`: 입력·결과·계획 계약.
 - `src/main/codex-command-planner.ts`: ephemeral thread/turn 추론, JSON 계획, 프로세스 수명과 시간 제한.
+- `src/main/codex-structured-request.ts`: 명령 계획과 메모 제목 생성이 공유하는 구조화 응답·프로세스 수명·시간 제한.
+  `thread/start`·`turn/start.outputSchema` 계약은 [공식 App Server 문서](https://learn.chatgpt.com/docs/app-server)를 따른다.
 - `src/main/command-service.ts`: 컨텍스트 구성, 전체 계획 검증, revision 충돌 검사와 기존 저장소 적용.
 - `src/main/commands.ts`: 현재 창/프레임 확인, 저장된 도메인의 변경 이벤트와 캘린더 알림 재계산.
 - App: 변경 이벤트를 구독해 공유 Calendar/Todo store를 새로고침한다. feature 사이에 직접 의존하지 않는다.
@@ -29,6 +31,8 @@ Enter로 전송하면 모달을 닫고 실제 Codex 요청을 처리해 우측 �
 
 Escape/바깥 클릭으로 닫을 때 입력 초안을 유지한다. 한글 조합 Enter와 다른 모달의 우선순위를 보존한다.
 메모 파일 단축키는 모달 동안 비활성화하고 자동 저장은 유지한다.
+홈의 Ctrl+S 제목 생성은 별도 `NoteTitleService`와 `codex:note-title` 경로로 처리한다.
+이 명령 서비스에는 메모 본문이나 제목 생성 작업을 전달하지 않는다.
 실행 중 추가 요청은 막으며 앱 종료 시 자신의 Codex 프로세스를 종료한다.
 
 검증: `pnpm test:commands`, `pnpm test:codex`, `pnpm test:calendar`, `pnpm test:todos`,

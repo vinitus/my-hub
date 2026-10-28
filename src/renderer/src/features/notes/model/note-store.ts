@@ -331,22 +331,47 @@ export class NoteStore {
   // 전달 후 다른 메모를 열었거나 본문이 바뀌었다면 별도 메모로 보존한다.
   saveText = (
     markdown: string,
-    previous: { key: string; markdown: string } | null = null
+    previous: { key: string; markdown: string } | null = null,
+    title?: string
   ) =>
     this.run(async () => {
       if (!this.api)
         throw new Error("파일 저장은 Electron 앱에서 사용할 수 있습니다.")
       assertSupportedMarkdown(markdown)
+      const name = title === undefined ? undefined : normalizeNoteName(title)
       const current = this.state.note
       const reuse =
         current.key === previous?.key && current.markdown === previous.markdown
       if (!reuse) {
         if (hasNoteChanges(current) && !(await this.persist())) return
-        this.setNote(emptyNote(markdown), { error: "", autosavePaused: false })
-      } else this.change(markdown)
+        this.setNote(emptyNote(markdown, name), {
+          error: "",
+          autosavePaused: false,
+        })
+      } else {
+        if (name && name !== current.name) {
+          const file = current.file
+            ? await this.api.rename({ id: current.file.id, name })
+            : null
+          if (this.state.note.markdown !== current.markdown) {
+            // 느린 파일명 변경 중 메모 화면에서 입력한 내용을 덮어쓰지 않는다.
+            this.setNote({ ...this.state.note, file, name: file?.name ?? name })
+            return {
+              key: current.key,
+              markdown,
+              name: file?.name ?? name,
+              saved: false,
+            }
+          }
+          this.setNote(
+            { ...current, file, name: file?.name ?? name, markdown },
+            { error: "" }
+          )
+        } else this.change(markdown)
+      }
       const key = this.state.note.key
       const saved = await this.persist()
-      return { key, markdown, saved }
+      return { key, markdown, name: this.state.note.name, saved }
     })
 
   rename = (value: string) =>

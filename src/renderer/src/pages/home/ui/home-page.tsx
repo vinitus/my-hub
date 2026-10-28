@@ -13,7 +13,7 @@ import { calculateExpression } from "../model/calculate-expression"
 
 type Props = {
   active: boolean
-  onSave: (text: string) => Promise<boolean>
+  onSave: (text: string) => Promise<boolean | { name: string }>
   onCreateTodo: () => void
   onCreateEvent: () => void
   onCreateShortcut: () => void
@@ -75,17 +75,16 @@ export function HomePage({
   const [text, setText] = useState("")
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState("")
-  const [saved, setSaved] = useState(false)
+  const [savedName, setSavedName] = useState<string | null>(null)
   async function saveScratchpad() {
     if (saving || submitting.current) return
     submitting.current = true
     setSaving(true)
     setSaveError("")
-    setSaved(false)
+    setSavedName(null)
     try {
-      if (await onSave(text)) {
-        setSaved(true)
-      }
+      const result = await onSave(text)
+      if (result) setSavedName(typeof result === "object" ? result.name : "")
     } catch (cause) {
       setSaveError(
         cause instanceof Error ? cause.message : "파일을 저장할 수 없습니다."
@@ -138,7 +137,7 @@ export function HomePage({
           value={text}
           onChange={(event) => {
             setText(event.target.value)
-            setSaved(false)
+            setSavedName(null)
           }}
           disabled={saving}
           className="field-sizing-fixed min-h-48 flex-1 resize-none rounded-lg p-4 text-base leading-8 md:text-base"
@@ -148,11 +147,17 @@ export function HomePage({
             {saveError}
           </p>
         )}
-        <div
-          role="status"
-          className="min-h-8 py-2 text-right text-xs text-muted-foreground"
-        >
-          {saving ? "저장 중…" : saved ? "메모로 저장했습니다." : "Ctrl+S로 메모 저장"}
+        <div className="flex min-h-8 flex-wrap justify-between gap-2 py-2 text-xs text-muted-foreground">
+          <span>저장 시 본문 일부를 AI로 전송해 제목을 만듭니다.</span>
+          <span role="status" className="max-w-full break-words">
+            {saving
+              ? "AI 제목 생성·저장 중…"
+              : savedName !== null
+                ? savedName
+                  ? `${savedName} 저장 완료`
+                  : "메모로 저장했습니다."
+                : "Ctrl+S로 메모 저장"}
+          </span>
         </div>
       </div>
       <div className="shrink-0 border-t py-2">

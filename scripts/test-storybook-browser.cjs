@@ -393,12 +393,27 @@ app.whenReady().then(async () => {
             `window.dispatchEvent(new KeyboardEvent('keydown', {key:'s', ctrlKey:true, bubbles:true, cancelable:true}))`
           )
           await delay(50)
+          if (story.name === "Ai Title") {
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[role="status"]').textContent`
+              ),
+              "AI 제목 생성·저장 중…"
+            )
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('textarea').disabled`
+              ),
+              true
+            )
+            await delay(300)
+          }
           assert.equal(
             await win.webContents.executeJavaScript(
               `document.querySelector('textarea').value`
             ),
             "첫 줄\n두 번째 줄",
-            "saving must preserve the scratchpad text"
+            "saving or AI failure must preserve the scratchpad text"
           )
           assert.equal(
             await win.webContents.executeJavaScript(
@@ -406,9 +421,13 @@ app.whenReady().then(async () => {
             ),
             story.name === "Save Error"
               ? "파일에 접근할 수 없습니다."
-              : story.name === "Inactive"
-                ? "Ctrl+S로 메모 저장"
-                : "메모로 저장했습니다.",
+              : story.name === "Ai Unavailable"
+                ? "설정에서 ChatGPT 계정을 연결해 주세요."
+                : story.name === "Ai Title"
+                  ? "분기별 회의 준비.md 저장 완료"
+                  : story.name === "Inactive"
+                    ? "Ctrl+S로 메모 저장"
+                    : "메모로 저장했습니다.",
             "Ctrl+S must respect the active page and surface save errors"
           )
           await win.webContents.executeJavaScript(

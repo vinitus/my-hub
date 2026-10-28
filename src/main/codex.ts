@@ -1,9 +1,11 @@
 import { app, ipcMain, shell, type BrowserWindow } from "electron"
 import { CodexConnectionService } from "./codex-connection"
 import { CodexSettings } from "./codex-settings"
+import { NoteTitleService } from "./note-title-service"
 
 export function registerCodex(window: BrowserWindow) {
   const settings = new CodexSettings(app.getPath("userData"))
+  const noteTitles = new NoteTitleService(settings)
   const service = new CodexConnectionService(
     (state) => {
       if (!window.isDestroyed()) window.webContents.send("codex:changed", state)
@@ -11,6 +13,7 @@ export function registerCodex(window: BrowserWindow) {
     (url) => shell.openExternal(url)
   )
   const handlers = {
+    "codex:note-title": noteTitles.generate,
     "codex:check": service.check,
     "codex:connect": service.connect,
     "codex:disconnect": service.disconnect,
@@ -31,6 +34,7 @@ export function registerCodex(window: BrowserWindow) {
   }
   window.on("closed", () => {
     service.dispose()
+    noteTitles.dispose()
     for (const channel of Object.keys(handlers)) ipcMain.removeHandler(channel)
   })
   return settings

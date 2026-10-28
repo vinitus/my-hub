@@ -79,14 +79,19 @@ export function App() {
     markdown: string
   } | null>(null)
   const saveScratchpad = async (text: string) => {
-    const result = await memo.saveText(text, scratchpadNote)
+    if (!window.api?.codex?.suggestNoteTitle)
+      throw new Error(
+        "AI 제목 생성을 사용하려면 앱을 완전히 종료하고 다시 실행해 주세요."
+      )
+    const name = await window.api.codex.suggestNoteTitle(text)
+    const result = await memo.saveText(text, scratchpadNote, name)
     if (result)
       setScratchpadNote({ key: result.key, markdown: result.markdown })
     if (!result?.saved)
       throw new Error(
         "메모로 저장하지 못했습니다. 메모 화면의 저장 상태를 확인해 주세요."
       )
-    return result.saved
+    return { name: result.name }
   }
   const showNavigationNumbers = useNavigationShortcuts(navigate)
   return (

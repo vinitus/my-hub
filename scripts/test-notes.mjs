@@ -7,6 +7,7 @@ const suite = process.argv[2] ?? "notes"
 if (
   ![
     "notes",
+    "note-titles",
     "calendar",
     "shortcuts",
     "weather",

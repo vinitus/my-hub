@@ -635,6 +635,7 @@ test("IPC는 현재 창의 메인 프레임만 허용하고 창이 닫히면 핸
     "cancel",
     "preferences",
     "save-preferences",
+    "note-title",
   ]) {
     const handler = handlers.get(`codex:${method}`)!
     assert.throws(() => handler({ sender: {} }), /허용되지 않은/)
@@ -645,6 +646,7 @@ test("IPC는 현재 창의 메인 프레임만 허용하고 창이 닫히면 핸
   }
   window.close()
   assert.equal(handlers.has("codex:connect"), false)
+  assert.equal(handlers.has("codex:note-title"), false)
 })
 
 test("자식 프로세스 환경에서 API 키와 Electron Node 모드를 제거한다", () => {

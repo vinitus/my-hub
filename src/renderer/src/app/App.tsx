@@ -17,6 +17,8 @@ import { useNavigationShortcuts } from "@/app/model/use-navigation-shortcuts"
 import { useAppSettings } from "./providers/app-settings-provider"
 import { WorkspaceLayout } from "./ui/workspace-layout"
 import { useAppDialogs } from "./model/use-app-dialogs"
+import { useHomeCreate } from "./model/use-home-create"
+import { HomeCreateDialog } from "./ui/home-create-dialog"
 
 const TodoWorkspace = lazy(() => import("@/pages/todos"))
 const CalendarWorkspace = lazy(() => import("@/pages/calendar"))
@@ -62,10 +64,7 @@ export function App() {
   const [todosVisited, setTodosVisited] = useState(false)
   const [calendarVisited, setCalendarVisited] = useState(false)
   const [shortcutsVisited, setShortcutsVisited] = useState(false)
-  // 등록 요청은 lazy 페이지의 로드 후 소비한다. 페이지를 재마운트하지 않아 초안·필터를 보존한다.
-  const [todoCreateRequest, setTodoCreateRequest] = useState(0)
-  const [calendarCreateRequest, setCalendarCreateRequest] = useState(0)
-  const [shortcutCreateRequest, setShortcutCreateRequest] = useState(0)
+  const creation = useHomeCreate({ todoStore, calendarStore, shortcutStore })
   const memo = useNote(
     view === "notes" && !commandOpen && !settingsOpen && !codexPromptOpen
   )
@@ -88,18 +87,6 @@ export function App() {
         "메모로 저장하지 못했습니다. 메모 화면의 저장 상태를 확인해 주세요."
       )
     return result.saved
-  }
-  const createTodo = () => {
-    setTodoCreateRequest((request) => request + 1)
-    navigate("todos")
-  }
-  const createEvent = () => {
-    setCalendarCreateRequest((request) => request + 1)
-    navigate("calendar")
-  }
-  const createShortcut = () => {
-    setShortcutCreateRequest((request) => request + 1)
-    navigate("shortcuts")
   }
   const showNavigationNumbers = useNavigationShortcuts(navigate)
   return (
@@ -165,6 +152,7 @@ export function App() {
         <>
           <QuickCommand open={commandOpen} onOpenChange={setCommandOpen} />
           <CalendarReminderCenter />
+          <HomeCreateDialog {...creation} />
           <SettingsSheet
             open={settingsOpen}
             onOpenChange={setSettingsOpen}
@@ -194,9 +182,9 @@ export function App() {
           <HomePage
             active={view === "home"}
             onSave={saveScratchpad}
-            onCreateTodo={createTodo}
-            onCreateEvent={createEvent}
-            onCreateShortcut={createShortcut}
+            onCreateTodo={() => creation.open("todo")}
+            onCreateEvent={() => creation.open("event")}
+            onCreateShortcut={() => creation.open("shortcut")}
           />
         </div>
         {/* 창 전체 대신 메모 본문만 스크롤한다. 상위 flex 요소의 min-h-0도 유지한다. */}
@@ -223,7 +211,6 @@ export function App() {
               <ShortcutWorkspace
                 active={view === "shortcuts"}
                 store={shortcutStore}
-                createRequest={shortcutCreateRequest}
               />
             </Suspense>
           </div>
@@ -241,10 +228,7 @@ export function App() {
                 </p>
               }
             >
-              <TodoWorkspace
-                store={todoStore}
-                createRequest={todoCreateRequest}
-              />
+              <TodoWorkspace store={todoStore} />
             </Suspense>
           </div>
         )}
@@ -261,10 +245,7 @@ export function App() {
                 </p>
               }
             >
-              <CalendarWorkspace
-                store={calendarStore}
-                createRequest={calendarCreateRequest}
-              />
+              <CalendarWorkspace store={calendarStore} />
             </Suspense>
           </div>
         )}

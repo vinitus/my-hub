@@ -19,7 +19,16 @@ import {
 } from "../../../../../shared/shortcuts"
 import { shortcutError } from "../model/shortcut-store"
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/shared/ui/dialog"
+
 type Props = {
+  presentation?: "sheet" | "dialog"
   item: Shortcut
   existing: boolean
   confirmDeleteOnOpen?: boolean
@@ -31,6 +40,7 @@ type Props = {
   onClose: () => void
 }
 export function ShortcutSheet({
+  presentation = "sheet",
   item,
   existing,
   confirmDeleteOnOpen = false,
@@ -41,6 +51,12 @@ export function ShortcutSheet({
   onDelete,
   onClose,
 }: Props) {
+  const Root = presentation === "dialog" ? Dialog : Sheet
+  const Content = presentation === "dialog" ? DialogContent : SheetContent
+  const Header = presentation === "dialog" ? DialogHeader : SheetHeader
+  const Title = presentation === "dialog" ? DialogTitle : SheetTitle
+  const Description =
+    presentation === "dialog" ? DialogDescription : SheetDescription
   const formId = useId()
   const [draft, setDraft] = useState(item)
   const [localError, setLocalError] = useState("")
@@ -66,21 +82,26 @@ export function ShortcutSheet({
     }
   }
   return (
-    <Sheet
+    <Root
       open
       onOpenChange={(open) => {
         if (!open && !disabled) onClose()
       }}
     >
-      <SheetContent className="w-full sm:max-w-md" showCloseButton={!disabled}>
-        <SheetHeader>
-          <SheetTitle>
-            {existing ? "바로가기 수정" : "바로가기 추가"}
-          </SheetTitle>
-          <SheetDescription>
+      <Content
+        className={
+          presentation === "dialog"
+            ? "flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-hidden p-0 sm:max-w-lg"
+            : "w-full sm:max-w-md"
+        }
+        showCloseButton={!disabled}
+      >
+        <Header className={presentation === "dialog" ? "p-4 pr-14" : undefined}>
+          <Title>{existing ? "바로가기 수정" : "바로가기 추가"}</Title>
+          <Description>
             자주 사용하는 프로그램, 폴더, 웹사이트를 등록하세요.
-          </SheetDescription>
-        </SheetHeader>
+          </Description>
+        </Header>
         <form
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={async (e) => {
@@ -226,7 +247,7 @@ export function ShortcutSheet({
             )}
           </div>
         </form>
-      </SheetContent>
-    </Sheet>
+      </Content>
+    </Root>
   )
 }

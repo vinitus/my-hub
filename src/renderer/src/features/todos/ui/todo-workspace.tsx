@@ -23,17 +23,19 @@ type Props = {
   onRefresh: () => void
   createRequest?: number
 }
-function TodoForm({
+export function TodoForm({
   item,
   busy,
   onSave,
   onCancel,
   titleInputRef,
+  dialog = false,
 }: {
   item: Todo | null
   busy: boolean
   onSave: (todo: Todo) => Promise<boolean>
   onCancel: () => void
+  dialog?: boolean
   titleInputRef?: RefObject<HTMLInputElement | null>
 }) {
   const id = useId()
@@ -42,7 +44,11 @@ function TodoForm({
   const [completed, setCompleted] = useState(item?.completed ?? false)
   return (
     <form
-      className="flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4"
+      className={
+        dialog
+          ? "flex flex-col gap-4"
+          : "flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4"
+      }
       onSubmit={async (event) => {
         event.preventDefault()
         const saved = await onSave({
@@ -66,6 +72,7 @@ function TodoForm({
           id={`${id}-title`}
           type="text"
           ref={titleInputRef}
+          autoFocus={dialog}
           required
           maxLength={200}
           value={title}
@@ -116,7 +123,7 @@ function TodoForm({
       <Button type="submit" disabled={busy || !title.trim()}>
         {item ? "수정 저장" : "추가"}
       </Button>
-      {item && (
+      {(item || dialog) && (
         <Button
           type="button"
           variant="outline"
@@ -157,7 +164,7 @@ export function TodoWorkspace({
   const filterId = useId()
   const titleInputRef = useRef<HTMLInputElement>(null)
   const handledCreateRequest = useRef(0)
-  // 홈에서 보낸 등록 요청은 lazy 페이지의 데이터 로드가 끝난 뒤 포커스한다.
+  // 외부 등록 요청은 페이지의 데이터 로드가 끝난 뒤 포커스한다.
   useEffect(() => {
     if (createRequest <= handledCreateRequest.current || !ready || busy) return
     handledCreateRequest.current = createRequest

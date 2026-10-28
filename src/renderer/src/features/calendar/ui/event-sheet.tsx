@@ -13,7 +13,16 @@ import {
 import { chooseCalendarFile } from "../api/choose-calendar-file"
 import { eventDraft, eventFromDraft } from "@/entities/calendar-event"
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/shared/ui/dialog"
+
 type Props = {
+  presentation?: "sheet" | "dialog"
   event: CalendarEvent
   existing: boolean
   busy: boolean
@@ -25,6 +34,7 @@ type Props = {
 }
 
 export function EventSheet({
+  presentation = "sheet",
   event,
   existing,
   busy,
@@ -34,6 +44,12 @@ export function EventSheet({
   serverError,
   onChooseFile = chooseCalendarFile,
 }: Props) {
+  const Root = presentation === "dialog" ? Dialog : Sheet
+  const Content = presentation === "dialog" ? DialogContent : SheetContent
+  const Header = presentation === "dialog" ? DialogHeader : SheetHeader
+  const Title = presentation === "dialog" ? DialogTitle : SheetTitle
+  const Description =
+    presentation === "dialog" ? DialogDescription : SheetDescription
   const formId = useId()
   const nextLinkId = useRef(event.referenceUrls.length)
   const [draft, setDraft] = useState(() => ({
@@ -43,19 +59,26 @@ export function EventSheet({
   const [error, setError] = useState("")
   const [confirmDelete, setConfirmDelete] = useState(false)
   return (
-    <Sheet
+    <Root
       open
       onOpenChange={(open) => {
         if (!open && !busy) onClose()
       }}
     >
-      <SheetContent className="w-full sm:max-w-md" showCloseButton={!busy}>
-        <SheetHeader>
-          <SheetTitle>{existing ? "일정 수정" : "새 일정"}</SheetTitle>
-          <SheetDescription>
+      <Content
+        className={
+          presentation === "dialog"
+            ? "flex max-h-[calc(100svh-2rem)] flex-col gap-4 overflow-hidden p-0 sm:max-w-lg"
+            : "w-full sm:max-w-md"
+        }
+        showCloseButton={!busy}
+      >
+        <Header className={presentation === "dialog" ? "p-4 pr-14" : undefined}>
+          <Title>{existing ? "일정 수정" : "새 일정"}</Title>
+          <Description>
             내 컴퓨터의 날짜와 시간을 기준으로 표시됩니다.
-          </SheetDescription>
-        </SheetHeader>
+          </Description>
+        </Header>
         <form
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={async (submit) => {
@@ -437,7 +460,7 @@ export function EventSheet({
             )}
           </div>
         </form>
-      </SheetContent>
-    </Sheet>
+      </Content>
+    </Root>
   )
 }

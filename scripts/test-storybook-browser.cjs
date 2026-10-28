@@ -112,6 +112,141 @@ app.whenReady().then(async () => {
           theme === "dark",
           `${story.id}: toolbar theme was not applied`
         )
+        if (story.importPath.endsWith("/home-create-dialog.stories.tsx")) {
+          const bounds = await win.webContents.executeJavaScript(`(() => {
+            const dialog = document.querySelector('[data-slot="dialog-content"]');
+            if (!dialog) return null;
+            const box = dialog.getBoundingClientRect();
+            return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: innerWidth, height: innerHeight };
+          })()`)
+          if (bounds) {
+            assert.ok(
+              bounds.left >= 0 &&
+                bounds.right <= bounds.width + 1 &&
+                bounds.top >= 0 &&
+                bounds.bottom <= bounds.height + 1,
+              `home dialog must fit the viewport: ${JSON.stringify(bounds)}`
+            )
+            assert.ok(
+              Math.abs((bounds.left + bounds.right) / 2 - bounds.width / 2) < 2,
+              "home dialog must be centered"
+            )
+          }
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/home-create-dialog.stories.tsx") &&
+          ["Home Actions", "Home Save Failure"].includes(story.name)
+        ) {
+          await win.webContents.executeJavaScript(
+            `document.querySelector('textarea').focus()`
+          )
+          win.webContents.insertText("모달을 열어도 유지할 낙서")
+          await delay(50)
+          const failed = story.name === "Home Save Failure"
+          for (const [label, selector, count] of [
+            ["할일 등록", 'input[placeholder="할일을 입력하세요"]', "todos"],
+            ["일정 등록", 'input[placeholder="일정 제목"]', "events"],
+            [
+              "바로가기 등록",
+              'input[placeholder="예: 작업 폴더"]',
+              "shortcuts",
+            ],
+          ]) {
+            await win.webContents.executeJavaScript(
+              `Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === ${JSON.stringify(label)}).click()`
+            )
+            await delay(150)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `!!document.querySelector('[data-slot="dialog-content"]') && !document.querySelector('[data-slot="sheet-content"]')`
+              ),
+              true,
+              `${label} must use shadcn Dialog`
+            )
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[data-slot="dialog-content"]').querySelector(${JSON.stringify(selector)}).focus()`
+            )
+            win.webContents.insertText("홈에서 등록")
+            await delay(50)
+            if (count === "shortcuts") {
+              await win.webContents.executeJavaScript(
+                `Array.from(document.querySelectorAll('[data-slot="dialog-content"] button')).find(b => b.textContent.trim() === '찾아보기').click()`
+              )
+              await delay(50)
+            }
+            await win.webContents.executeJavaScript(
+              `window.dispatchEvent(new KeyboardEvent('keydown', {key:'s', ctrlKey:true, bubbles:true, cancelable:true}))`
+            )
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[aria-label="낙서장"] [role="status"]').textContent`
+              ),
+              "Ctrl+S로 메모 저장",
+              "dialog must block scratchpad save"
+            )
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[data-slot="dialog-content"] button[type="submit"]').click()`
+            )
+            await delay(150)
+            if (failed) {
+              assert.match(
+                await win.webContents.executeJavaScript(
+                  `document.querySelector('[data-slot="dialog-content"]').textContent`
+                ),
+                /저장 실패 테스트/
+              )
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.querySelector('[data-slot="dialog-content"]').querySelector(${JSON.stringify(selector)}).value`
+                ),
+                "홈에서 등록",
+                "failure must preserve form input"
+              )
+              await win.webContents.executeJavaScript(
+                `Array.from(document.querySelectorAll('[data-slot="dialog-content"] button')).find(b => b.textContent.trim() === '취소').click()`
+              )
+              await delay(100)
+            }
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `!!document.querySelector('[data-slot="dialog-content"][data-open]')`
+              ),
+              false
+            )
+            const counts = await win.webContents.executeJavaScript(
+              `JSON.parse(document.querySelector('[data-testid="saved-counts"]').textContent)`
+            )
+            assert.equal(
+              counts[count],
+              failed ? 0 : 1,
+              "registration must update the shared store only on success"
+            )
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('textarea').value`
+              ),
+              "모달을 열어도 유지할 낙서"
+            )
+          }
+          await win.webContents.executeJavaScript(
+            `Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === '할일 등록').click()`
+          )
+          await delay(100)
+          win.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" })
+          win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" })
+          await delay(100)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `!!document.querySelector('[data-slot="dialog-content"][data-open]')`
+            ),
+            false,
+            "Escape must close the registration dialog"
+          )
+          console.log(
+            `PASS home registration dialogs ${failed ? "failure recovery" : "save and shared stores"}, scratchpad preserved`
+          )
+        }
         if (
           theme === "light" &&
           story.importPath.endsWith("/home-page.stories.tsx")

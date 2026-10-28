@@ -23,6 +23,7 @@ const meta = {
     icon: <GlobeIcon />,
     onLaunch: () => {},
     onEdit: () => {},
+    onDelete: () => {},
   },
 } satisfies Meta<typeof ShortcutTile>
 export default meta

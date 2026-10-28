@@ -28,7 +28,12 @@ import {
   ShortcutTile,
 } from "@/features/shortcuts"
 
-type Editor = { item: Shortcut; existing: boolean; revision: string }
+type Editor = {
+  item: Shortcut
+  existing: boolean
+  revision: string
+  confirmDelete?: boolean
+}
 export default function ShortcutWorkspace({
   active = true,
   store: providedStore,
@@ -73,6 +78,17 @@ export default function ShortcutWorkspace({
       },
       existing: !!item,
       revision: state.snapshot.revision,
+    })
+  }
+  function confirmDelete(item: Shortcut) {
+    if (disabled || !state.snapshot) return
+    setDropError("")
+    store.clearFeedback()
+    setEditor({
+      item,
+      existing: true,
+      revision: state.snapshot.revision,
+      confirmDelete: true,
     })
   }
   async function drop(event: DragEvent<HTMLElement>) {
@@ -248,6 +264,7 @@ export default function ShortcutWorkspace({
                     }
                     onLaunch={() => void store.launch(item)}
                     onEdit={() => edit(item)}
+                    onDelete={() => confirmDelete(item)}
                   />
                 )
               })}
@@ -297,6 +314,7 @@ export default function ShortcutWorkspace({
           key={editor.item.id}
           item={editor.item}
           existing={editor.existing}
+          confirmDeleteOnOpen={editor.confirmDelete}
           busy={state.busy}
           error={state.error}
           onChoose={store.choose}

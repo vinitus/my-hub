@@ -22,6 +22,7 @@ import { shortcutError } from "../model/shortcut-store"
 type Props = {
   item: Shortcut
   existing: boolean
+  confirmDeleteOnOpen?: boolean
   busy: boolean
   error: string
   onChoose: (kind: "program" | "folder") => Promise<ShortcutSelection | null>
@@ -32,6 +33,7 @@ type Props = {
 export function ShortcutSheet({
   item,
   existing,
+  confirmDeleteOnOpen = false,
   busy,
   error,
   onChoose,
@@ -43,7 +45,7 @@ export function ShortcutSheet({
   const [draft, setDraft] = useState(item)
   const [localError, setLocalError] = useState("")
   const [choosing, setChoosing] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(confirmDeleteOnOpen)
   const disabled = busy || choosing
   async function browse() {
     if (draft.kind === "website" || disabled) return

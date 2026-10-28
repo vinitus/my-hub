@@ -414,6 +414,33 @@ app.whenReady().then(async () => {
         }
         if (
           theme === "light" &&
+          story.importPath.endsWith("/shortcut-tile.stories.tsx") &&
+          story.name === "Website"
+        ) {
+          await win.webContents.executeJavaScript(`(() => {
+            const trigger = document.querySelector('[data-slot="context-menu-trigger"]');
+            trigger.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, button: 2, clientX: 40, clientY: 40 }));
+          })()`)
+          await delay(100)
+          const menu = await win.webContents.executeJavaScript(
+            `document.querySelector('[data-slot="context-menu-content"]')?.innerText ?? ""`
+          )
+          assert.ok(
+            menu.includes("열기"),
+            "shortcut context menu must offer launch"
+          )
+          assert.ok(
+            menu.includes("수정"),
+            "shortcut context menu must offer edit"
+          )
+          assert.ok(
+            menu.includes("삭제"),
+            "shortcut context menu must offer delete"
+          )
+          console.log("PASS shortcut context menu actions")
+        }
+        if (
+          theme === "light" &&
           story.importPath.endsWith("settings-sheet.stories.tsx") &&
           story.name === "Ready"
         ) {

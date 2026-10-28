@@ -18,7 +18,9 @@ export function useNavigationShortcuts(onNavigate: (view: AppView) => void) {
       )
         return
       const item = NAVIGATION_ITEMS.find(
-        (entry) => "number" in entry && entry.number === event.key
+        (entry) =>
+          entry.shortcut.toLowerCase() === event.key.toLowerCase() ||
+          event.code === `Key${entry.shortcut}`
       )
       if (!item) return
       // 등록/수정 모달이 열린 동안에는 편집 중인 화면을 단축키로 전환하지 않는다.

@@ -5,6 +5,8 @@
 `widgets/live-status`의 `LiveStatusPanel`이 우측 현황 패널을 연결한다.
 `app/ui/workspace-layout.tsx`는 레이아웃 슬롯과 props/콜백만 받아 좌우 패널을 조절한다.
 기본 너비는 좌측 288px·우측 280px이고, 열린 패널의 최소 너비는 모두 200px이다.
+드래그로는 200px 아래로 줄이거나 자동으로 접을 수 없다. 접기 버튼으로만 접으며,
+접힌 너비(좌측 0px·우측 40px)는 저장된 펼침 너비를 변경하지 않는다.
 너비 제한과 기본값은 루트 IPC 계약의 `APP_PANEL_WIDTHS`를 공유한다.
 `ui/status-panel.tsx`는 props/콜백만 사용하고 고정 fixture의 Storybook 스토리를 갖는다.
 오늘의 일정은 아직 시작하지 않은 오늘 일정만, 예정된 실행은 앞으로 시작할 일정 중
@@ -19,9 +21,9 @@
 Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/features/weather/README.md)를 참고한다.
 
 워크스페이스 메뉴와 번호는 `src/app/config/navigation.ts`에서 함께 관리한다.
-홈은 앱의 시작 화면이고 Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더, Ctrl+4 할일로 이동한다.
+홈은 앱의 시작 화면이고 Ctrl+H 홈, Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더, Ctrl+4 할일로 이동한다.
 `src/app/model/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안
-사이드바에 번호를 표시한다. 키를 놓거나 창 포커스를 잃으면 번호를 숨긴다.
+사이드바에 H·1·2·3·4를 표시한다. 키를 놓거나 창 포커스를 잃으면 단축키 표시를 숨긴다.
 등록/수정 모달이 열린 동안에는 화면 이동 단축키를 적용하지 않는다.
 
 사이드바 하단의 **설정**은 `src/features/settings/ui/settings-sheet.tsx`에서 표시한다.
@@ -295,7 +297,7 @@ props와 고정 fixture로 동작해 Electron API나 실제 계정·파일을 �
 기준 문서는 루트의 `storybook-prompt.md`다 (기존 파일명의 오타를 정정했다).
 공용 `shared/ui` 22개 모듈과 일정 편집·알림, 바로가기 편집·타일, 날씨 표시·검색,
 Codex 연결·모델·첫 안내, 설정 시트, 메모 파일명·편집기, 빠른 입력과 앱 위젯을 다룬다.
-기존 일정 상태 카드와 앱 패널·제어된 테마·Textarea·Dialog·홈 등록 모달을 포함해 174개 typed CSF 3 스토리가 있다.
+기존 일정 상태 카드와 앱 패널·제어된 테마·Textarea·Dialog·홈 등록 모달·이동 단축키를 포함해 175개 typed CSF 3 스토리가 있다.
 각 상태는 별도 스토리로 구성하고, 날짜·시간·서비스 응답은 고정 fixture로 제공한다.
 Toolbar의 Light/Dark는 포털을 포함해 문서 루트에 테마 클래스를 적용한다.
 

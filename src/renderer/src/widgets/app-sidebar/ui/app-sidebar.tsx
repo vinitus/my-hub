@@ -41,7 +41,7 @@ type Props<View extends string> = ComponentProps<typeof Sidebar> & {
   navigationItems: readonly {
     id: View
     label: string
-    number?: string
+    shortcut?: string
     icon: ComponentType<{ className?: string }>
   }[]
   onNewNote: () => void
@@ -97,22 +97,24 @@ export function AppSidebar<View extends string>({
         <SidebarGroup>
           <SidebarGroupLabel>워크스페이스</SidebarGroupLabel>
           <SidebarMenu>
-            {navigationItems.map(({ id, label, number, icon: Icon }) => (
+            {navigationItems.map(({ id, label, shortcut, icon: Icon }) => (
               <SidebarMenuItem key={id}>
                 <SidebarMenuButton
                   isActive={activeView === id}
-                  tooltip={number ? `${label} (Ctrl+${number})` : label}
-                  aria-keyshortcuts={number ? `Control+${number}` : undefined}
+                  tooltip={shortcut ? `${label} (Ctrl+${shortcut})` : label}
+                  aria-keyshortcuts={
+                    shortcut ? `Control+${shortcut}` : undefined
+                  }
                   onClick={() => onNavigate(id)}
                 >
                   <Icon />
                   <span>{label}</span>
-                  {number && (
+                  {shortcut && (
                     <kbd
                       aria-hidden="true"
                       className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded border border-sidebar-foreground/20 bg-sidebar font-mono text-[11px] text-sidebar-foreground/70 ${showNavigationNumbers ? "visible" : "invisible"}`}
                     >
-                      {number}
+                      {shortcut}
                     </kbd>
                   )}
                 </SidebarMenuButton>

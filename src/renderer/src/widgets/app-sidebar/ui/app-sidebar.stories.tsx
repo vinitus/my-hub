@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { FileTextIcon, CalendarIcon } from "lucide-react"
+import { FileTextIcon, CalendarIcon, HouseIcon } from "lucide-react"
 import { SidebarProvider } from "@/shared/ui/sidebar"
 import { AppSidebar } from "./app-sidebar"
 const meta = {
@@ -17,8 +17,9 @@ const meta = {
     scheduleStatus: <p className="p-3 text-sm">예정된 일정 없음</p>,
     weather: <p>날씨 지역 선택</p>,
     navigationItems: [
-      { id: "notes", label: "메모", number: "2", icon: FileTextIcon },
-      { id: "calendar", label: "캘린더", number: "3", icon: CalendarIcon },
+      { id: "home", label: "홈", shortcut: "H", icon: HouseIcon },
+      { id: "notes", label: "메모", shortcut: "2", icon: FileTextIcon },
+      { id: "calendar", label: "캘린더", shortcut: "3", icon: CalendarIcon },
     ],
     activeView: "notes",
     showNavigationNumbers: false,

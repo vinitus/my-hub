@@ -112,6 +112,86 @@ app.whenReady().then(async () => {
           theme === "dark",
           `${story.id}: toolbar theme was not applied`
         )
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/navigation-shortcuts.stories.tsx")
+        ) {
+          const activeView = () =>
+            win.webContents.executeJavaScript(
+              `document.querySelector('[data-testid="active-workspace"]').textContent`
+            )
+          const hintVisible = () =>
+            win.webContents.executeJavaScript(
+              `getComputedStyle(document.querySelector('[aria-keyshortcuts="Control+H"] kbd')).visibility === 'visible'`
+            )
+          assert.equal(await hintVisible(), false)
+          await win.webContents.executeJavaScript(
+            `window.dispatchEvent(new KeyboardEvent('keydown', {key:'Control', ctrlKey:true}))`
+          )
+          await delay(30)
+          assert.equal(
+            await hintVisible(),
+            true,
+            "home hint must be shown while Ctrl is held"
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('input[aria-label="단축키 테스트 입력"]').focus(); window.dispatchEvent(new KeyboardEvent('keydown', {key:'h', code:'KeyH', ctrlKey:true, cancelable:true}))`
+          )
+          await delay(30)
+          assert.equal(await activeView(), "home")
+          await win.webContents.executeJavaScript(
+            `window.dispatchEvent(new KeyboardEvent('keyup', {key:'Control', ctrlKey:false}))`
+          )
+          await delay(30)
+          assert.equal(await hintVisible(), false)
+          for (const [key, view] of [
+            ["1", "shortcuts"],
+            ["2", "notes"],
+            ["3", "calendar"],
+            ["4", "todos"],
+          ]) {
+            await win.webContents.executeJavaScript(
+              `window.dispatchEvent(new KeyboardEvent('keydown', {key:${JSON.stringify(key)}, ctrlKey:true, cancelable:true}))`
+            )
+            await delay(30)
+            assert.equal(await activeView(), view)
+          }
+          await win.webContents.executeJavaScript(
+            `const dialog = document.createElement('div'); dialog.id='navigation-test-dialog'; dialog.setAttribute('role','dialog'); dialog.setAttribute('data-open',''); document.body.append(dialog); window.dispatchEvent(new KeyboardEvent('keydown', {key:'h', code:'KeyH', ctrlKey:true, cancelable:true}))`
+          )
+          await delay(30)
+          assert.equal(
+            await activeView(),
+            "todos",
+            "Ctrl+H must not navigate while a modal is open"
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('#navigation-test-dialog').remove(); window.dispatchEvent(new KeyboardEvent('keydown', {key:'H', code:'KeyH', ctrlKey:true, shiftKey:true, cancelable:true}))`
+          )
+          await delay(30)
+          assert.equal(
+            await activeView(),
+            "todos",
+            "Ctrl+Shift+H must not trigger home"
+          )
+          await win.webContents.executeJavaScript(
+            `window.dispatchEvent(new KeyboardEvent('keydown', {key:'ㅗ', code:'KeyH', ctrlKey:true, cancelable:true}))`
+          )
+          await delay(30)
+          assert.equal(
+            await activeView(),
+            "home",
+            "physical Ctrl+H must work with Korean input layout"
+          )
+          await win.webContents.executeJavaScript(
+            `window.dispatchEvent(new Event('blur'))`
+          )
+          await delay(30)
+          assert.equal(await hintVisible(), false)
+          console.log(
+            "PASS Ctrl+H home, workspace hints, existing number shortcuts and modal guard"
+          )
+        }
         if (story.importPath.endsWith("/home-create-dialog.stories.tsx")) {
           const bounds = await win.webContents.executeJavaScript(`(() => {
             const dialog = document.querySelector('[data-slot="dialog-content"]');
@@ -516,7 +596,10 @@ app.whenReady().then(async () => {
               `document.querySelector('[data-sidebar="trigger"]').click()`
             )
             await delay(100)
-            assert.ok(Math.abs((await sizes()).left - changed.left) < 2)
+            assert.ok(
+              Math.abs((await sizes()).left - changed.left) < 2,
+              `left reopen: ${JSON.stringify({ changed, after: await sizes() })}`
+            )
             await win.webContents.executeJavaScript(
               `document.querySelector('[aria-label="현황 접기 전환"]').click()`
             )
@@ -535,10 +618,25 @@ app.whenReady().then(async () => {
             )
             await drag("왼쪽 사이드바 크기 조절", -700)
             changed = await sizes()
-            assert.ok(
-              changed.left < 1 || changed.left >= 199,
-              "expanded sidebar must keep its 200px minimum"
+            assert.equal(
+              Math.round(changed.left),
+              200,
+              "left drag must stop at 200px without collapsing"
             )
+            await drag("오른쪽 현황 패널 크기 조절", 700)
+            changed = await sizes()
+            assert.equal(
+              Math.round(changed.right),
+              200,
+              "right drag must stop at 200px without collapsing"
+            )
+            const minimumSettings = await win.webContents.executeJavaScript(
+              `JSON.parse(document.querySelector('[data-testid="layout-settings"]').textContent)`
+            )
+            assert.equal(minimumSettings.sidebarOpen, true)
+            assert.equal(minimumSettings.rightPanelOpen, true)
+            assert.equal(minimumSettings.leftSidebarWidth, 200)
+            assert.equal(minimumSettings.rightPanelWidth, 200)
             console.log(
               `PASS ${story.name} panel drag, restore and preserved content`
             )

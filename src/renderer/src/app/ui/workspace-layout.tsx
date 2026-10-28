@@ -44,47 +44,43 @@ export function WorkspaceLayout({
   // 복원으로 발생하는 onLayoutChanged는 사용자 변경으로 다시 저장하지 않는다.
   useEffect(() => {
     if (!ready) return
-    if (settings.sidebarOpen)
-      leftPanel.current?.resize(settings.leftSidebarWidth)
-    else leftPanel.current?.collapse()
+    // 열림 상태에 따른 min/max 제약이 반영된 다음 선호 너비를 복원한다.
+    const frame = requestAnimationFrame(() => {
+      leftPanel.current?.resize(
+        settings.sidebarOpen ? settings.leftSidebarWidth : 0
+      )
+    })
+    return () => cancelAnimationFrame(frame)
   }, [ready, settings.sidebarOpen, settings.leftSidebarWidth, leftPanel])
   useEffect(() => {
     if (!ready) return
-    if (settings.rightPanelOpen)
-      rightPanel.current?.resize(settings.rightPanelWidth)
-    else rightPanel.current?.collapse()
+    const frame = requestAnimationFrame(() => {
+      rightPanel.current?.resize(
+        settings.rightPanelOpen ? settings.rightPanelWidth : 40
+      )
+    })
+    return () => cancelAnimationFrame(frame)
   }, [ready, settings.rightPanelOpen, settings.rightPanelWidth, rightPanel])
 
   const saveLeftLayout = () => {
     const panel = leftPanel.current
-    if (!panel) return
-    if (panel.isCollapsed()) {
-      if (settings.sidebarOpen) onChange({ sidebarOpen: false })
-      return
-    }
+    if (!panel || !settings.sidebarOpen) return
     const leftSidebarWidth = Math.min(
       APP_PANEL_WIDTHS.left.max,
       Math.max(APP_PANEL_WIDTHS.left.min, Math.round(panel.getSize().inPixels))
     )
-    if (!settings.sidebarOpen || leftSidebarWidth !== settings.leftSidebarWidth)
-      onChange({ sidebarOpen: true, leftSidebarWidth })
+    if (leftSidebarWidth !== settings.leftSidebarWidth)
+      onChange({ leftSidebarWidth })
   }
   const saveRightLayout = () => {
     const panel = rightPanel.current
-    if (!panel) return
-    if (panel.isCollapsed()) {
-      if (settings.rightPanelOpen) onChange({ rightPanelOpen: false })
-      return
-    }
+    if (!panel || !settings.rightPanelOpen) return
     const rightPanelWidth = Math.min(
       APP_PANEL_WIDTHS.right.max,
       Math.max(APP_PANEL_WIDTHS.right.min, Math.round(panel.getSize().inPixels))
     )
-    if (
-      !settings.rightPanelOpen ||
-      rightPanelWidth !== settings.rightPanelWidth
-    )
-      onChange({ rightPanelOpen: true, rightPanelWidth })
+    if (rightPanelWidth !== settings.rightPanelWidth)
+      onChange({ rightPanelWidth })
   }
 
   return (
@@ -112,11 +108,9 @@ export function WorkspaceLayout({
           id="left-sidebar"
           panelRef={leftPanel}
           defaultSize={settings.sidebarOpen ? settings.leftSidebarWidth : 0}
-          minSize={APP_PANEL_WIDTHS.left.min}
-          maxSize={APP_PANEL_WIDTHS.left.max}
+          minSize={settings.sidebarOpen ? APP_PANEL_WIDTHS.left.min : 0}
+          maxSize={settings.sidebarOpen ? APP_PANEL_WIDTHS.left.max : 0}
           groupResizeBehavior="preserve-pixel-size"
-          collapsedSize={0}
-          collapsible
           className="min-w-0"
           onResize={(size) =>
             sidebarProvider.current?.style.setProperty(
@@ -130,6 +124,7 @@ export function WorkspaceLayout({
         <ResizableHandle
           withHandle
           className="max-md:hidden"
+          disabled={!settings.sidebarOpen}
           aria-label="왼쪽 사이드바 크기 조절"
         />
         <ResizablePanel
@@ -154,6 +149,7 @@ export function WorkspaceLayout({
               </ResizablePanel>
               <ResizableHandle
                 withHandle
+                disabled={!settings.rightPanelOpen}
                 aria-label="오른쪽 현황 패널 크기 조절"
               />
               <ResizablePanel
@@ -162,11 +158,13 @@ export function WorkspaceLayout({
                 defaultSize={
                   settings.rightPanelOpen ? settings.rightPanelWidth : 40
                 }
-                minSize={APP_PANEL_WIDTHS.right.min}
-                maxSize={APP_PANEL_WIDTHS.right.max}
+                minSize={
+                  settings.rightPanelOpen ? APP_PANEL_WIDTHS.right.min : 40
+                }
+                maxSize={
+                  settings.rightPanelOpen ? APP_PANEL_WIDTHS.right.max : 40
+                }
                 groupResizeBehavior="preserve-pixel-size"
-                collapsedSize={40}
-                collapsible
               >
                 {statusPanel}
               </ResizablePanel>

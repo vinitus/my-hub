@@ -21,7 +21,6 @@ function createWindow(): void {
     width: 1440,
     height: 900,
     show: false,
-    autoHideMenuBar: true,
     ...(process.platform === "linux"
       ? { icon: join(app.getAppPath(), "resources/icon.png") }
       : {}),
@@ -33,6 +32,9 @@ function createWindow(): void {
       sandbox: false,
     },
   })
+
+  // 자동 숨김은 Alt로 다시 표시된다. 앱 메뉴를 제거해 재표시를 막는다.
+  mainWindow.removeMenu()
 
   const calendarRepository = new CalendarRepository(app.getPath("userData"))
   const todoRepository = new TodoRepository(app.getPath("userData"))

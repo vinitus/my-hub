@@ -1,5 +1,10 @@
 ﻿import { useId, useState } from "react"
-import { PencilIcon, StarIcon, Trash2Icon } from "lucide-react"
+import {
+  CalendarDaysIcon,
+  PencilIcon,
+  StarIcon,
+  Trash2Icon,
+} from "lucide-react"
 import type { Todo } from "../../../../../shared/todos"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -65,14 +70,34 @@ function TodoForm({
         />
       </div>
       <div className="min-w-0 space-y-2">
-        <Label htmlFor={`${id}-date`}>마감일</Label>
+        <div className="flex items-center justify-between gap-3">
+          <Label htmlFor={`${id}-date`}>마감일</Label>
+          <span className="text-xs text-muted-foreground">선택 사항</span>
+        </div>
         <Input
           id={`${id}-date`}
           type="date"
+          className="sm:w-40"
           value={dueDate}
           disabled={busy}
           onChange={(e) => setDueDate(e.target.value)}
         />
+        <div className="flex min-h-6 items-center justify-between gap-3">
+          <span className="text-xs text-muted-foreground">
+            {dueDate ? "기한을 지정했습니다." : "기한 없이 등록할 수 있어요."}
+          </span>
+          {dueDate && (
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setDueDate("")}
+            >
+              기한 지우기
+            </Button>
+          )}
+        </div>
       </div>
       <label className="flex h-9 items-center gap-2 text-sm">
         <input
@@ -176,7 +201,9 @@ export function TodoWorkspace({
               <option value="pending">미완료</option>
               <option value="completed">완료</option>
             </select>
-            <span className="text-muted-foreground">마감일순</span>
+            <span className="text-muted-foreground">
+              마감일순 · 기한 없는 항목은 아래
+            </span>
           </div>
           {visible.length ? (
             <ul className="divide-y rounded-xl border bg-card">
@@ -200,17 +227,21 @@ export function TodoWorkspace({
                     >
                       {item.title}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
                       {item.dueDate ? (
-                        <>
-                          마감일{" "}
+                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                          <CalendarDaysIcon className="size-3.5" />
                           <time dateTime={item.dueDate}>{item.dueDate}</time>
-                        </>
+                        </span>
                       ) : (
-                        "마감일 없음"
-                      )}{" "}
-                      · {item.completed ? "완료" : "미완료"}
-                    </p>
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-muted-foreground">
+                          기한 없음
+                        </span>
+                      )}
+                      <span className="text-muted-foreground">
+                        · {item.completed ? "완료" : "미완료"}
+                      </span>
+                    </div>
                   </div>
                   <Button
                     size="icon-sm"

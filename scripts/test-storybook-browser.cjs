@@ -277,7 +277,7 @@ app.whenReady().then(async () => {
           if (theme === "light" && story.name === "Empty") {
             await win.webContents.executeJavaScript(`(() => {
               const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-              for (const [selector, value] of [['input[type=text]', 'UI TODO'], ['input[type=date]', '2026-11-02']]) {
+              for (const [selector, value] of [['input[type=text]', 'UI TODO']]) {
                 const input = document.querySelector(selector);
                 set.call(input, value);
                 input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -314,10 +314,30 @@ app.whenReady().then(async () => {
               ),
               "UI TODO"
             )
+            await win.webContents.executeJavaScript(`(() => {
+              const input = document.querySelector('input[type=date]');
+              const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+              set.call(input, '2026-11-02');
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+              Array.from(document.querySelectorAll('button')).find(button => button.textContent.includes('기한 지우기')).click();
+            })()`)
+            await delay(50)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('input[type=date]').value`
+              ),
+              ""
+            )
             await win.webContents.executeJavaScript(
               `document.querySelector('button[type=submit]').click()`
             )
             await delay(50)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('#storybook-root li').innerText.includes('기한 없음')`
+              ),
+              true
+            )
             await win.webContents.executeJavaScript(
               `document.querySelector('#storybook-root li button[aria-label$="삭제"]').click()`
             )
@@ -500,6 +520,7 @@ app.whenReady().then(async () => {
     app.exit(0)
   } catch (error) {
     console.error(error)
+    if (errors.length) console.error("Renderer console errors:", errors)
     app.exit(1)
   }
 })

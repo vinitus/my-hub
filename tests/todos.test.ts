@@ -18,6 +18,9 @@ const todo = (): Todo => ({
 })
 test("제목·실제 날짜·완료 여부를 검증한다", () => {
   assert.equal(TodoSchema.parse({ ...todo(), title: "  제목  " }).title, "제목")
+  const undated = todo()
+  delete undated.dueDate
+  assert.equal(TodoSchema.parse(undated).dueDate, undefined)
   for (const patch of [
     { title: " " },
     { title: "a".repeat(201) },
@@ -33,11 +36,13 @@ test("추가·수정·완료·삭제를 저장하고 재시작 시 복원한다"
   try {
     const repo = new TodoRepository(dir)
     const item = todo()
+    delete item.dueDate
     let snapshot = await repo.load()
     snapshot = await repo.save({
       todo: item,
       expectedRevision: snapshot.revision,
     })
+    assert.equal(snapshot.items[0]?.dueDate, undefined)
     snapshot = await repo.save({
       todo: {
         ...item,

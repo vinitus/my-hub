@@ -48,10 +48,21 @@ export function validateCommandPlan(
       if (action.domain === "todos") {
         if (!action.todo || action.event !== null)
           throw new Error("할일 요청을 확인해 주세요.")
+        const existing = todos.items.find((item) => item.id === action.id)
+        const dueDate =
+          action.todo.dueDate === null
+            ? undefined
+            : (action.todo.dueDate ?? existing?.dueDate)
         return {
           ...action,
           id,
-          todo: TodoSchema.parse({ ...action.todo, id }),
+          todo: TodoSchema.parse({
+            ...existing,
+            ...action.todo,
+            dueDate,
+            favorite: existing?.favorite ?? false,
+            id,
+          }),
           event: null,
         }
       }
@@ -93,8 +104,8 @@ function describe(
     | undefined
 ) {
   if (!item) return null
-  if ("dueDate" in item)
-    return `${item.title}\n마감: ${item.dueDate} · ${item.completed ? "완료" : "미완료"}`
+  if ("completed" in item)
+    return `${item.title}\n${item.dueDate ? `마감: ${item.dueDate}` : "마감일 없음"} · ${item.completed ? "완료" : "미완료"}`
   return `${item.title}\n${item.allDay ? "종일 · 종료일 제외 " : ""}${item.start} → ${item.end}\n${item.description}\n색상: ${item.color}`
 }
 

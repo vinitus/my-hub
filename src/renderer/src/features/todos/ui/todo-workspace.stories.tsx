@@ -57,6 +57,17 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 export const Empty: Story = { args: { items: [] } }
+export const Undated: Story = {
+  args: {
+    items: [
+      {
+        id: "58c81594-3baf-46e2-9700-c7fa688a3e73",
+        title: "기한 없이 진행하는 할일",
+        completed: false,
+      },
+    ],
+  },
+}
 export const Loading: Story = { args: { ready: false, items: [], busy: true } }
 export const Saving: Story = { args: { busy: true } }
 export const Error: Story = {

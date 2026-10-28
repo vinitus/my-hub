@@ -39,7 +39,7 @@ function TodoForm({
         const saved = await onSave({
           id: item?.id ?? crypto.randomUUID(),
           title: title.trim(),
-          dueDate,
+          dueDate: dueDate || undefined,
           completed,
           favorite: item?.favorite ?? false,
         })
@@ -69,7 +69,6 @@ function TodoForm({
         <Input
           id={`${id}-date`}
           type="date"
-          required
           value={dueDate}
           disabled={busy}
           onChange={(e) => setDueDate(e.target.value)}
@@ -84,7 +83,7 @@ function TodoForm({
         />{" "}
         완료
       </label>
-      <Button type="submit" disabled={busy || !title.trim() || !dueDate}>
+      <Button type="submit" disabled={busy || !title.trim()}>
         {item ? "수정 저장" : "추가"}
       </Button>
       {item && (
@@ -126,7 +125,7 @@ export function TodoWorkspace({
     .toSorted(
       (a, b) =>
         Number(!!b.favorite) - Number(!!a.favorite) ||
-        a.dueDate.localeCompare(b.dueDate)
+        (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31")
     )
   const filterId = useId()
   return (
@@ -202,7 +201,14 @@ export function TodoWorkspace({
                       {item.title}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      마감일 <time dateTime={item.dueDate}>{item.dueDate}</time>{" "}
+                      {item.dueDate ? (
+                        <>
+                          마감일{" "}
+                          <time dateTime={item.dueDate}>{item.dueDate}</time>
+                        </>
+                      ) : (
+                        "마감일 없음"
+                      )}{" "}
                       · {item.completed ? "완료" : "미완료"}
                     </p>
                   </div>

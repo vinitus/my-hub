@@ -170,7 +170,7 @@ test("한 요청으로 일정과 할일을 저장하고 실제 revision으로 �
       env.service,
       "내일 회의와 금요일 보고서 할일 추가"
     )
-    assert.equal(result.status, "success")
+    assert.equal(result.status, "success", result.message)
     assert.deepEqual(result.changed, ["calendar", "todos"])
     const event = (await env.calendar.load()).events[0],
       todo = (await env.todos.load()).items[0]
@@ -190,6 +190,7 @@ test("한 요청으로 일정과 할일을 저장하고 실제 revision으로 �
     )
     // AI payload에는 id 같은 추가 필드를 허용하지 않는다.
     delete (plan.actions[0].todo as Record<string, unknown>).id
+    delete (plan.actions[0].todo as Record<string, unknown>).favorite
     result = await executeConfirmed(
       env.service,
       "보고서 완료하고 회의 제목 수정"
@@ -308,6 +309,51 @@ test("잘못된 날짜·없는 대상·중복 대상·불일치 계획은 첫 �
         { ...todos, items: [item] }
       )
     )
+  } finally {
+    await env.cleanup()
+  }
+})
+test("마감일 없는 할일을 만들고 기존 할일 수정 시 날짜와 즐겨찾기를 보존한다", async () => {
+  const env = await setup(async () =>
+    actions({
+      ...todoAction(),
+      todo: { title: "언젠가 할 일", completed: false },
+    })
+  )
+  try {
+    const plan = validateCommandPlan(
+      actions({
+        ...todoAction(),
+        todo: { title: "언젠가 할 일", completed: false },
+      }),
+      await env.calendar.load(),
+      await env.todos.load()
+    )
+    assert.equal(plan.actions[0]?.todo?.dueDate, undefined)
+    const initial = await env.todos.load()
+    const saved = await env.todos.save({
+      todo: {
+        id: crypto.randomUUID(),
+        title: "기존 할일",
+        dueDate: "2026-10-30",
+        completed: false,
+        favorite: true,
+      },
+      expectedRevision: initial.revision,
+    })
+    const item = saved.items[0]!
+    const updated = validateCommandPlan(
+      actions({
+        ...todoAction(),
+        operation: "update",
+        id: item.id,
+        todo: { title: "수정된 할일", completed: false },
+      }),
+      await env.calendar.load(),
+      saved
+    )
+    assert.equal(updated.actions[0]?.todo?.dueDate, "2026-10-30")
+    assert.equal(updated.actions[0]?.todo?.favorite, true)
   } finally {
     await env.cleanup()
   }

@@ -8,7 +8,7 @@ export const TodoSchema = z
       .trim()
       .min(1, "제목을 입력해 주세요.")
       .max(200, "제목은 200자 이내로 입력해 주세요."),
-    dueDate: z.iso.date("올바른 마감일을 입력해 주세요."),
+    dueDate: z.iso.date("올바른 마감일을 입력해 주세요.").optional(),
     completed: z.boolean(),
     favorite: z.boolean().optional(),
   })

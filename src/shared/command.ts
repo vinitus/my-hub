@@ -66,7 +66,7 @@ export const CommandPlanSchema = z
             todo: z
               .object({
                 title: z.string(),
-                dueDate: z.string(),
+                dueDate: z.string().nullable().optional(),
                 completed: z.boolean(),
               })
               .strict()

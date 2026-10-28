@@ -6,6 +6,7 @@ import { ShortcutStore } from "@/features/shortcuts"
 import { WeatherWidget } from "@/features/weather"
 import { SidebarInset, SidebarProvider } from "@/shared/ui/sidebar"
 import { NotesPage } from "@/pages/notes"
+import { HomePage } from "@/pages/home"
 import { CalendarReminderCenter } from "@/features/calendar"
 import { CalendarStore } from "@/entities/calendar-event"
 import { useNote } from "@/features/notes"
@@ -49,11 +50,11 @@ export function App() {
   const leftPanelRef = usePanelRef()
   const rightPanelRef = usePanelRef()
   const sidebarProviderRef = useRef<HTMLDivElement>(null)
-  const [selectedView, setView] = useState<AppView>("notes")
+  const [selectedView, setView] = useState<AppView>("home")
   // 개발 중 Fast Refresh가 제거된 채팅 메뉴의 상태를 유지해도 메모로 돌아간다.
   const view = NAVIGATION_ITEMS.some((item) => item.id === selectedView)
     ? selectedView
-    : "notes"
+    : "home"
   const [commandOpen, setCommandOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [todoStore] = useState(() => new TodoStore(window.api?.todos))
@@ -134,6 +135,9 @@ export function App() {
   const [todosVisited, setTodosVisited] = useState(false)
   const [calendarVisited, setCalendarVisited] = useState(false)
   const [shortcutsVisited, setShortcutsVisited] = useState(false)
+  const [todoCreateRequest, setTodoCreateRequest] = useState(0)
+  const [calendarCreateRequest, setCalendarCreateRequest] = useState(0)
+  const [shortcutCreateRequest, setShortcutCreateRequest] = useState(0)
   useEffect(() => {
     if (!settingsReady) return
     if (settings.sidebarOpen)
@@ -164,6 +168,23 @@ export function App() {
     if (next === "calendar") setCalendarVisited(true)
     if (next === "shortcuts") setShortcutsVisited(true)
     setView(next)
+  }
+  const saveQuickMemo = async (text: string) => {
+    const current = memo.note.markdown.trimEnd()
+    memo.change(current ? `${current}\n\n${text}` : text)
+    return (await memo.save()) === true
+  }
+  const createTodo = () => {
+    setTodoCreateRequest((request) => request + 1)
+    navigate("todos")
+  }
+  const createEvent = () => {
+    setCalendarCreateRequest((request) => request + 1)
+    navigate("calendar")
+  }
+  const createShortcut = () => {
+    setShortcutCreateRequest((request) => request + 1)
+    navigate("shortcuts")
   }
   const showNavigationNumbers = useNavigationShortcuts(navigate)
   const saveLeftPanelLayout = () => {
@@ -286,6 +307,24 @@ export function App() {
             >
               <ResizablePanel id="main-view" minSize={0} className="min-w-0">
                 <div className="flex h-full min-w-0 flex-col">
+                  <div
+                    className={
+                      view === "home"
+                        ? "flex min-h-0 flex-1 flex-col"
+                        : "hidden"
+                    }
+                  >
+                    <HomePage
+                      noteName={memo.note.name}
+                      noteBusy={memo.busy}
+                      noteError={memo.error}
+                      onSaveMemo={saveQuickMemo}
+                      onOpenNotes={() => navigate("notes")}
+                      onCreateTodo={createTodo}
+                      onCreateEvent={createEvent}
+                      onCreateShortcut={createShortcut}
+                    />
+                  </div>
                   {/* 창 전체 대신 메모 본문만 스크롤한다. 상위 flex 요소의 min-h-0도 유지한다. */}
                   <div
                     className={
@@ -317,6 +356,7 @@ export function App() {
                         <ShortcutWorkspace
                           active={view === "shortcuts"}
                           store={shortcutStore}
+                          createRequest={shortcutCreateRequest}
                         />
                       </Suspense>
                     </div>
@@ -339,7 +379,10 @@ export function App() {
                           </p>
                         }
                       >
-                        <TodoWorkspace store={todoStore} />
+                        <TodoWorkspace
+                          store={todoStore}
+                          createRequest={todoCreateRequest}
+                        />
                       </Suspense>
                     </div>
                   )}
@@ -361,7 +404,10 @@ export function App() {
                           </p>
                         }
                       >
-                        <CalendarWorkspace store={calendarStore} />
+                        <CalendarWorkspace
+                          store={calendarStore}
+                          createRequest={calendarCreateRequest}
+                        />
                       </Suspense>
                     </div>
                   )}

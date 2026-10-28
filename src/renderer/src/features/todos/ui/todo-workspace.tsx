@@ -5,6 +5,7 @@ import {
   StarIcon,
   Trash2Icon,
 } from "lucide-react"
+import { useEffect, useRef, type RefObject } from "react"
 import type { Todo } from "../../../../../shared/todos"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
@@ -20,17 +21,20 @@ type Props = {
   onSave: (todo: Todo, revision: string) => Promise<boolean>
   onRemove: (id: string) => Promise<boolean>
   onRefresh: () => void
+  createRequest?: number
 }
 function TodoForm({
   item,
   busy,
   onSave,
   onCancel,
+  titleInputRef,
 }: {
   item: Todo | null
   busy: boolean
   onSave: (todo: Todo) => Promise<boolean>
   onCancel: () => void
+  titleInputRef?: RefObject<HTMLInputElement | null>
 }) {
   const id = useId()
   const [title, setTitle] = useState(item?.title ?? "")
@@ -61,6 +65,7 @@ function TodoForm({
         <Input
           id={`${id}-title`}
           type="text"
+          ref={titleInputRef}
           required
           maxLength={200}
           value={title}
@@ -134,6 +139,7 @@ export function TodoWorkspace({
   onSave,
   onRemove,
   onRefresh,
+  createRequest = 0,
 }: Props) {
   const [editing, setEditing] = useState<{
     item: Todo
@@ -153,6 +159,13 @@ export function TodoWorkspace({
         (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31")
     )
   const filterId = useId()
+  const titleInputRef = useRef<HTMLInputElement>(null)
+  const handledCreateRequest = useRef(0)
+  useEffect(() => {
+    if (createRequest <= handledCreateRequest.current || !ready || busy) return
+    handledCreateRequest.current = createRequest
+    titleInputRef.current?.focus()
+  }, [createRequest, ready, busy])
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-auto p-4 md:p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -186,6 +199,7 @@ export function TodoWorkspace({
             key={editing ? `${editing.item.id}:${editing.revision}` : "new"}
             item={editing?.item ?? null}
             busy={busy}
+            titleInputRef={titleInputRef}
             onSave={(todo) => onSave(todo, editing?.revision ?? revision)}
             onCancel={() => setEditing(null)}
           />

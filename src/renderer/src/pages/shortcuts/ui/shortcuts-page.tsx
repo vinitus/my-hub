@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -52,9 +53,11 @@ type Editor = {
 export default function ShortcutWorkspace({
   active = true,
   store: providedStore,
+  createRequest = 0,
 }: {
   active?: boolean
   store?: ShortcutStore
+  createRequest?: number
 }) {
   const [localStore] = useState(
     () => providedStore ?? new ShortcutStore(window.api?.shortcuts)
@@ -68,6 +71,7 @@ export default function ShortcutWorkspace({
   const [dropBusy, setDropBusy] = useState(false)
   const [dropError, setDropError] = useState("")
   const dragDepth = useRef(0)
+  const handledCreateRequest = useRef(0)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -84,21 +88,34 @@ export default function ShortcutWorkspace({
   useEffect(() => {
     void store.initialize()
   }, [store])
-  function edit(item?: Shortcut) {
-    if (disabled || !state.snapshot) return
-    setDropError("")
-    store.clearFeedback()
-    setEditor({
-      item: item ?? {
-        id: crypto.randomUUID(),
-        name: "",
-        kind: kind === "all" ? "program" : kind,
-        target: "",
-      },
-      existing: !!item,
-      revision: state.snapshot.revision,
-    })
-  }
+  const edit = useCallback(
+    (item?: Shortcut) => {
+      if (disabled || !state.snapshot) return
+      setDropError("")
+      store.clearFeedback()
+      setEditor({
+        item: item ?? {
+          id: crypto.randomUUID(),
+          name: "",
+          kind: kind === "all" ? "program" : kind,
+          target: "",
+        },
+        existing: !!item,
+        revision: state.snapshot.revision,
+      })
+    },
+    [disabled, kind, state.snapshot, store]
+  )
+  useEffect(() => {
+    if (
+      createRequest <= handledCreateRequest.current ||
+      disabled ||
+      !state.snapshot
+    )
+      return
+    handledCreateRequest.current = createRequest
+    edit()
+  }, [createRequest, disabled, edit, state.snapshot])
   function confirmDelete(item: Shortcut) {
     if (disabled || !state.snapshot) return
     setDropError("")

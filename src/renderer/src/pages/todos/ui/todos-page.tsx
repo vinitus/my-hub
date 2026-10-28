@@ -1,7 +1,13 @@
 ﻿import { useEffect, useSyncExternalStore } from "react"
 import { TodoStore, TodoWorkspace } from "@/features/todos"
 
-export default function TodosPage({ store }: { store: TodoStore }) {
+export default function TodosPage({
+  store,
+  createRequest = 0,
+}: {
+  store: TodoStore
+  createRequest?: number
+}) {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   useEffect(() => {
     void store.initialize()
@@ -19,6 +25,7 @@ export default function TodosPage({ store }: { store: TodoStore }) {
       onRefresh={() => {
         void store.refresh()
       }}
+      createRequest={createRequest}
     />
   )
 }

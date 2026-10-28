@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useSyncExternalStore,
 } from "react"
@@ -45,9 +46,16 @@ const views = [
 ]
 type Editor = { event: CalendarEvent; existing: boolean; revision: string }
 
-export default function CalendarWorkspace({ store }: { store: CalendarStore }) {
+export default function CalendarWorkspace({
+  store,
+  createRequest = 0,
+}: {
+  store: CalendarStore
+  createRequest?: number
+}) {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [editor, setEditor] = useState<Editor | null>(null)
+  const handledCreateRequest = useRef(0)
   const controller = useCalendarController()
   const disabled = state.busy || state.loading || !state.snapshot
   const events = useMemo(
@@ -70,6 +78,17 @@ export default function CalendarWorkspace({ store }: { store: CalendarStore }) {
     },
     [disabled, state.snapshot]
   )
+
+  useEffect(() => {
+    if (
+      createRequest <= handledCreateRequest.current ||
+      disabled ||
+      !state.snapshot
+    )
+      return
+    handledCreateRequest.current = createRequest
+    edit(newCalendarEvent())
+  }, [createRequest, disabled, edit, state.snapshot])
 
   const move = useCallback(
     async (info: EventDropInfo | EventResizeDoneInfo) => {

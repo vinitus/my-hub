@@ -15,7 +15,7 @@
 Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/features/weather/README.md)를 참고한다.
 
 워크스페이스 메뉴와 번호는 `src/app/config/navigation.ts`에서 함께 관리한다.
-Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
+홈은 앱의 시작 화면이고 Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더, Ctrl+4 할일로 이동한다.
 `src/app/model/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안
 사이드바에 번호를 표시한다. 키를 놓거나 창 포커스를 잃으면 번호를 숨긴다.
 등록/수정 모달이 열린 동안에는 화면 이동 단축키를 적용하지 않는다.
@@ -31,14 +31,16 @@ Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더로 이동한다.
 `src/features/shortcuts`는 프로그램·폴더·웹사이트 바로가기를 관리한다.
 대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.
 
-앱 첫 화면은 메모다. AI 요청은 Ctrl+K로 여는 한 줄 모달에 입력하고,
+앱 첫 화면은 `src/pages/home`의 다용도 홈이다. 빠른 메모 입력은 현재 Markdown 메모에 내용을 추가해 저장하고,
+계산기는 사칙연산과 괄호를 처리한다. 빠른 등록 버튼은 각 기능 화면을 열어 할일 입력란·일정 편집·바로가기 편집을 바로 시작한다.
+메모 전체 편집은 메모 메뉴에서 계속 사용할 수 있다. AI 요청은 Ctrl+K로 여는 한 줄 모달에 입력하고,
 전송 후 우측 하단에서 작업 상태를 확인한다. 설정에서 ChatGPT를 연결한 뒤 사용할 수 있으며,
 변경 요청은 전후 미리보기를 확인하고 적용한다. 저장 후 최근 작업은 실행 취소할 수 있다.
 구조는 [빠른 입력 안내](src/features/quick-command/README.md)를 참고한다.
 
 캘린더 화면은 `src/pages/calendar`, 편집·알림은 `src/features/calendar`에 있으며 FullCalendar와 기존 shadcn UI를 사용한다.
 파일별 역할, 날짜 규칙, 로컬 저장 구조는 [캘린더 유지보수 안내](src/features/calendar/README.md)를 참고한다.
-`src/app/App.tsx`가 메모/캘린더 전환을 관리하고 두 작업 화면은 전환 후에도 마운트를 유지한다.
+`src/app/App.tsx`가 홈/메모/캘린더/할일/바로가기 전환을 관리하고 방문한 작업 화면은 전환 후에도 마운트를 유지한다.
 기존 아래 문서의 메모 구조는 메모 화면에 적용된다.
 
 Electron 창 안에서 실행하는 React 화면이다. Vite root는 이 디렉터리이며,
@@ -54,6 +56,7 @@ Electron 창 안에서 실행하는 React 화면이다. Vite root는 이 디렉�
 | --- | --- |
 | `app` | `providers`의 전역 테마, `config`의 메뉴 정의, `model`의 전역 이동 단축키, `styles`의 앱 스타일, App의 store 수명·화면·모달 조립 |
 | `pages/notes` | 파일 도구·저장 상태·오류·편집기·본문 스크롤의 실제 화면 구성 |
+| `pages/home` | Markdown 메모에 연결된 빠른 입력, 계산기, 작업 생성 바로가기 |
 | `pages/calendar` | FullCalendar 어댑터·탐색·선택·일정 편집창 조립 |
 | `pages/shortcuts` | 카드 목록·검색·필터·드롭·편집창 조립 |
 | `widgets` | `app-sidebar`, `site-header`, `live-status`의 큰 UI 블록 |

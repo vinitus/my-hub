@@ -41,7 +41,7 @@ type Props<View extends string> = ComponentProps<typeof Sidebar> & {
   navigationItems: readonly {
     id: View
     label: string
-    number: string
+    number?: string
     icon: ComponentType<{ className?: string }>
   }[]
   onNewNote: () => void
@@ -101,18 +101,20 @@ export function AppSidebar<View extends string>({
               <SidebarMenuItem key={id}>
                 <SidebarMenuButton
                   isActive={activeView === id}
-                  tooltip={`${label} (Ctrl+${number})`}
-                  aria-keyshortcuts={`Control+${number}`}
+                  tooltip={number ? `${label} (Ctrl+${number})` : label}
+                  aria-keyshortcuts={number ? `Control+${number}` : undefined}
                   onClick={() => onNavigate(id)}
                 >
                   <Icon />
                   <span>{label}</span>
-                  <kbd
-                    aria-hidden="true"
-                    className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded border border-sidebar-foreground/20 bg-sidebar font-mono text-[11px] text-sidebar-foreground/70 ${showNavigationNumbers ? "visible" : "invisible"}`}
-                  >
-                    {number}
-                  </kbd>
+                  {number && (
+                    <kbd
+                      aria-hidden="true"
+                      className={`ml-auto flex size-5 shrink-0 items-center justify-center rounded border border-sidebar-foreground/20 bg-sidebar font-mono text-[11px] text-sidebar-foreground/70 ${showNavigationNumbers ? "visible" : "invisible"}`}
+                    >
+                      {number}
+                    </kbd>
+                  )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}

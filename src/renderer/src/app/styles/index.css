@@ -3,6 +3,13 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
+@media (max-width: 767px) {
+  /* Sidebar uses a mobile sheet; reclaim its desktop resizable track. */
+  .app-sidebar-resizable-layout {
+    grid-template-columns: 0px 0px minmax(0, 1fr) !important;
+  }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* shadcn 의미 기반 토큰을 Tailwind 유틸리티(bg-background 등)에 연결한다.

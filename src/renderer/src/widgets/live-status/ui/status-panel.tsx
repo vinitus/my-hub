@@ -18,6 +18,7 @@ import { panelSchedule } from "../model/panel-status"
 export type StatusPanelProps = {
   open: boolean
   width?: number
+  fillContainer?: boolean
   onOpenChange: (open: boolean) => void
   events: CalendarEvent[]
   shortcuts: Shortcut[]
@@ -54,6 +55,7 @@ function eventTime(event: CalendarEvent, now: number) {
 export function StatusPanel({
   open,
   width = 280,
+  fillContainer = false,
   onOpenChange,
   events,
   shortcuts,
@@ -87,8 +89,8 @@ export function StatusPanel({
   return (
     <aside
       aria-label="실시간 현황"
-      style={open ? { width } : undefined}
-      className={`${open ? "absolute inset-y-0 right-0 z-20 w-[280px] max-w-full shadow-lg lg:static lg:shadow-none" : "w-10"} flex min-h-0 shrink-0 flex-col border-l bg-background`}
+      style={{ width: fillContainer ? "100%" : open ? width : 40 }}
+      className="flex h-full min-h-0 w-full shrink-0 flex-col border-l bg-background"
     >
       <div
         className={`flex h-11 shrink-0 items-center ${open ? "justify-between px-3" : "justify-center"}`}

@@ -9,7 +9,6 @@ export function LiveStatusPanel({
   shortcutStore,
   todoStore,
   open,
-  width,
   onOpenChange,
   onOpenCalendar,
   onOpenShortcuts,
@@ -19,7 +18,6 @@ export function LiveStatusPanel({
   shortcutStore: ShortcutStore
   todoStore: TodoStore
   open: boolean
-  width: number
   onOpenChange: (open: boolean) => void
   onOpenCalendar: () => void
   onOpenShortcuts: () => void
@@ -62,7 +60,7 @@ export function LiveStatusPanel({
   return (
     <StatusPanel
       open={open}
-      width={width}
+      fillContainer
       onOpenChange={onOpenChange}
       events={calendar.snapshot?.events ?? []}
       shortcuts={recent}

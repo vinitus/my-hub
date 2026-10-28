@@ -15,14 +15,14 @@ const fromRoot = (path) => fileURLToPath(new URL(path, projectUrl))
 // pnpm dev --force는 Vite의 의존성 최적화 캐시를 다시 만들 때 사용한다.
 const { values } = parseArgs({ options: { force: { type: "boolean" } } })
 
-// Chromium의 Windows 오류 로그는 UTF-8인데 stderr를 콘솔에 직접 연결하면
-// 터미널 코드 페이지에 따라 한글이 깨졌다. 바이트를 받아 UTF-8로 출력한다.
-function forwardElectronErrors(stream) {
+// Windows GUI 프로세스의 출력을 상속에 맡기지 않고 pipe로 받아 전달한다.
+// stdout(main 로그)과 stderr(Chromium 로그) 모두 UTF-8로 디코딩한다.
+function forwardElectronOutput(stream, destination) {
   let pending = Buffer.alloc(0)
   const utf8 = new TextDecoder("utf-8")
 
   function writeLine(bytes) {
-    process.stderr.write(`${utf8.decode(bytes)}\n`)
+    destination.write(`${utf8.decode(bytes)}\n`)
   }
 
   stream.on("data", (chunk) => {
@@ -126,11 +126,11 @@ async function start() {
   electronProcess = spawn(electronPath, [projectRoot], {
     cwd: projectRoot,
     env,
-    stdio: ["inherit", "inherit", "pipe"],
+    stdio: ["inherit", "pipe", "pipe"],
   })
-  // stdout은 그대로 전달하고, stderr만 한글 로그를 위해 디코딩한다.
   // 중복 앱 실행 방지는 src/main/index.ts의 single-instance lock이 처리한다.
-  forwardElectronErrors(electronProcess.stderr)
+  forwardElectronOutput(electronProcess.stdout, process.stdout)
+  forwardElectronOutput(electronProcess.stderr, process.stderr)
   electronProcess.once("error", (error) => {
     console.error("[dev] Failed to start Electron:", error)
     void stop(1)

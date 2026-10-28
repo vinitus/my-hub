@@ -189,18 +189,18 @@ export function AppSidebar<View extends string>({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <p
-          className="truncate px-2 text-xs leading-relaxed text-muted-foreground"
-          title={activeView === "notes" ? library?.directory : undefined}
-        >
-          {activeView === "notes"
-            ? (library?.directory ?? "로컬 Markdown 메모")
-            : activeView === "shortcuts"
-              ? "프로그램 · 폴더 · 웹사이트"
-              : activeView === "todos"
-                ? "할일은 이 기기에 저장됩니다."
-                : "일정은 이 기기에 저장됩니다."}
-        </p>
+        {activeView !== "calendar" && (
+          <p
+            className="truncate px-2 text-xs leading-relaxed text-muted-foreground"
+            title={activeView === "notes" ? library?.directory : undefined}
+          >
+            {activeView === "notes"
+              ? (library?.directory ?? "로컬 Markdown 메모")
+              : activeView === "shortcuts"
+                ? "프로그램 · 폴더 · 웹사이트"
+                : "할일은 이 기기에 저장됩니다."}
+          </p>
+        )}
         {weather}
       </SidebarFooter>
     </Sidebar>

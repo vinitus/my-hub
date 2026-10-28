@@ -23,9 +23,7 @@ export function LiveStatusPanel({
     shortcutStore.getSnapshot
   )
   const [now, setNow] = useState(() => Date.now())
-  const [open, setOpen] = useState(
-    () => window.matchMedia("(min-width: 1024px)").matches
-  )
+  const [open, setOpen] = useState(true)
 
   useEffect(() => {
     void calendarStore.initialize()

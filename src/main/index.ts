@@ -17,8 +17,9 @@ const mainDirectory = import.meta.dirname
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 720,
+    // Leave roughly 860px for content alongside the default 288px/280px panels.
+    width: 1440,
+    height: 900,
     show: false,
     autoHideMenuBar: true,
     ...(process.platform === "linux"

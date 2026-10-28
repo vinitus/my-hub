@@ -1,99 +1,38 @@
 /* eslint-disable react-refresh/only-export-components */
-import * as React from "react"
 import {
-  DEFAULT_APP_SETTINGS,
-  type AppSettings,
-  type AppSettingsPatch,
-} from "../../../../shared/app-settings"
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react"
+import { AppSettingsStore } from "../model/app-settings-store"
 
-type AppSettingsContextValue = {
-  settings: AppSettings
-  ready: boolean
-  error: string
-  updateSettings: (patch: AppSettingsPatch) => Promise<boolean>
+type AppSettingsContextValue = ReturnType<AppSettingsStore["getSnapshot"]> & {
+  updateSettings: AppSettingsStore["update"]
 }
+const AppSettingsContext = createContext<AppSettingsContextValue | undefined>(
+  undefined
+)
 
-const AppSettingsContext = React.createContext<
-  AppSettingsContextValue | undefined
->(undefined)
-
-function savedTheme(): AppSettings["theme"] | undefined {
-  const value = localStorage.getItem("theme")
-  return value === "dark" || value === "light" || value === "system"
-    ? value
-    : undefined
-}
-
-function errorMessage(error: unknown) {
-  return error instanceof Error
-    ? error.message
-    : "앱 설정을 저장하지 못했습니다."
-}
-
-export function AppSettingsProvider({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const api = window.api?.settings
-  const [settings, setSettings] = React.useState<AppSettings>(() => ({
-    ...DEFAULT_APP_SETTINGS,
-    ...(savedTheme() ? { theme: savedTheme()! } : {}),
-  }))
-  const settingsRef = React.useRef(settings)
-  const [ready, setReady] = React.useState(!api)
-  const [error, setError] = React.useState("")
-
-  React.useEffect(() => {
-    if (!api) return
-    let active = true
-    void api
-      .read()
-      .then(async (stored) => {
-        if (!active) return
-        const theme = savedTheme()
-        const loaded = theme ? { ...stored, theme } : stored
-        settingsRef.current = loaded
-        setSettings(loaded)
-        if (theme && theme !== stored.theme) {
-          const migrated = await api.update({ theme })
-          if (!active) return
-          settingsRef.current = migrated
-          setSettings(migrated)
-        }
+export function AppSettingsProvider({ children }: { children: ReactNode }) {
+  const [store] = useState(
+    () =>
+      new AppSettingsStore(window.api?.settings, {
+        read: () => localStorage.getItem("theme"),
+        write: (theme) => localStorage.setItem("theme", theme),
+        remove: () => localStorage.removeItem("theme"),
       })
-      .catch((cause: unknown) => {
-        if (active) setError(errorMessage(cause))
-      })
-      .finally(() => {
-        if (active) setReady(true)
-      })
-    return () => {
-      active = false
-    }
-  }, [api])
-
-  const updateSettings = React.useCallback(
-    async (patch: AppSettingsPatch) => {
-      try {
-        const next = api
-          ? await api.update(patch)
-          : { ...settingsRef.current, ...patch }
-        settingsRef.current = next
-        setSettings(next)
-        setError("")
-        return true
-      } catch (cause) {
-        setError(errorMessage(cause))
-        return false
-      }
-    },
-    [api]
   )
-
-  const value = React.useMemo(
-    () => ({ settings, ready, error, updateSettings }),
-    [settings, ready, error, updateSettings]
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  useEffect(() => {
+    void store.initialize()
+  }, [store])
+  const value = useMemo(
+    () => ({ ...state, updateSettings: store.update }),
+    [state, store]
   )
   return (
     <AppSettingsContext.Provider value={value}>
@@ -103,7 +42,7 @@ export function AppSettingsProvider({
 }
 
 export function useAppSettings() {
-  const context = React.useContext(AppSettingsContext)
+  const context = useContext(AppSettingsContext)
   if (!context)
     throw new Error("useAppSettings must be used within its provider")
   return context

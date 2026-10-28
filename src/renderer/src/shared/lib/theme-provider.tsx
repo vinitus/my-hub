@@ -91,6 +91,7 @@ export function ThemeProvider({
   ...props
 }: ThemeProviderProps) {
   const [internalTheme, setInternalTheme] = React.useState<Theme>(() => {
+    if (controlledTheme !== undefined) return controlledTheme
     const storedTheme = localStorage.getItem(storageKey)
     if (isTheme(storedTheme)) {
       return storedTheme
@@ -102,11 +103,15 @@ export function ThemeProvider({
 
   const setTheme = React.useCallback(
     (nextTheme: Theme) => {
+      if (controlledTheme !== undefined) {
+        onThemeChange?.(nextTheme)
+        return
+      }
       localStorage.setItem(storageKey, nextTheme)
       setInternalTheme(nextTheme)
       onThemeChange?.(nextTheme)
     },
-    [storageKey, onThemeChange]
+    [controlledTheme, storageKey, onThemeChange]
   )
 
   const applyTheme = React.useCallback(
@@ -190,6 +195,7 @@ export function ThemeProvider({
 
   // 같은 origin의 다른 창에서 바꾼 테마를 반영한다.
   React.useEffect(() => {
+    if (controlledTheme !== undefined) return
     const handleStorageChange = (event: StorageEvent) => {
       if (event.storageArea !== localStorage) {
         return
@@ -214,7 +220,7 @@ export function ThemeProvider({
     return () => {
       window.removeEventListener("storage", handleStorageChange)
     }
-  }, [defaultTheme, onThemeChange, storageKey])
+  }, [controlledTheme, defaultTheme, onThemeChange, storageKey])
 
   const value = React.useMemo(
     () => ({

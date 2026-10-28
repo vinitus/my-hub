@@ -6,6 +6,7 @@
 @media (max-width: 767px) {
   /* Sidebar uses a mobile sheet; reclaim its desktop resizable track. */
   .app-sidebar-resizable-layout {
+    display: grid !important;
     grid-template-columns: 0px 0px minmax(0, 1fr) !important;
   }
 }

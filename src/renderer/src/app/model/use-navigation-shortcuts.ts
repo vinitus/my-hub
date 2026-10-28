@@ -1,3 +1,4 @@
+import { hasOpenDialog } from "@/shared/lib/has-open-dialog"
 import { useEffect, useEffectEvent, useState } from "react"
 import { NAVIGATION_ITEMS, type AppView } from "@/app/config/navigation"
 
@@ -21,12 +22,7 @@ export function useNavigationShortcuts(onNavigate: (view: AppView) => void) {
       )
       if (!item) return
       // 등록/수정 모달이 열린 동안에는 편집 중인 화면을 단축키로 전환하지 않는다.
-      if (
-        document.querySelector(
-          '[role="dialog"][data-open], [role="alertdialog"][data-open]'
-        )
-      )
-        return
+      if (hasOpenDialog()) return
       event.preventDefault()
       if (!event.repeat) navigate(item.id)
     }

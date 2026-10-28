@@ -1,3 +1,4 @@
+import { hasOpenDialog } from "@/shared/lib/has-open-dialog"
 import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { Dialog } from "@base-ui/react/dialog"
 import {
@@ -60,13 +61,7 @@ export function QuickCommand({
     )
       return
     // 편집기의 링크 단축키보다 먼저 처리하되, 다른 등록/수정 모달은 가리지 않는다.
-    if (
-      !open &&
-      document.querySelector(
-        '[role="dialog"][data-open], [role="alertdialog"][data-open]'
-      )
-    )
-      return
+    if (!open && hasOpenDialog()) return
     event.preventDefault()
     event.stopPropagation()
     if (!event.repeat) onOpenChange(!open)

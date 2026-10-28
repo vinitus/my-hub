@@ -2,14 +2,18 @@
 
 ## 우측 실시간 현황 패널
 
-`widgets/live-status`의 `LiveStatusPanel`이 우측 280px 접이식 패널을 연결한다.
+`widgets/live-status`의 `LiveStatusPanel`이 우측 현황 패널을 연결한다.
+`app/ui/workspace-layout.tsx`는 레이아웃 슬롯과 props/콜백만 받아 좌우 패널을 조절한다.
+기본 너비는 좌측 288px·우측 280px이고, 열린 패널의 최소 너비는 모두 200px이다.
+너비 제한과 기본값은 루트 IPC 계약의 `APP_PANEL_WIDTHS`를 공유한다.
 `ui/status-panel.tsx`는 props/콜백만 사용하고 고정 fixture의 Storybook 스토리를 갖는다.
 오늘의 일정은 아직 시작하지 않은 오늘 일정만, 예정된 실행은 앞으로 시작할 일정 중
 링크 실행을 설정한 항목만 표시한다. 종일 일정의 링크 실행은 알림과 같은 로컬 오전 9시 기준이다.
 패널 자체는 링크를 실행하거나 별도 예약하지 않으며, 기존 main 알림 실행기를 그대로 사용한다.
 바로가기는 현재 앱 실행 중 성공한 최근 실행 최대 5개를 다시 실행할 수 있다.
 `App`이 생성한 `ShortcutStore`를 바로가기 페이지와 패널이 공유해 등록·수정·삭제와 실행 이력을 동기화한다.
-좁은 창에서는 접힌 상태로 시작하고 펼치면 본문 위에 표시한다.
+접힘 상태와 선호 너비는 `app-settings.json`에서 복원한다. 초기 복원·창 크기 변경은 다시 저장하지 않고,
+사용자의 드래그와 접기 동작만 저장한다. 좁은 창의 왼쪽 탐색은 기존 모바일 시트를 사용한다.
 
 사이드바 하단의 `src/features/weather`는 선택한 도시의 현재 날씨를 표시한다.
 Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/features/weather/README.md)를 참고한다.
@@ -23,6 +27,9 @@ Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/f
 사이드바 하단의 **설정**은 `src/features/settings/ui/settings-sheet.tsx`에서 표시한다.
 `Ctrl+O`로도 열 수 있다. `src/app/App.tsx`에서 처리하며 다른 모달이 열려 있으면 중첩해서 열지 않는다.
 라이트/다크/시스템 테마는 기존 `ThemeProvider`, 메모 폴더 변경은 `src/app/App.tsx`의 `useNote`를 사용한다.
+`app/model/app-settings-store.ts`가 설정 초기 조회·이전·변경을 직렬 처리하고 Provider는 이를 구독한다.
+이전 localStorage 테마는 파일 저장 성공 후 제거한다. 제어된 `ThemeProvider`는 변경 요청만 전달해
+파일 저장에 실패한 테마가 별도 localStorage 값으로 남지 않게 한다.
 설정이 열린 동안에는 메모 파일 단축키를 비활성화하며 자동 저장은 계속 동작한다.
 설정의 **AI 연결 → Codex**는 로컬 Codex 설치/계정 확인과 브라우저 로그인을 제공한다.
 구조와 인증 범위는 [Codex 연결 안내](src/features/settings/README.md)를 참고한다.
@@ -54,7 +61,7 @@ Electron 창 안에서 실행하는 React 화면이다. Vite root는 이 디렉�
 
 | 레이어 | 현재 책임 |
 | --- | --- |
-| `app` | `providers`의 전역 테마, `config`의 메뉴 정의, `model`의 전역 이동 단축키, `styles`의 앱 스타일, App의 store 수명·화면·모달 조립 |
+| `app` | `providers`의 설정 구독·전역 테마, `config`의 메뉴 정의, `model`의 설정 저장·모달 수명·단축키, `ui`의 패널 레이아웃, App의 store 수명·화면 조립 |
 | `pages/notes` | 파일 도구·저장 상태·오류·편집기·본문 스크롤의 실제 화면 구성 |
 | `pages/home` | Markdown 메모에 연결된 빠른 입력, 계산기, 작업 생성 바로가기 |
 | `pages/calendar` | FullCalendar 어댑터·탐색·선택·일정 편집창 조립 |
@@ -113,14 +120,15 @@ Electron/Node/main/preload 직접 import와 shared의 IPC 의존을 오류로 �
 ```text
 index.html
 └─ src/main.tsx: React 마운트, app 공개 API
-   └─ AppProviders: 로컬 ThemeProvider
-      └─ src/app/App.tsx: SidebarProvider, useNote의 문서 상태
-         ├─ AppSidebar: 메뉴·메모 목록과 App이 주입한 일정 현황·날씨
-         ├─ SettingsSheet: 테마 선택, 메모 폴더 변경
-         └─ SidebarInset
+   └─ AppProviders: AppSettingsProvider, 로컬 ThemeProvider
+      └─ src/app/App.tsx: store 수명, 화면·모달 조립, useNote의 문서 상태
+         └─ WorkspaceLayout: SidebarProvider, 좌우 크기 조절·설정 동기화
+            ├─ AppSidebar: 메뉴·메모 목록, 주입된 일정 현황·날씨
             ├─ SiteHeader: 사이드바 토글, 화면 이름
-            └─ NotesPage (src/pages/notes): 파일 도구, 상태/오류, 본문 스크롤
-               └─ NoteEditor: Plate 편집기, 서식 도구, / 메뉴
+            ├─ HomePage / NotesPage / Calendar / Todos / Shortcuts
+            │  └─ 메모는 NoteEditor의 Plate 편집기와 본문 스크롤을 사용
+            ├─ LiveStatusPanel: 오늘 일정·할일·실행 예정·바로가기
+            └─ SettingsSheet / QuickCommand / CodexSetupPrompt 등 전역 모달
 ```
 
 ## 메모의 편집·저장 구조
@@ -277,13 +285,18 @@ props와 고정 fixture로 동작해 Electron API나 실제 계정·파일을 �
 기준 문서는 루트의 `storybook-prompt.md`다 (기존 파일명의 오타를 정정했다).
 공용 `shared/ui` 22개 모듈과 일정 편집·알림, 바로가기 편집·타일, 날씨 표시·검색,
 Codex 연결·모델·첫 안내, 설정 시트, 메모 파일명·편집기, 빠른 입력과 앱 위젯을 다룬다.
-기존 일정 상태 카드를 포함해 128개 typed CSF 3 스토리가 있다.
+기존 일정 상태 카드와 앱 패널·제어된 테마를 포함해 160개 typed CSF 3 스토리가 있다.
 각 상태는 별도 스토리로 구성하고, 날짜·시간·서비스 응답은 고정 fixture로 제공한다.
 Toolbar의 Light/Dark는 포털을 포함해 문서 루트에 테마 클래스를 적용한다.
 
 - `pnpm storybook`: 개발 서버와 스토리 탐색기
 - `pnpm build-storybook`: 정적 Storybook 빌드
 - `pnpm test:storybook`: 정적 빌드 후 전체 스토리를 숨겨진 Chromium에서 light/dark 및 360px로 렌더링한다. 일정 링크 입력의 DOM/포커스 유지, 빈 지역 검색, 키보드 파일명 변경도 검사한다.
+
+패널 스토리는 실제 마우스 드래그, 최소 너비, 접기·복원, 입력 유지, 초기 설정 복원 중 저장 방지와
+모바일 시트 공간을 검사한다. 테마 스토리는 저장 성공 전 변경 보류와 중복 저장 방지를 검사한다.
+`STORYBOOK_TEST_FILTER` 환경 변수에 `workspace-layout`처럼 스토리 파일 경로 일부를 지정하면
+해당 스토리만 재검증할 수 있다. 전체 검사 때는 변수를 비운다.
 
 브라우저 검사는 기존 Electron 개발 의존성만 사용하며 별도 테스트 애드온을 설치하지 않는다.
 임시 프로필, preload 없음, Node 통합 없음, 외부 요청·새 창 차단으로 실사용 파일·계정과 격리한다.

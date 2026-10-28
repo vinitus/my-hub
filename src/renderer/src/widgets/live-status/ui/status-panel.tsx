@@ -10,6 +10,7 @@ import {
   PanelRightOpenIcon,
 } from "lucide-react"
 import { Button } from "@/shared/ui/button"
+import { compareTodoPriority } from "@/features/todos"
 import type { CalendarEvent } from "../../../../../shared/calendar"
 import type { Shortcut } from "../../../../../shared/shortcuts"
 import type { Todo } from "../../../../../shared/todos"
@@ -81,11 +82,7 @@ export function StatusPanel({
     calendarError || (calendarLoading ? "일정 불러오는 중…" : "")
   const pendingTodos = todos
     .filter((todo) => !todo.completed)
-    .toSorted(
-      (a, b) =>
-        Number(!!b.favorite) - Number(!!a.favorite) ||
-        (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31")
-    )
+    .toSorted(compareTodoPriority)
   return (
     <aside
       aria-label="실시간 현황"

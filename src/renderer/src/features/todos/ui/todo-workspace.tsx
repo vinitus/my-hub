@@ -1,15 +1,15 @@
-﻿import { useId, useState } from "react"
+import { useEffect, useId, useRef, useState, type RefObject } from "react"
 import {
   CalendarDaysIcon,
   PencilIcon,
   StarIcon,
   Trash2Icon,
 } from "lucide-react"
-import { useEffect, useRef, type RefObject } from "react"
 import type { Todo } from "../../../../../shared/todos"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { compareTodoPriority } from "../lib/compare-todo-priority"
 
 type Props = {
   items: Todo[]
@@ -153,14 +153,11 @@ export function TodoWorkspace({
         filter === "all" ||
         (filter === "completed" ? item.completed : !item.completed)
     )
-    .toSorted(
-      (a, b) =>
-        Number(!!b.favorite) - Number(!!a.favorite) ||
-        (a.dueDate ?? "9999-12-31").localeCompare(b.dueDate ?? "9999-12-31")
-    )
+    .toSorted(compareTodoPriority)
   const filterId = useId()
   const titleInputRef = useRef<HTMLInputElement>(null)
   const handledCreateRequest = useRef(0)
+  // 홈에서 보낸 등록 요청은 lazy 페이지의 데이터 로드가 끝난 뒤 포커스한다.
   useEffect(() => {
     if (createRequest <= handledCreateRequest.current || !ready || busy) return
     handledCreateRequest.current = createRequest

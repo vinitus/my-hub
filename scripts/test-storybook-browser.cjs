@@ -71,6 +71,11 @@ app.whenReady().then(async () => {
         `Missing schedule fixture: ${key}`
       )
     }
+    const filter = process.env.STORYBOOK_TEST_FILTER
+    const stories = filter
+      ? entries.filter((entry) => entry.importPath.includes(filter))
+      : entries
+    assert.ok(stories.length > 0, "No stories matched STORYBOOK_TEST_FILTER")
     let count = 0
     for (const [theme, width] of [
       ["light", 1100],
@@ -78,7 +83,7 @@ app.whenReady().then(async () => {
       ["dark", 360],
     ]) {
       win.setSize(width, 800)
-      for (const story of entries) {
+      for (const story of stories) {
         errors.length = 0
         await win.loadURL(
           `${base}/iframe.html?id=${story.id}&viewMode=story&globals=theme:${theme}`
@@ -107,6 +112,223 @@ app.whenReady().then(async () => {
           theme === "dark",
           `${story.id}: toolbar theme was not applied`
         )
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/theme-provider.stories.tsx")
+        ) {
+          await win.webContents
+            .executeJavaScript(`window.__controlledWrites = 0; window.__setItem = Storage.prototype.setItem;
+            Storage.prototype.setItem = function(key, value) { if (key === 'storybook:controlled-theme') window.__controlledWrites++; return window.__setItem.call(this, key, value) };
+            window.dispatchEvent(new KeyboardEvent('keydown', {key:'d', bubbles:true}));`)
+          await delay(50)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `Number(document.querySelector('[data-testid="theme-requests"]').textContent)`
+            ),
+            1
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.documentElement.classList.contains('dark')`
+            ),
+            false,
+            "theme must wait for persisted state"
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `window.__controlledWrites`
+            ),
+            0,
+            "controlled theme must not write a second persistence source"
+          )
+          await win.webContents.executeJavaScript(
+            `Array.from(document.querySelectorAll('button')).find(b => b.textContent === '설정 저장 실패').click()`
+          )
+          await delay(30)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.documentElement.classList.contains('dark')`
+            ),
+            false
+          )
+          await win.webContents.executeJavaScript(
+            `window.dispatchEvent(new KeyboardEvent('keydown', {key:'d', bubbles:true}))`
+          )
+          await delay(30)
+          await win.webContents.executeJavaScript(
+            `Array.from(document.querySelectorAll('button')).find(b => b.textContent === '설정 저장 성공').click()`
+          )
+          await delay(50)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.documentElement.classList.contains('dark')`
+            ),
+            true
+          )
+          await win.webContents.executeJavaScript(
+            `Storage.prototype.setItem = window.__setItem; void 0`
+          )
+          console.log(
+            "PASS controlled theme waits for storage without duplicate writes"
+          )
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/workspace-layout.stories.tsx")
+        ) {
+          const sizes = () =>
+            win.webContents.executeJavaScript(`(() => {
+            const box = id => document.getElementById(id).getBoundingClientRect();
+            return { left: box('left-sidebar').width, right: box('right-status-panel').width,
+              height: box('main-view').height, writes: Number(document.querySelector('[data-testid="layout-writes"]').textContent) };
+          })()`)
+          let initial = await sizes()
+          assert.equal(initial.writes, 0, "mount must not persist a layout")
+          assert.ok(
+            initial.height > 400,
+            `workspace must use the remaining screen height: ${JSON.stringify(initial)}`
+          )
+          if (story.name === "Hydration") {
+            await win.webContents.executeJavaScript(
+              `Array.from(document.querySelectorAll('button')).find(b => b.textContent === '저장된 레이아웃 불러오기').click()`
+            )
+            await delay(100)
+            initial = await sizes()
+            assert.equal(Math.round(initial.left), 360)
+            assert.equal(Math.round(initial.right), 320)
+            assert.equal(
+              initial.writes,
+              0,
+              "settings hydration must not persist a layout"
+            )
+          }
+          if (story.name === "Default" || story.name === "Restored") {
+            assert.equal(
+              Math.round(initial.left),
+              story.name === "Default" ? 288 : 360
+            )
+            assert.equal(
+              Math.round(initial.right),
+              story.name === "Default" ? 280 : 320
+            )
+            win.setSize(1200, 800)
+            await delay(100)
+            const resized = await sizes()
+            assert.ok(Math.abs(resized.left - initial.left) < 2)
+            assert.ok(Math.abs(resized.right - initial.right) < 2)
+            assert.equal(
+              resized.writes,
+              0,
+              "window resize must not overwrite preferred widths"
+            )
+            win.setSize(1100, 800)
+            await delay(100)
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[aria-label="본문 입력"]').focus()`
+            )
+            win.webContents.insertText("preserved draft")
+            const drag = async (label, dx) => {
+              const point = await win.webContents.executeJavaScript(`(() => {
+                const r = document.querySelector('[aria-label="${label}"]').getBoundingClientRect();
+                const x = Math.round(r.x + r.width / 2), y = Math.round(r.y + r.height / 2);
+                return { x, y };
+              })()`)
+              win.webContents.focus()
+              win.webContents.sendInputEvent({ type: "mouseMove", ...point })
+              win.webContents.sendInputEvent({
+                type: "mouseDown",
+                button: "left",
+                clickCount: 1,
+                ...point,
+              })
+              await delay(30)
+              for (let step = 1; step <= 5; step++) {
+                win.webContents.sendInputEvent({
+                  type: "mouseMove",
+                  modifiers: ["leftButtonDown"],
+                  x: point.x + Math.round((dx * step) / 5),
+                  y: point.y,
+                })
+                await delay(20)
+              }
+              win.webContents.sendInputEvent({
+                type: "mouseUp",
+                button: "left",
+                clickCount: 1,
+                x: point.x + dx,
+                y: point.y,
+              })
+              await delay(100)
+            }
+            await drag("왼쪽 사이드바 크기 조절", 60)
+            assert.ok(
+              Math.abs((await sizes()).left - initial.left - 60) < 2,
+              `left drag: ${JSON.stringify({ initial, after: await sizes() })}`
+            )
+            await drag("오른쪽 현황 패널 크기 조절", -50)
+            let changed = await sizes()
+            assert.ok(Math.abs(changed.right - initial.right - 50) < 2)
+            assert.equal(
+              changed.writes,
+              2,
+              "each completed drag must persist once"
+            )
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[data-sidebar="trigger"]').click()`
+            )
+            await delay(100)
+            assert.equal(Math.round((await sizes()).left), 0)
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[data-sidebar="trigger"]').click()`
+            )
+            await delay(100)
+            assert.ok(Math.abs((await sizes()).left - changed.left) < 2)
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[aria-label="현황 접기 전환"]').click()`
+            )
+            await delay(100)
+            assert.equal(Math.round((await sizes()).right), 40)
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[aria-label="현황 접기 전환"]').click()`
+            )
+            await delay(100)
+            assert.ok(Math.abs((await sizes()).right - changed.right) < 2)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[aria-label="본문 입력"]').value`
+              ),
+              "preserved draft"
+            )
+            await drag("왼쪽 사이드바 크기 조절", -700)
+            changed = await sizes()
+            assert.ok(
+              changed.left < 1 || changed.left >= 199,
+              "expanded sidebar must keep its 200px minimum"
+            )
+            console.log(
+              `PASS ${story.name} panel drag, restore and preserved content`
+            )
+          }
+        }
+        if (
+          width === 360 &&
+          story.importPath.endsWith("/workspace-layout.stories.tsx")
+        ) {
+          const mobile = await win.webContents.executeJavaScript(`({
+            sidebarWidth: document.getElementById('left-sidebar').getBoundingClientRect().width,
+            overflow: document.documentElement.scrollWidth > innerWidth,
+          })`)
+          assert.equal(
+            Math.round(mobile.sidebarWidth),
+            0,
+            "mobile sheet must reclaim the desktop sidebar track"
+          )
+          assert.equal(
+            mobile.overflow,
+            false,
+            "mobile layout must not overflow the viewport"
+          )
+        }
         if (
           story.importPath.endsWith("/status-panel.stories.tsx") &&
           story.name === "Populated"
@@ -522,7 +744,7 @@ app.whenReady().then(async () => {
         count++
       }
       console.log(
-        `PASS ${theme} ${width}px: ${entries.length} stories rendered without Electron bridge`
+        `PASS ${theme} ${width}px: ${stories.length} stories rendered without Electron bridge`
       )
     }
     console.log(`PASS ${count} story renders`)

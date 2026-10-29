@@ -768,9 +768,9 @@ test("드롭 대상의 종류·이름을 판별하고 검증하지만 저장하�
       ).name,
       "example.com"
     )
-    await assert.rejects(
-      inspectShortcutDrop({ kind: "path", target: text }),
-      /실행 파일/
+    assert.equal(
+      (await inspectShortcutDrop({ kind: "path", target: text })).kind,
+      "file"
     )
     await assert.rejects(
       inspectShortcutDrop({ kind: "path", target: "relative.exe" }),

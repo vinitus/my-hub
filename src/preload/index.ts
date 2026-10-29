@@ -1,5 +1,6 @@
 import type { CommandAPI } from "../shared/command"
 import type { TodosAPI } from "../shared/todos"
+import type { InboxRendererAPI } from "../shared/inbox"
 import { contextBridge, ipcRenderer, webUtils } from "electron"
 import { electronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
@@ -117,7 +118,24 @@ const settings: AppSettingsAPI = {
   read: () => ipcRenderer.invoke("settings:read"),
   update: (patch) => ipcRenderer.invoke("settings:update", patch),
 }
+const inbox: InboxRendererAPI = {
+  load: () => ipcRenderer.invoke("inbox:load"),
+  capture: (request) => ipcRenderer.invoke("inbox:capture", request),
+  process: (request) => ipcRenderer.invoke("inbox:process", request),
+  remove: (request) => ipcRenderer.invoke("inbox:remove", request),
+  open: (request) => ipcRenderer.invoke("inbox:open", request),
+  chooseFiles: (revision) => ipcRenderer.invoke("inbox:choose-files", revision),
+  captureFiles: async (files, expectedRevision) => {
+    const drafts = files.map((file) => {
+      const content = webUtils.getPathForFile(file)
+      if (!content) throw new Error("실제 파일이나 폴더를 끌어 놓아 주세요.")
+      return { kind: "file", content, source: "파일 드롭" }
+    })
+    return ipcRenderer.invoke("inbox:capture", { drafts, expectedRevision })
+  },
+}
 const api = {
+  inbox,
   commands,
   notes,
   calendar,

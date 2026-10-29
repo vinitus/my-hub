@@ -1,11 +1,17 @@
 import { z } from "zod"
 
-export const ShortcutKindSchema = z.enum(["program", "folder", "website"])
+export const ShortcutKindSchema = z.enum([
+  "program",
+  "folder",
+  "website",
+  "file",
+])
 export type ShortcutKind = z.infer<typeof ShortcutKindSchema>
 export const SHORTCUT_LABELS: Record<ShortcutKind, string> = {
   program: "프로그램",
   folder: "폴더",
   website: "웹사이트",
+  file: "파일",
 }
 
 export function websiteUrl(value: string): string {
@@ -96,7 +102,9 @@ export type ShortcutsAPI = {
     request: z.infer<typeof ShortcutDropSchema>
   ) => Promise<Shortcut>
   load: () => Promise<ShortcutSnapshot>
-  choose: (kind: "program" | "folder") => Promise<ShortcutSelection | null>
+  choose: (
+    kind: "program" | "folder" | "file"
+  ) => Promise<ShortcutSelection | null>
   save: (
     request: z.infer<typeof ShortcutSaveSchema>
   ) => Promise<ShortcutSnapshot>

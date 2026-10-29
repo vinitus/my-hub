@@ -2,6 +2,7 @@ import { registerCommands } from "./commands"
 import { CalendarRepository } from "./calendar-repository"
 import { TodoRepository } from "./todo-repository"
 import { registerTodos } from "./todos"
+import { registerInbox } from "./inbox"
 import { app, shell, BrowserWindow, ipcMain } from "electron"
 import { join } from "node:path"
 import { electronApp, optimizer, is } from "@electron-toolkit/utils"
@@ -39,6 +40,7 @@ function createWindow(): void {
   const calendarRepository = new CalendarRepository(app.getPath("userData"))
   const todoRepository = new TodoRepository(app.getPath("userData"))
   registerTodos(mainWindow, todoRepository)
+  registerInbox(mainWindow)
   registerAppSettings(mainWindow)
   registerNotes(mainWindow)
   const refreshReminders = registerCalendar(mainWindow, calendarRepository)

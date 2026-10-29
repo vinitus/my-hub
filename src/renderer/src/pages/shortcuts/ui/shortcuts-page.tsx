@@ -263,7 +263,7 @@ export default function ShortcutWorkspace({
               aria-label="바로가기 종류"
               className="flex flex-wrap gap-1"
             >
-              {(["all", "program", "folder", "website"] as const).map(
+              {(["all", "program", "folder", "file", "website"] as const).map(
                 (value) => (
                   <Button
                     key={value}

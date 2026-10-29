@@ -1,5 +1,6 @@
 import type { CommandAPI } from "../shared/command"
 import type { TodosAPI } from "../shared/todos"
+import type { InboxRendererAPI } from "../shared/inbox"
 import type { ElectronAPI } from "@electron-toolkit/preload"
 import type { NotesAPI } from "../shared/notes"
 import type { CalendarAPI } from "../shared/calendar"
@@ -12,6 +13,7 @@ declare global {
   interface Window {
     electron: ElectronAPI
     api: {
+      inbox: InboxRendererAPI
       commands: CommandAPI
       todos: TodosAPI
       notes: NotesAPI

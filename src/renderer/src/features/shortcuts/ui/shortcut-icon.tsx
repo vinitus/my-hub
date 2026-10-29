@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
-import { FolderIcon, GlobeIcon, MonitorIcon } from "lucide-react"
+import { FolderIcon, GlobeIcon, MonitorIcon, FileIcon } from "lucide-react"
 import type { Shortcut } from "../../../../../shared/shortcuts"
 
 const fallback = {
   program: MonitorIcon,
   folder: FolderIcon,
   website: GlobeIcon,
+  file: FileIcon,
 }
 
 export function ShortcutIcon({

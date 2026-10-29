@@ -15,6 +15,7 @@ if (
     "todos",
     "commands",
     "settings",
+    "inbox",
   ].includes(suite)
 )
   throw new Error("Unknown test suite")

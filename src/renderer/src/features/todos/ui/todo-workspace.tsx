@@ -121,7 +121,7 @@ export function TodoForm({
         완료
       </label>
       <Button type="submit" disabled={busy || !title.trim()}>
-        {item ? "수정 저장" : "추가"}
+        {item && !dialog ? "수정 저장" : "추가"}
       </Button>
       {(item || dialog) && (
         <Button

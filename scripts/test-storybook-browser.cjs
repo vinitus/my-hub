@@ -1807,6 +1807,194 @@ app.whenReady().then(async () => {
           }
         }
         if (
+          story.importPath.endsWith("/inbox-view.stories.tsx") &&
+          story.name === "Default"
+        ) {
+          const output = path.resolve("out/tests/storybook")
+          fs.mkdirSync(output, { recursive: true })
+          fs.writeFileSync(
+            path.join(output, `inbox-${theme}-${width}.png`),
+            (await win.capturePage()).toPNG()
+          )
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/inbox-view.stories.tsx") &&
+          story.name === "Interactive"
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const clickText = async (text) => {
+            await run(
+              `[...document.querySelectorAll('button')].find(b=>b.innerText===${JSON.stringify(text)}).click()`
+            )
+            await delay(70)
+          }
+          const fill = async (selector, value, textarea = false) => {
+            await run(
+              `(() => { const input=document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(${textarea ? "HTMLTextAreaElement" : "HTMLInputElement"}.prototype,'value').set.call(input,${JSON.stringify(value)}); input.dispatchEvent(new Event('input',{bubbles:true})); })()`
+            )
+            await delay(40)
+          }
+          await fill('[aria-label="수집할 내용"]', "회고 아이디어", true)
+          await clickText("수집")
+          assert.equal(
+            await run(
+              `document.querySelector('[aria-label="수집할 내용"]').value`
+            ),
+            ""
+          )
+          assert.equal(
+            await run(
+              `document.querySelectorAll('ul[aria-label="수집한 항목"] > li').length`
+            ),
+            4
+          )
+          await run(
+            `document.querySelector('[aria-label="회고 아이디어 처리 완료"]').click()`
+          )
+          await delay(50)
+          await clickText("처리 완료")
+          assert.equal(
+            await run(
+              `document.querySelectorAll('ul[aria-label="수집한 항목"] > li').length`
+            ),
+            2
+          )
+          await run(
+            `document.querySelector('[aria-label="회고 아이디어 미처리로 되돌리기"]').click()`
+          )
+          await delay(50)
+          await clickText("미처리")
+          await fill('[aria-label="인박스 검색"]', "파일 드롭")
+          assert.equal(
+            await run(
+              `document.querySelectorAll('ul[aria-label="수집한 항목"] > li').length`
+            ),
+            1
+          )
+          await fill('[aria-label="인박스 검색"]', "")
+          await run(
+            `(() => { const data=new DataTransfer(); data.setData('text/uri-list','# source\\nhttps://example.com/dropped'); document.querySelector('section[aria-label="인박스"]').dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:data})); })()`
+          )
+          await delay(60)
+          assert.equal(
+            await run(
+              `document.querySelectorAll('ul[aria-label="수집한 항목"] > li').length`
+            ),
+            5
+          )
+          await run(
+            `document.querySelector('[aria-label="회고 아이디어 삭제"]').click()`
+          )
+          await delay(60)
+          await clickText("취소")
+          assert.equal(
+            await run(
+              `document.querySelectorAll('ul[aria-label="수집한 항목"] > li').length`
+            ),
+            5
+          )
+          await run(
+            `document.querySelector('[aria-label="회고 아이디어 삭제"]').click()`
+          )
+          await delay(60)
+          await clickText("삭제")
+          assert.equal(
+            await run(
+              `document.querySelectorAll('ul[aria-label="수집한 항목"] > li').length`
+            ),
+            4
+          )
+          console.log(
+            "PASS inbox capture, filtering, source search, drop, process/reopen and confirmed deletion"
+          )
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/inbox-flow.stories.tsx")
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const clickText = async (text) => {
+            await run(
+              `[...document.querySelectorAll('button')].find(b=>b.innerText===${JSON.stringify(text)}).click()`
+            )
+            await delay(100)
+          }
+          const counts = () =>
+            run(
+              `JSON.parse(document.querySelector('[data-testid="inbox-saved-counts"]').textContent)`
+            )
+          if (story.name === "Move") {
+            for (const [label, kind] of [
+              ["할일", "todo"],
+              ["일정", "event"],
+              ["바로가기", "shortcut"],
+              ["메모", "note"],
+            ]) {
+              await clickText(`${label}로`)
+              if (kind !== "note") {
+                assert.ok(
+                  await run(
+                    `document.querySelector('[role="dialog"] form').innerText.length > 0`
+                  )
+                )
+                await run(
+                  `document.querySelector('[role="dialog"] form').requestSubmit()`
+                )
+                await delay(120)
+              }
+              assert.equal((await counts())[kind], 1, `${label} saved once`)
+              assert.equal(
+                await run(
+                  `document.querySelectorAll('ul[aria-label="수집한 항목"] > li').length`
+                ),
+                0
+              )
+              await clickText("처리 완료")
+              assert.ok(
+                await run(
+                  `document.querySelector('ul[aria-label="수집한 항목"]').innerText.includes(${JSON.stringify(`${label}로 옮김`)})`
+                )
+              )
+              await run(
+                `document.querySelector('button[aria-label$="미처리로 되돌리기"]').click()`
+              )
+              await delay(70)
+              await clickText("미처리")
+            }
+          } else {
+            await clickText("할일로")
+            await run(
+              `document.querySelector('[role="dialog"] form').requestSubmit()`
+            )
+            await delay(120)
+            if (story.name === "Save Failure") {
+              assert.equal((await counts()).todo, 0)
+              assert.ok(
+                await run(
+                  `document.querySelector('[role="dialog"]').innerText.includes('대상 저장 실패')`
+                )
+              )
+              await clickText("취소")
+            } else {
+              assert.equal((await counts()).todo, 1)
+              assert.ok(
+                await run(
+                  `document.querySelector('[role="alert"]').innerText.includes('대상 항목은 저장했습니다')`
+                )
+              )
+            }
+            assert.equal(
+              await run(
+                `document.querySelectorAll('ul[aria-label="수집한 항목"] > li').length`
+              ),
+              1,
+              "source remains pending on failure"
+            )
+          }
+          console.log(`PASS inbox conversion: ${story.name}`)
+        }
+        if (
           story.importPath.endsWith("/quick-command.stories.tsx") &&
           story.name === "Open"
         ) {

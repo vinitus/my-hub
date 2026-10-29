@@ -39,7 +39,12 @@ export function registerShortcuts(window: BrowserWindow) {
     const kind = ShortcutKindSchema.parse(request)
     if (kind === "website") throw new Error("웹사이트는 주소를 입력해 주세요.")
     const result = await dialog.showOpenDialog(window, {
-      title: kind === "folder" ? "바로가기 폴더 선택" : "프로그램 선택",
+      title:
+        kind === "folder"
+          ? "바로가기 폴더 선택"
+          : kind === "file"
+            ? "바로가기 파일 선택"
+            : "프로그램 선택",
       properties:
         kind === "folder"
           ? ["openDirectory"]

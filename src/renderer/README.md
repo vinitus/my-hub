@@ -1,5 +1,12 @@
 # Renderer 작업 안내
 
+## 인박스
+
+Ctrl+5와 사이드바에서 인박스를 연다. 헤더의 수집 버튼과 Ctrl+K의 `인박스에 수집` 명령은
+현재 화면에서 작은 입력창을 연다. 생각·링크·파일을 직접 입력/붙여넣기/드롭으로 수집하고
+나중에 메모·할일·일정·바로가기로 옮긴다. 출처·생성 시각·처리 여부를 저장하며 클립보드를 감시하지 않는다.
+저장과 이동 동작은 [인박스 유지보수 안내](src/features/inbox/README.md)를 참고한다.
+
 ## 우측 실시간 현황 패널
 
 `widgets/live-status`의 `LiveStatusPanel`이 우측 현황 패널을 연결한다.
@@ -22,11 +29,11 @@
 Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/features/weather/README.md)를 참고한다.
 
 워크스페이스 메뉴와 번호는 `src/app/config/navigation.ts`에서 함께 관리한다.
-홈은 앱의 시작 화면이고 Ctrl+H 홈, Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더, Ctrl+4 할일로 이동한다.
+홈은 앱의 시작 화면이고 Ctrl+H 홈, Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더, Ctrl+4 할일, Ctrl+5 인박스로 이동한다.
 `src/app/model/use-workspace-navigation.ts`가 선택 화면과 방문 이력을 한 상태로 관리한다.
 방문 집합은 직접 변경하지 않고 화면 전환 시 필요한 경우에만 새 집합을 만든다.
 `src/app/model/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안
-사이드바에 H·1·2·3·4를 표시한다. 키를 놓거나 창 포커스를 잃으면 단축키 표시를 숨긴다.
+사이드바에 H·1·2·3·4·5를 표시한다. 키를 놓거나 창 포커스를 잃으면 단축키 표시를 숨긴다.
 등록/수정 모달이 열린 동안에는 화면 이동 단축키를 적용하지 않는다.
 
 중앙 작업 영역의 `features/shortcut-wheel` 공개 `ShortcutMenu`는 상시 버튼 없이

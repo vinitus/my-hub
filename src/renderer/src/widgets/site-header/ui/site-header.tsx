@@ -1,7 +1,7 @@
 import { Separator } from "@/shared/ui/separator"
 import { SidebarTrigger } from "@/shared/ui/sidebar"
 import { Button } from "@/shared/ui/button"
-import { SearchIcon, SparklesIcon } from "lucide-react"
+import { SearchIcon, SparklesIcon, InboxIcon } from "lucide-react"
 import {
   LAUNCHER_SHORTCUTS,
   type LauncherShortcut,
@@ -13,11 +13,13 @@ export function SiteHeader({
   title,
   onQuickCommand,
   onAIQuickCommand,
+  onInboxCapture,
   launcherShortcut = "ctrl+k",
 }: {
   title: string
   onQuickCommand: () => void
   onAIQuickCommand?: () => void
+  onInboxCapture?: () => void
   launcherShortcut?: LauncherShortcut
 }) {
   return (
@@ -29,10 +31,21 @@ export function SiteHeader({
           className="mx-2 h-4 data-vertical:self-auto"
         />
         <span className="text-base font-medium">{title}</span>
+        {onInboxCapture && (
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="ml-auto text-muted-foreground"
+            aria-label="인박스에 수집"
+            onClick={onInboxCapture}
+          >
+            <InboxIcon />
+          </Button>
+        )}
         <Button
           variant="ghost"
           size="sm"
-          className="ml-auto gap-2 text-muted-foreground"
+          className={`${onInboxCapture ? "" : "ml-auto"} gap-2 text-muted-foreground`}
           onClick={onQuickCommand}
           aria-keyshortcuts={LAUNCHER_SHORTCUTS[launcherShortcut].replace(
             "Ctrl",

@@ -152,5 +152,6 @@ export class ShortcutStore {
     }
     return launched
   }
-  choose = async (kind: "program" | "folder") => this.requireAPI().choose(kind)
+  choose = async (kind: "program" | "folder" | "file") =>
+    this.requireAPI().choose(kind)
 }

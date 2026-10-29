@@ -23,7 +23,9 @@ type Props = {
   onSaveTodo: (todo: Todo) => Promise<boolean>
   onSaveEvent: (event: CalendarEvent) => Promise<boolean>
   onSaveShortcut: (item: Shortcut) => Promise<boolean>
-  onChoose: (kind: "program" | "folder") => Promise<ShortcutSelection | null>
+  onChoose: (
+    kind: "program" | "folder" | "file"
+  ) => Promise<ShortcutSelection | null>
   onChooseFile?: () => Promise<string | null | undefined>
 }
 
@@ -100,7 +102,7 @@ export function HomeCreateDialog({
         {ready ? (
           <TodoForm
             dialog
-            item={null}
+            item={session.kind === "todo" ? (session.todo ?? null) : null}
             busy={busy}
             onSave={onSaveTodo}
             onCancel={onClose}

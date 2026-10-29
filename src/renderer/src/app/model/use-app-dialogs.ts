@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { readCodexSetupChoice } from "@/features/settings"
 import { hasOpenDialog } from "@/shared/lib/has-open-dialog"
 
-export function useAppDialogs() {
+export function useAppDialogs(otherDialogOpen = false) {
   const [commandOpen, setCommandOpen] = useState(false)
   const [aiCommandOpen, setAICommandOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -61,6 +61,10 @@ export function useAppDialogs() {
     codexSetup,
     setCodexSetup,
     codexPromptOpen:
-      codexSetup !== null && !settingsOpen && !commandOpen && !aiCommandOpen,
+      codexSetup !== null &&
+      !settingsOpen &&
+      !commandOpen &&
+      !aiCommandOpen &&
+      !otherDialogOpen,
   }
 }

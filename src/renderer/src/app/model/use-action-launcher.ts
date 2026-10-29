@@ -5,6 +5,7 @@ import type { ShortcutStore } from "@/features/shortcuts"
 import type { CalendarStore } from "@/entities/calendar-event"
 import type { NoteLibrarySnapshot } from "../../../../shared/notes"
 import type { CalendarEvent } from "../../../../shared/calendar"
+import { SHORTCUT_LABELS } from "../../../../shared/shortcuts"
 
 // 도메인 간 조립은 app이 소유한다. 런처 UI는 store나 Electron API를 참조하지 않는다.
 export function useActionLauncher({
@@ -113,12 +114,7 @@ export function useActionLauncher({
       id: `shortcut:${shortcut.id}`,
       kind: "shortcut",
       title: shortcut.name,
-      description:
-        shortcut.kind === "program"
-          ? "등록된 프로그램"
-          : shortcut.kind === "folder"
-            ? "등록된 폴더"
-            : "등록된 웹사이트",
+      description: `등록된 ${SHORTCUT_LABELS[shortcut.kind]}`,
       keywords: shortcut.target,
       label: "실행",
       disabled: shortcuts.busy || shortcuts.loading,

@@ -34,7 +34,9 @@ type Props = {
   confirmDeleteOnOpen?: boolean
   busy: boolean
   error: string
-  onChoose: (kind: "program" | "folder") => Promise<ShortcutSelection | null>
+  onChoose: (
+    kind: "program" | "folder" | "file"
+  ) => Promise<ShortcutSelection | null>
   onSave: (item: Shortcut) => Promise<boolean>
   onDelete: () => Promise<boolean>
   onClose: () => void
@@ -99,7 +101,7 @@ export function ShortcutSheet({
         <Header className={presentation === "dialog" ? "p-4 pr-14" : undefined}>
           <Title>{existing ? "바로가기 수정" : "바로가기 추가"}</Title>
           <Description>
-            자주 사용하는 프로그램, 폴더, 웹사이트를 등록하세요.
+            자주 사용하는 프로그램, 폴더, 파일, 웹사이트를 등록하세요.
           </Description>
         </Header>
         <form
@@ -190,7 +192,9 @@ export function ShortcutSheet({
                   ? "Windows 실행 파일(.exe)이나 기존 바로가기(.lnk)를 선택하세요."
                   : draft.kind === "folder"
                     ? "클릭하면 파일 탐색기로 폴더를 엽니다."
-                    : "http 또는 https 주소를 기본 브라우저로 엽니다."}
+                    : draft.kind === "file"
+                      ? "기본 앱으로 파일을 엽니다."
+                      : "http 또는 https 주소를 기본 브라우저로 엽니다."}
               </p>
             </div>
             {(localError || error) && (

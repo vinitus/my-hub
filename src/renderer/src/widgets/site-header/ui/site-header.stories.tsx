@@ -17,7 +17,12 @@ const meta = {
       </SidebarProvider>
     ),
   ],
-  args: { title: "메모", onQuickCommand: () => {}, onAIQuickCommand: () => {} },
+  args: {
+    title: "메모",
+    onQuickCommand: () => {},
+    onAIQuickCommand: () => {},
+    onInboxCapture: () => {},
+  },
 } satisfies Meta<typeof SiteHeader>
 export default meta
 type Story = StoryObj<typeof meta>

@@ -27,6 +27,8 @@ export async function validateShortcut(value: unknown): Promise<Shortcut> {
   }
   if (item.kind === "folder") {
     if (!details.isDirectory()) throw new Error("폴더를 선택해 주세요.")
+  } else if (item.kind === "file") {
+    if (!details.isFile()) throw new Error("파일을 선택해 주세요.")
   } else if (
     process.platform === "darwin" &&
     extname(target).toLowerCase() === ".app" &&
@@ -68,7 +70,12 @@ export async function inspectShortcutDrop(request: unknown): Promise<Shortcut> {
   }
   const app =
     process.platform === "darwin" && extname(target).toLowerCase() === ".app"
-  const type = details.isDirectory() && !app ? "folder" : "program"
+  const type =
+    details.isDirectory() && !app
+      ? "folder"
+      : app || [".exe", ".lnk"].includes(extname(target).toLowerCase())
+        ? "program"
+        : "file"
   const name =
     type === "folder" ? basename(target) : basename(target, extname(target))
   return validateShortcut({

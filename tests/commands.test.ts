@@ -111,6 +111,72 @@ test("launcher scopes searches, ranks exact matches and handles local action phr
   )
 })
 
+test("launcher fuzzy search handles typos, initials and ordered abbreviations after exact matches", () => {
+  const execute = () => {
+    throw new Error("search must not execute")
+  }
+  const items: LauncherAction[] = [
+    {
+      id: "note",
+      kind: "note",
+      title: "보고서 회의록",
+      description: "메모",
+      label: "열기",
+      execute,
+    },
+    {
+      id: "exact",
+      kind: "todo",
+      title: "보고서",
+      description: "할일",
+      label: "완료",
+      execute,
+    },
+    {
+      id: "code",
+      kind: "shortcut",
+      title: "VS Code",
+      description: "프로그램",
+      label: "실행",
+      execute,
+    },
+    {
+      id: "calendar",
+      kind: "event",
+      title: "회의",
+      description: "일정",
+      label: "열기",
+      execute,
+    },
+  ]
+  assert.deepEqual(
+    searchActions(items, "보고서").map((item) => item.id),
+    ["exact", "note"]
+  )
+  assert.deepEqual(
+    searchActions(items, "보거서").map((item) => item.id),
+    ["exact", "note"]
+  )
+  assert.deepEqual(
+    searchActions(items, "메모 ㅂㄱㅅ").map((item) => item.id),
+    ["note"]
+  )
+  assert.deepEqual(
+    searchActions(items, "일정 ㅎㅇ").map((item) => item.id),
+    ["calendar"]
+  )
+  assert.deepEqual(
+    searchActions(items, "vsc").map((item) => item.id),
+    ["code"]
+  )
+  assert.deepEqual(
+    searchActions(items, "메모 보거서 회의").map((item) => item.id),
+    ["note"]
+  )
+  assert.equal(searchActions(items, "없는 항목").length, 0)
+  assert.equal(searchActions(items, "ㅂ").length, 0)
+})
+
 const todoAction = () => ({
   domain: "todos" as const,
   operation: "create" as const,

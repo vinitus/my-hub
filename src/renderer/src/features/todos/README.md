@@ -10,6 +10,7 @@ Delete로 기한을 지울 수 있다. Enter 등록은 IME 조합 중에는 실�
 저장 중 중복 제출을 막고 실패 시 모든 입력을 유지한다. 성공 안내는 잠시 표시한다.
 
 - `model/todo-store.ts`: 외부 store, 초기 로드·구독·작업 중복 방지·오류 처리.
+- `model/use-todo-form.ts`: 폼 초안과 제출 잠금·성공 초기화·예외 처리를 관리한다. 초기 초안은 마운트 시 한 번만 읽으며 편집 항목의 수명은 기존 호출자가 제어한다.
 - `ui/todo-workspace.tsx`: props/콜백 기반 UI, 독립된 입력 초안.
 - `pages/todos`: store 수명과 화면 조립.
 - 루트 `src/shared/todos.ts`: Zod 검증 및 IPC 계약.

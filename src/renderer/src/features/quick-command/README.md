@@ -29,6 +29,7 @@ AI 빠른 입력은 Ctrl+Shift+K 또는 헤더의 `AI 빠른 입력`으로 별�
 
 - `ui/action-launcher.tsx`: 설정 가능한 단축키·종류별 검색·선택·로컬 실행. Storybook은 `actions` 콜백으로 격리한다.
 - `ui/ai-quick-command.tsx`: Ctrl+Shift+K, AI 입력·미리보기·실행 취소와 최근 요청 결과. AI 콜백으로 격리한다.
+- `model/use-command-task.ts`: 입력 초안과 요청/미리보기 적용/실행 취소/폐기 상태를 관리한다. 기존 콜백을 주입받고 요청 ID와 ref 잠금으로 결과 정체성과 중복 실행 방지를 유지한다.
 - `model/action-search.ts`: 범위 구문, 검색 정규화·순위. 실행 부작용이 없는 순수 함수다.
 - 루트 `src/shared/launcher-shortcut.ts`: 검색 단축키 후보·표시와 modifier 일치 검사.
 - `app/model/use-action-launcher.ts`: 공유 store를 구독하고 실제 도메인 동작을 콜백으로 조립한다. feature 간 직접 의존은 없다.

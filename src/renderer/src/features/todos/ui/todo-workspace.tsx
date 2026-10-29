@@ -9,6 +9,7 @@ import type { Todo } from "../../../../../shared/todos"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
 import { Label } from "@/shared/ui/label"
+import { useTodoForm, type TodoFormOptions } from "../model/use-todo-form"
 import { compareTodoPriority } from "../lib/compare-todo-priority"
 
 type Props = {
@@ -30,22 +31,22 @@ export function TodoForm({
   onCancel,
   titleInputRef,
   dialog = false,
-}: {
-  item: Todo | null
-  busy: boolean
-  onSave: (todo: Todo) => Promise<boolean>
-  onCancel: () => void
+}: TodoFormOptions & {
   dialog?: boolean
   titleInputRef?: RefObject<HTMLInputElement | null>
 }) {
   const id = useId()
-  const [title, setTitle] = useState(item?.title ?? "")
-  const [dueDate, setDueDate] = useState(item?.dueDate ?? "")
-  const [completed, setCompleted] = useState(item?.completed ?? false)
-  const submitting = useRef(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
-  const pending = busy || saving
+  const {
+    title,
+    setTitle,
+    dueDate,
+    setDueDate,
+    completed,
+    setCompleted,
+    pending,
+    error,
+    save,
+  } = useTodoForm({ item, busy, onSave, onCancel })
   const cancel = (item || dialog) && (
     <Button
       type="button"
@@ -89,34 +90,7 @@ export function TodoForm({
             ?.matches(":open")
         )
           return
-        if (!title.trim() || pending || submitting.current) return
-        submitting.current = true
-        setSaving(true)
-        setError("")
-        try {
-          const saved = await onSave({
-            id: item?.id ?? crypto.randomUUID(),
-            title: title.trim(),
-            dueDate: dueDate || undefined,
-            completed,
-            favorite: item?.favorite ?? false,
-          })
-          if (saved) {
-            setTitle("")
-            setDueDate("")
-            setCompleted(false)
-            onCancel()
-          }
-        } catch (cause) {
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "할일을 저장하지 못했습니다. 다시 시도해 주세요."
-          )
-        } finally {
-          submitting.current = false
-          setSaving(false)
-        }
+        await save()
       }}
     >
       <div className="min-w-0 basis-full space-y-2 sm:flex-1 sm:basis-auto">

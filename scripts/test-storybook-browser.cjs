@@ -2534,6 +2534,100 @@ app.whenReady().then(async () => {
           true,
           `${story.id}: label is not connected to a control`
         )
+        if (story.importPath.endsWith("/todo-form.stories.tsx")) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const result = () =>
+            run(
+              `JSON.parse(document.querySelector('[data-testid="todo-form-result"]').textContent)`
+            )
+          if (story.name === "Saving") {
+            assert.equal(
+              await run(
+                `document.querySelector('input[type="text"]').disabled`
+              ),
+              true
+            )
+          } else {
+            if (story.name === "New") {
+              assert.equal(
+                await run(
+                  `document.querySelector('button[type="submit"]').disabled`
+                ),
+                true
+              )
+              await run(`document.querySelector('input[type="text"]').focus()`)
+              win.webContents.insertText("기한 없는 새 할일")
+              await delay(30)
+            }
+            await run(
+              `const form=document.querySelector('form');form.requestSubmit();form.requestSubmit();form.requestSubmit()`
+            )
+            await delay(30)
+            assert.equal(
+              (await result()).attempts,
+              1,
+              "form hook locks synchronously without a store busy prop"
+            )
+            assert.equal(
+              await run(
+                `document.querySelector('form').getAttribute('aria-busy')`
+              ),
+              "true"
+            )
+            await delay(150)
+            const value = await result()
+            if (["Rejected", "Thrown Error"].includes(story.name)) {
+              assert.equal(value.closed, 0)
+              assert.equal(value.saved, null)
+              assert.equal(
+                await run(`document.querySelector('input[type="text"]').value`),
+                "폼 상태 보존 확인"
+              )
+              assert.equal(
+                await run(`document.querySelector('input[type="date"]').value`),
+                "2026-11-03"
+              )
+              assert.equal(
+                await run(
+                  `document.querySelector('input[type="checkbox"]').checked`
+                ),
+                true
+              )
+              assert.equal(
+                await run(`!!document.querySelector('[role="alert"]')`),
+                story.name === "Thrown Error"
+              )
+            } else {
+              assert.equal(value.closed, 1)
+              assert.equal(value.saved.completed, story.name === "Editing")
+              assert.equal(value.saved.favorite, story.name === "Editing")
+              assert.equal(
+                value.saved.dueDate,
+                story.name === "Editing" ? "2026-11-03" : undefined
+              )
+              if (story.name === "Editing")
+                assert.equal(
+                  value.saved.id,
+                  "6b49dcec-24aa-4b4e-93d4-d9c7333a7c71"
+                )
+              assert.equal(
+                await run(`document.querySelector('input[type="text"]').value`),
+                ""
+              )
+              assert.equal(
+                await run(`document.querySelector('input[type="date"]').value`),
+                ""
+              )
+              assert.equal(
+                await run(
+                  `document.querySelector('input[type="checkbox"]').checked`
+                ),
+                false
+              )
+            }
+          }
+          console.log(`PASS extracted todo form state: ${story.name}`)
+        }
         if (story.importPath.endsWith("todo-workspace.stories.tsx")) {
           assert.equal(
             await win.webContents.executeJavaScript(
@@ -3023,15 +3117,24 @@ app.whenReady().then(async () => {
           }
           console.log("PASS launcher search, keyboard, IME and local routing")
         }
-        if (
-          theme === "light" &&
-          story.importPath.endsWith("/ai-quick-command.stories.tsx")
-        ) {
+        if (story.importPath.endsWith("/ai-quick-command.stories.tsx")) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const calls = () =>
+            run(
+              `JSON.parse(document.querySelector('[data-testid="command-task-calls"]').textContent)`
+            )
           await win.webContents.executeJavaScript(
             `document.querySelector('[aria-label="AI에게 요청할 내용"]').focus()`
           )
           win.webContents.insertText("내일 오후 3시에 팀 회의 추가해줘")
           await delay(50)
+          assert.equal(
+            await run(
+              `document.querySelector('[aria-label="AI에게 요청할 내용"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true}))`
+            ),
+            false
+          )
+          assert.equal((await calls()).run, 0)
           await win.webContents.executeJavaScript(
             `document.querySelector('[aria-label="요청 전송"]').click()`
           )
@@ -3050,6 +3153,11 @@ app.whenReady().then(async () => {
             Undo: "완료",
             "Apply Conflict": "변경 확인",
             "Partial Undo": "일부 저장됨",
+            Pending: "처리 중",
+            "Thrown Request": "처리 실패",
+            "Thrown Apply": "변경 확인",
+            "Thrown Discard": "변경 확인",
+            "Thrown Undo": "완료",
           }
           assert.equal(
             await win.webContents.executeJavaScript(
@@ -3058,6 +3166,55 @@ app.whenReady().then(async () => {
             true,
             `${story.id}: command result status`
           )
+          assert.equal((await calls()).run, 1)
+          if (story.name === "Pending" || story.name === "Preview") {
+            await run(
+              `[...document.querySelectorAll('button')].find(b=>b.textContent==='빠른 입력 열기').click()`
+            )
+            await delay(30)
+            await run(
+              `document.querySelector('[aria-label="AI에게 요청할 내용"]').focus()`
+            )
+            win.webContents.insertText("닫아도 유지할 입력")
+            await delay(20)
+            assert.equal(
+              await run(
+                `document.querySelector('[aria-label="요청 전송"]').disabled`
+              ),
+              true
+            )
+            await run(
+              `const form=document.querySelector('[role="dialog"] form');form.requestSubmit();form.requestSubmit()`
+            )
+            await delay(20)
+            assert.equal(
+              (await calls()).run,
+              1,
+              "running and preview tasks block another request"
+            )
+            win.webContents.sendInputEvent({
+              type: "keyDown",
+              keyCode: "Escape",
+            })
+            win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" })
+            await delay(30)
+            await run(
+              `[...document.querySelectorAll('button')].find(b=>b.textContent==='빠른 입력 열기').click()`
+            )
+            await delay(30)
+            assert.equal(
+              await run(
+                `document.querySelector('[aria-label="AI에게 요청할 내용"]').value`
+              ),
+              "닫아도 유지할 입력"
+            )
+            win.webContents.sendInputEvent({
+              type: "keyDown",
+              keyCode: "Escape",
+            })
+            win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" })
+            await delay(30)
+          }
           if (["Preview", "Discard", "Apply Conflict"].includes(story.name)) {
             assert.equal(
               await win.webContents.executeJavaScript(
@@ -3103,6 +3260,60 @@ app.whenReady().then(async () => {
                 `Array.from(document.querySelectorAll('aside button')).some(b => b.textContent === '실행 취소')`
               ),
               false
+            )
+          }
+          if (
+            ["Thrown Apply", "Thrown Discard", "Thrown Undo"].includes(
+              story.name
+            )
+          ) {
+            const label =
+              story.name === "Thrown Apply"
+                ? "변경 적용"
+                : story.name === "Thrown Discard"
+                  ? "변경 취소"
+                  : "실행 취소"
+            await run(
+              `[...document.querySelectorAll('aside button')].find(b=>b.textContent===${JSON.stringify(label)}).click()`
+            )
+            await delay(60)
+            assert.equal(
+              await run(
+                `document.querySelector('[aria-label="AI 작업 상태"]').textContent.includes('예외 fixture')`
+              ),
+              true
+            )
+            const counts = await calls()
+            assert.equal(
+              counts[
+                story.name === "Thrown Apply"
+                  ? "apply"
+                  : story.name === "Thrown Discard"
+                    ? "discard"
+                    : "undo"
+              ],
+              1
+            )
+          }
+          if (story.name.startsWith("Thrown")) {
+            await run(
+              `[...document.querySelectorAll('aside button')].find(b=>b.textContent==='입력 수정').click()`
+            )
+            await delay(30)
+            assert.equal(
+              await run(
+                `document.querySelector('[aria-label="AI에게 요청할 내용"]').value`
+              ),
+              "내일 오후 3시에 팀 회의 추가해줘"
+            )
+            await run(
+              `document.querySelector('[aria-label="요청 전송"]').click()`
+            )
+            await delay(40)
+            assert.equal(
+              (await calls()).run,
+              2,
+              "a failed callback releases the request lock"
             )
           }
           console.log(`PASS quick command ${story.name}`)

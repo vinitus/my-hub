@@ -77,6 +77,20 @@ export const SaveError: Story = {
   },
 }
 export const Saving: Story = { args: { busy: true } }
+export const DatedCompleted: Story = {
+  args: {
+    session: {
+      kind: "todo",
+      revision: "fixture-0",
+      todo: {
+        id: event.id,
+        title: "확정한 할일",
+        dueDate: "2026-11-03",
+        completed: true,
+      },
+    },
+  },
+}
 
 // 실제 controller·store를 로컬 메모리 API로 연결한다. 파일·계정·Electron 브리지는 사용하지 않는다.
 function HomeRegistration({ failSave = false }: { failSave?: boolean }) {
@@ -105,6 +119,7 @@ function HomeRegistration({ failSave = false }: { failSave?: boolean }) {
       todoStore: new TodoStore({
         load: async () => todos,
         save: async ({ todo, expectedRevision }) => {
+          await new Promise((resolve) => setTimeout(resolve, 100))
           check(expectedRevision, todos.revision)
           todos = {
             ...todos,
@@ -190,6 +205,9 @@ function HomeRegistration({ failSave = false }: { failSave?: boolean }) {
           events: calendar.snapshot?.events.length ?? 0,
           shortcuts: shortcuts.snapshot?.items.length ?? 0,
         })}
+      </output>
+      <output data-testid="saved-todos" className="sr-only">
+        {JSON.stringify(todos.snapshot?.items ?? [])}
       </output>
       <HomeCreateDialog
         {...creation}

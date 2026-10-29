@@ -886,10 +886,24 @@ app.whenReady().then(async () => {
               Math.abs((bounds.left + bounds.right) / 2 - bounds.width / 2) < 2,
               "home dialog must be centered"
             )
+            if (
+              ["Todo", "Dated Completed", "Save Error", "Saving"].includes(
+                story.name
+              )
+            ) {
+              const output = path.resolve("out/tests/storybook")
+              fs.mkdirSync(output, { recursive: true })
+              fs.writeFileSync(
+                path.join(
+                  output,
+                  `todo-dialog-${story.name.replaceAll(" ", "-").toLowerCase()}-${theme}-${width}.png`
+                ),
+                (await win.capturePage()).toPNG()
+              )
+            }
           }
         }
         if (
-          theme === "light" &&
           story.importPath.endsWith("/home-create-dialog.stories.tsx") &&
           ["Home Actions", "Home Save Failure"].includes(story.name)
         ) {
@@ -931,11 +945,162 @@ app.whenReady().then(async () => {
               true,
               `${label} must use shadcn Dialog`
             )
+            if (count === "todos") {
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.activeElement.matches('input[placeholder="할일을 입력하세요"]')`
+                ),
+                true
+              )
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.querySelector('[role="dialog"] button[type="submit"]').disabled`
+                ),
+                true
+              )
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.activeElement.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true}))`
+                ),
+                false
+              )
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `(()=>{const d=document.querySelector('[role="dialog"]').getBoundingClientRect();const b=[...document.querySelectorAll('[role="dialog"] form button')].filter(b=>b.textContent==='취소'||b.type==='submit').map(b=>b.getBoundingClientRect());return d.width<=440&&b.length===2&&Math.abs(b[0].top-b[1].top)<2&&b[0].left<b[1].left})()`
+                ),
+                true
+              )
+            }
             await win.webContents.executeJavaScript(
               `document.querySelector('[data-slot="dialog-content"]').querySelector(${JSON.stringify(selector)}).focus()`
             )
             win.webContents.insertText("홈에서 등록")
             await delay(50)
+            if (count === "todos") {
+              await win.webContents.executeJavaScript(
+                `(()=>{const d=document.querySelector('[role="dialog"] input[type="date"]');window.todoHeight=document.querySelector('[role="dialog"]').getBoundingClientRect().height;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(d,'2026-11-03');d.dispatchEvent(new Event('input',{bubbles:true}))})()`
+              )
+              await delay(30)
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `Math.abs(document.querySelector('[role="dialog"]').getBoundingClientRect().height-window.todoHeight)<2`
+                ),
+                true,
+                "date changes preserve modal height"
+              )
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[role="dialog"] input[type="date"]').focus()`
+              )
+              win.webContents.sendInputEvent({
+                type: "keyDown",
+                keyCode: "Delete",
+              })
+              win.webContents.sendInputEvent({
+                type: "keyUp",
+                keyCode: "Delete",
+              })
+              await delay(30)
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.querySelector('[role="dialog"] input[type="date"]').value`
+                ),
+                ""
+              )
+              await win.webContents.executeJavaScript(
+                `(()=>{const d=document.querySelector('[role="dialog"] input[type="date"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(d,'2026-11-03');d.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('[role="dialog"] input[type="checkbox"]').click()})()`
+              )
+              await delay(30)
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[role="dialog"] input[type="text"]').focus()`
+              )
+              const tab = async () => {
+                win.webContents.sendInputEvent({
+                  type: "keyDown",
+                  keyCode: "Tab",
+                })
+                win.webContents.sendInputEvent({
+                  type: "keyUp",
+                  keyCode: "Tab",
+                })
+                await delay(20)
+              }
+              await tab()
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.activeElement.type`
+                ),
+                "date"
+              )
+              for (
+                let i = 0;
+                i < 5 &&
+                (await win.webContents.executeJavaScript(
+                  `document.activeElement.type==='date'`
+                ));
+                i++
+              )
+                await tab()
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.activeElement.type`
+                ),
+                "checkbox"
+              )
+              await tab()
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.activeElement.textContent`
+                ),
+                "취소"
+              )
+              await tab()
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.activeElement.type`
+                ),
+                "submit"
+              )
+              // Offscreen Chromium does not display its OS date popup. Model only
+              // its :open state locally to verify modal/submit priority.
+              await win.webContents.executeJavaScript(
+                `(()=>{const d=document.querySelector('[role="dialog"] input[type="date"]');d.focus();const matches=d.matches.bind(d);d.matches=(selector)=>selector===':open'||matches(selector)})()`
+              )
+              win.webContents.sendInputEvent({
+                type: "keyDown",
+                keyCode: "Escape",
+              })
+              win.webContents.sendInputEvent({
+                type: "keyUp",
+                keyCode: "Escape",
+              })
+              await delay(30)
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `!!document.querySelector('[role="dialog"][data-open]')`
+                ),
+                true,
+                "open date picker gets Escape first"
+              )
+              win.webContents.sendInputEvent({
+                type: "keyDown",
+                keyCode: "Enter",
+              })
+              win.webContents.sendInputEvent({
+                type: "keyUp",
+                keyCode: "Enter",
+              })
+              await delay(30)
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `JSON.parse(document.querySelector('[data-testid="saved-todos"]').textContent).length`
+                ),
+                0,
+                "open date picker does not submit the todo"
+              )
+              await win.webContents.executeJavaScript(
+                `delete document.querySelector('[role="dialog"] input[type="date"]').matches`
+              )
+            }
             if (count === "shortcuts") {
               await win.webContents.executeJavaScript(
                 `Array.from(document.querySelectorAll('[data-slot="dialog-content"] button')).find(b => b.textContent.trim() === '찾아보기').click()`
@@ -952,9 +1117,34 @@ app.whenReady().then(async () => {
               "Ctrl+S로 메모 저장",
               "dialog must block scratchpad save"
             )
-            await win.webContents.executeJavaScript(
-              `document.querySelector('[data-slot="dialog-content"] button[type="submit"]').click()`
-            )
+            if (count === "todos") {
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[role="dialog"] input[type="text"]').focus()`
+              )
+              win.webContents.sendInputEvent({
+                type: "keyDown",
+                keyCode: "Enter",
+              })
+              win.webContents.sendInputEvent({ type: "char", keyCode: "\r" })
+              win.webContents.sendInputEvent({
+                type: "keyUp",
+                keyCode: "Enter",
+              })
+              await delay(25)
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.querySelector('[role="dialog"] button[type="submit"]').textContent`
+                ),
+                "저장 중…"
+              )
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[role="dialog"] form').requestSubmit();document.querySelector('[role="dialog"] form').requestSubmit()`
+              )
+            } else {
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[data-slot="dialog-content"] button[type="submit"]').click()`
+              )
+            }
             await delay(150)
             if (failed) {
               assert.match(
@@ -970,6 +1160,20 @@ app.whenReady().then(async () => {
                 "홈에서 등록",
                 "failure must preserve form input"
               )
+              if (count === "todos") {
+                assert.equal(
+                  await win.webContents.executeJavaScript(
+                    `document.querySelector('[role="dialog"] input[type="date"]').value`
+                  ),
+                  "2026-11-03"
+                )
+                assert.equal(
+                  await win.webContents.executeJavaScript(
+                    `document.querySelector('[role="dialog"] input[type="checkbox"]').checked`
+                  ),
+                  true
+                )
+              }
               await win.webContents.executeJavaScript(
                 `Array.from(document.querySelectorAll('[data-slot="dialog-content"] button')).find(b => b.textContent.trim() === '취소').click()`
               )
@@ -989,6 +1193,19 @@ app.whenReady().then(async () => {
               failed ? 0 : 1,
               "registration must update the shared store only on success"
             )
+            if (count === "todos" && !failed) {
+              assert.equal(
+                await win.webContents.executeJavaScript(
+                  `document.querySelector('[aria-label="할일 등록 결과"]').textContent.includes('할일을 등록했습니다')`
+                ),
+                true
+              )
+              const savedTodos = await win.webContents.executeJavaScript(
+                `JSON.parse(document.querySelector('[data-testid="saved-todos"]').textContent)`
+              )
+              assert.equal(savedTodos[0].dueDate, "2026-11-03")
+              assert.equal(savedTodos[0].completed, true)
+            }
             assert.equal(
               await win.webContents.executeJavaScript(
                 `document.querySelector('textarea').value`

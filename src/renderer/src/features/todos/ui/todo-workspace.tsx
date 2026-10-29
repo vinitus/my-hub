@@ -42,27 +42,80 @@ export function TodoForm({
   const [title, setTitle] = useState(item?.title ?? "")
   const [dueDate, setDueDate] = useState(item?.dueDate ?? "")
   const [completed, setCompleted] = useState(item?.completed ?? false)
+  const submitting = useRef(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+  const pending = busy || saving
+  const cancel = (item || dialog) && (
+    <Button
+      type="button"
+      variant="outline"
+      disabled={pending}
+      onClick={onCancel}
+    >
+      취소
+    </Button>
+  )
   return (
     <form
       className={
         dialog
-          ? "flex flex-col gap-4"
+          ? "flex flex-col gap-3"
           : "flex flex-wrap items-end gap-3 rounded-xl border bg-card p-4"
       }
+      aria-busy={pending}
+      onKeyDown={(event) => {
+        if (
+          event.target instanceof HTMLInputElement &&
+          event.target.type === "date" &&
+          event.target.matches(":open") &&
+          (event.key === "Enter" || event.key === "Escape")
+        ) {
+          // Let the native picker select/dismiss without reaching the modal.
+          event.stopPropagation()
+          return
+        }
+        if (
+          event.key === "Enter" &&
+          (event.nativeEvent.isComposing || event.keyCode === 229)
+        )
+          event.preventDefault()
+      }}
       onSubmit={async (event) => {
         event.preventDefault()
-        const saved = await onSave({
-          id: item?.id ?? crypto.randomUUID(),
-          title: title.trim(),
-          dueDate: dueDate || undefined,
-          completed,
-          favorite: item?.favorite ?? false,
-        })
-        if (saved) {
-          setTitle("")
-          setDueDate("")
-          setCompleted(false)
-          onCancel()
+        if (
+          event.currentTarget
+            .querySelector('input[type="date"]')
+            ?.matches(":open")
+        )
+          return
+        if (!title.trim() || pending || submitting.current) return
+        submitting.current = true
+        setSaving(true)
+        setError("")
+        try {
+          const saved = await onSave({
+            id: item?.id ?? crypto.randomUUID(),
+            title: title.trim(),
+            dueDate: dueDate || undefined,
+            completed,
+            favorite: item?.favorite ?? false,
+          })
+          if (saved) {
+            setTitle("")
+            setDueDate("")
+            setCompleted(false)
+            onCancel()
+          }
+        } catch (cause) {
+          setError(
+            cause instanceof Error
+              ? cause.message
+              : "할일을 저장하지 못했습니다. 다시 시도해 주세요."
+          )
+        } finally {
+          submitting.current = false
+          setSaving(false)
         }
       }}
     >
@@ -76,7 +129,7 @@ export function TodoForm({
           required
           maxLength={200}
           value={title}
-          disabled={busy}
+          disabled={pending}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="할일을 입력하세요"
         />
@@ -89,21 +142,36 @@ export function TodoForm({
         <Input
           id={`${id}-date`}
           type="date"
-          className="sm:w-40"
+          className={`[color-scheme:light] dark:[color-scheme:dark] ${dialog ? "w-full" : "sm:w-40"}`}
           value={dueDate}
-          disabled={busy}
+          disabled={pending}
+          aria-describedby={`${id}-date-hint`}
+          onKeyDown={(event) => {
+            if (dialog && event.key === "Delete") {
+              event.preventDefault()
+              setDueDate("")
+            }
+          }}
           onChange={(e) => setDueDate(e.target.value)}
         />
         <div className="flex min-h-6 items-center justify-between gap-3">
-          <span className="text-xs text-muted-foreground">
-            {dueDate ? "기한을 지정했습니다." : "기한 없이 등록할 수 있어요."}
+          <span
+            id={`${id}-date-hint`}
+            className="text-xs text-muted-foreground"
+          >
+            {dialog
+              ? "선택 입력 · Delete로 지우기"
+              : dueDate
+                ? "기한을 지정했습니다."
+                : "기한 없이 등록할 수 있어요."}
           </span>
           {dueDate && (
             <Button
               type="button"
               size="xs"
               variant="ghost"
-              disabled={busy}
+              disabled={pending}
+              tabIndex={dialog ? -1 : undefined}
               onClick={() => setDueDate("")}
             >
               기한 지우기
@@ -111,28 +179,35 @@ export function TodoForm({
           )}
         </div>
       </div>
-      <label className="flex h-9 items-center gap-2 text-sm">
+      <label
+        className={`flex min-h-9 items-center gap-2 text-sm ${dialog ? "text-muted-foreground" : ""}`}
+      >
         <input
           type="checkbox"
           checked={completed}
-          disabled={busy}
+          disabled={pending}
           onChange={(e) => setCompleted(e.target.checked)}
         />{" "}
         완료
       </label>
-      <Button type="submit" disabled={busy || !title.trim()}>
-        {item && !dialog ? "수정 저장" : "추가"}
-      </Button>
-      {(item || dialog) && (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={onCancel}
-        >
-          취소
-        </Button>
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
       )}
+      <div
+        className={
+          dialog
+            ? "flex items-center justify-end gap-2 border-t pt-3"
+            : "contents"
+        }
+      >
+        {dialog && cancel}
+        <Button type="submit" disabled={pending || !title.trim()}>
+          {pending ? "저장 중…" : item && !dialog ? "수정 저장" : "추가"}
+        </Button>
+        {!dialog && cancel}
+      </div>
     </form>
   )
 }

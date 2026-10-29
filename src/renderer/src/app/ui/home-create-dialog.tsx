@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react"
+import { CheckIcon, XIcon } from "lucide-react"
 import { EventSheet } from "@/features/calendar"
 import { ShortcutSheet } from "@/features/shortcuts"
 import { TodoForm } from "@/features/todos"
@@ -29,7 +31,46 @@ type Props = {
   onChooseFile?: () => Promise<string | null | undefined>
 }
 
-export function HomeCreateDialog({
+export function HomeCreateDialog(props: Props) {
+  const [notice, setNotice] = useState(0)
+  useEffect(() => {
+    if (!notice) return
+    const timer = window.setTimeout(() => setNotice(0), 4000)
+    return () => window.clearTimeout(timer)
+  }, [notice])
+  return (
+    <>
+      <HomeCreateContent
+        {...props}
+        onSaveTodo={async (todo) => {
+          const saved = await props.onSaveTodo(todo)
+          if (saved) setNotice((current) => current + 1)
+          return saved
+        }}
+      />
+      {notice > 0 && (
+        <aside
+          role="status"
+          aria-label="할일 등록 결과"
+          className="fixed bottom-4 left-1/2 z-40 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border bg-popover p-3 text-sm text-popover-foreground shadow-lg"
+        >
+          <CheckIcon aria-hidden className="size-4 shrink-0" />
+          <span>할일을 등록했습니다.</span>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="할일 등록 안내 닫기"
+            onClick={() => setNotice(0)}
+          >
+            <XIcon />
+          </Button>
+        </aside>
+      )}
+    </>
+  )
+}
+
+function HomeCreateContent({
   session,
   busy,
   error,
@@ -79,10 +120,10 @@ export function HomeCreateDialog({
       }}
     >
       <DialogContent
-        className="max-h-[calc(100svh-2rem)] overflow-y-auto"
+        className="max-h-[calc(100svh-2rem)] gap-4 overflow-y-auto p-5 sm:max-w-[420px]"
         showCloseButton={!busy}
       >
-        <DialogHeader>
+        <DialogHeader className="gap-1.5 pr-6">
           <DialogTitle>
             {session.kind === "todo"
               ? "할일 등록"
@@ -91,7 +132,9 @@ export function HomeCreateDialog({
                 : "바로가기 등록"}
           </DialogTitle>
           <DialogDescription>
-            현재 화면을 나가지 않고 새 항목을 등록합니다.
+            {session.kind === "todo"
+              ? "제목을 입력하고 필요한 경우 마감일을 지정하세요."
+              : "현재 화면을 나가지 않고 새 항목을 등록합니다."}
           </DialogDescription>
         </DialogHeader>
         {error && (

@@ -10,15 +10,29 @@ import { CalendarReminderCenter } from "@/features/calendar"
 import { CalendarStore } from "@/entities/calendar-event"
 import { useNote } from "@/features/notes"
 import { QuickCommand } from "@/features/quick-command"
+import { Calculator } from "@/features/calculator"
+import { ShortcutMenu } from "@/features/shortcut-wheel"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog"
 import { SettingsSheet, CodexSetupPrompt } from "@/features/settings"
 import { lazy, Suspense, useEffect, useState } from "react"
-import { NAVIGATION_ITEMS, type AppView } from "@/app/config/navigation"
+import { NAVIGATION_ITEMS } from "@/app/config/navigation"
 import { useNavigationShortcuts } from "@/app/model/use-navigation-shortcuts"
 import { useAppSettings } from "./providers/app-settings-provider"
 import { WorkspaceLayout } from "./ui/workspace-layout"
 import { useAppDialogs } from "./model/use-app-dialogs"
 import { useHomeCreate } from "./model/use-home-create"
 import { HomeCreateDialog } from "./ui/home-create-dialog"
+import { useWorkspaceNavigation } from "./model/use-workspace-navigation"
+import { useScratchpadSave } from "./model/use-scratchpad-save"
+
+import { useConfiguredQuickMenu } from "./model/use-configured-quick-menu"
+import { DEFAULT_APP_SETTINGS } from "../../../shared/app-settings"
 
 const TodoWorkspace = lazy(() => import("@/pages/todos"))
 const CalendarWorkspace = lazy(() => import("@/pages/calendar"))
@@ -32,11 +46,8 @@ export function App() {
     updateSettings,
     error: settingsError,
   } = useAppSettings()
-  const [selectedView, setView] = useState<AppView>("home")
-  // 개발 중 Fast Refresh가 제거된 메뉴의 상태를 유지해도 홈으로 돌아간다.
-  const view = NAVIGATION_ITEMS.some((item) => item.id === selectedView)
-    ? selectedView
-    : "home"
+  const { view, visited, navigate } = useWorkspaceNavigation()
+  const [calculatorOpen, setCalculatorOpen] = useState(false)
   const {
     commandOpen,
     setCommandOpen,
@@ -61,38 +72,40 @@ export function App() {
       }),
     [calendarStore, todoStore]
   )
-  const [todosVisited, setTodosVisited] = useState(false)
-  const [calendarVisited, setCalendarVisited] = useState(false)
-  const [shortcutsVisited, setShortcutsVisited] = useState(false)
   const creation = useHomeCreate({ todoStore, calendarStore, shortcutStore })
   const memo = useNote(
-    view === "notes" && !commandOpen && !settingsOpen && !codexPromptOpen
+    view === "notes" &&
+      !commandOpen &&
+      !settingsOpen &&
+      !codexPromptOpen &&
+      !calculatorOpen &&
+      creation.session === null
   )
-  const navigate = (next: AppView) => {
-    if (next === "todos") setTodosVisited(true)
-    if (next === "calendar") setCalendarVisited(true)
-    if (next === "shortcuts") setShortcutsVisited(true)
-    setView(next)
-  }
-  const [scratchpadNote, setScratchpadNote] = useState<{
-    key: string
-    markdown: string
-  } | null>(null)
-  const saveScratchpad = async (text: string) => {
-    if (!window.api?.codex?.suggestNoteTitle)
-      throw new Error(
-        "AI 제목 생성을 사용하려면 앱을 완전히 종료하고 다시 실행해 주세요."
-      )
-    const name = await window.api.codex.suggestNoteTitle(text)
-    const result = await memo.saveText(text, scratchpadNote, name)
-    if (result)
-      setScratchpadNote({ key: result.key, markdown: result.markdown })
-    if (!result?.saved)
-      throw new Error(
-        "메모로 저장하지 못했습니다. 메모 화면의 저장 상태를 확인해 주세요."
-      )
-    return { name: result.name }
-  }
+  const saveScratchpad = useScratchpadSave(
+    memo.saveText,
+    window.api?.codex?.suggestNoteTitle
+  )
+  const menuItems =
+    settings.shortcutMenuItems ?? DEFAULT_APP_SETTINGS.shortcutMenuItems
+  const quickMenu = useConfiguredQuickMenu({
+    items: menuItems,
+    store: shortcutStore,
+    settingsOpen,
+    noteBusy: memo.busy || !memo.ready,
+    handlers: {
+      note: () => {
+        navigate("notes")
+        void memo.newNote()
+      },
+      todo: () => creation.open("todo"),
+      event: () => creation.open("event"),
+      shortcut: () => creation.open("shortcut"),
+      calculator: () => setCalculatorOpen(true),
+      home: () => navigate("home"),
+      notes: () => navigate("notes"),
+      calendar: () => navigate("calendar"),
+    },
+  })
   const showNavigationNumbers = useNavigationShortcuts(navigate)
   return (
     <WorkspaceLayout
@@ -158,7 +171,28 @@ export function App() {
           <QuickCommand open={commandOpen} onOpenChange={setCommandOpen} />
           <CalendarReminderCenter />
           <HomeCreateDialog {...creation} />
+          <Dialog open={calculatorOpen} onOpenChange={setCalculatorOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>계산기</DialogTitle>
+                <DialogDescription>
+                  사칙연산과 괄호를 사용해 계산합니다.
+                </DialogDescription>
+              </DialogHeader>
+              <Calculator collapsible={false} />
+            </DialogContent>
+          </Dialog>
           <SettingsSheet
+            shortcutMenuItems={menuItems}
+            quickMenuOptions={quickMenu.options}
+            quickMenuError={quickMenu.error}
+            onShortcutMenuItemsChange={(shortcutMenuItems) =>
+              void updateSettings({ shortcutMenuItems })
+            }
+            shortcutMenuMotion={settings.shortcutMenuMotion}
+            onShortcutMenuMotionChange={(shortcutMenuMotion) =>
+              void updateSettings({ shortcutMenuMotion })
+            }
             open={settingsOpen}
             onOpenChange={setSettingsOpen}
             directory={memo.library?.directory}
@@ -178,7 +212,7 @@ export function App() {
         </>
       }
     >
-      <div className="flex h-full min-w-0 flex-col">
+      <div className="relative flex h-full min-w-0 flex-col">
         <div
           className={
             view === "home" ? "flex min-h-0 flex-1 flex-col" : "hidden"
@@ -200,7 +234,7 @@ export function App() {
         >
           <NotesPage memo={memo} />
         </div>
-        {shortcutsVisited && (
+        {visited.has("shortcuts") && (
           <div
             className={
               view === "shortcuts" ? "flex min-h-0 flex-1 flex-col" : "hidden"
@@ -220,7 +254,7 @@ export function App() {
             </Suspense>
           </div>
         )}
-        {todosVisited && (
+        {visited.has("todos") && (
           <div
             className={
               view === "todos" ? "flex min-h-0 flex-1 flex-col" : "hidden"
@@ -237,7 +271,7 @@ export function App() {
             </Suspense>
           </div>
         )}
-        {calendarVisited && (
+        {visited.has("calendar") && (
           <div
             className={
               view === "calendar" ? "flex min-h-0 flex-1 flex-col" : "hidden"
@@ -254,6 +288,12 @@ export function App() {
             </Suspense>
           </div>
         )}
+        <ShortcutMenu
+          key={view}
+          motion={settings.shortcutMenuMotion}
+          actions={quickMenu.actions}
+          disabled={quickMenu.actions.length === 0}
+        />
       </div>
     </WorkspaceLayout>
   )

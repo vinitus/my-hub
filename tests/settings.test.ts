@@ -7,7 +7,10 @@ import {
   AppSettingsRepository,
   registerAppSettings,
 } from "../src/main/app-settings"
-import { DEFAULT_APP_SETTINGS } from "../src/shared/app-settings"
+import {
+  DEFAULT_APP_SETTINGS,
+  AppSettingsPatchSchema,
+} from "../src/shared/app-settings"
 import { BrowserWindow, handlers } from "./fakes/electron"
 import { AppSettingsStore } from "../src/renderer/src/app/model/app-settings-store"
 
@@ -214,6 +217,93 @@ test("이전 좌측 너비는 320px로 보정하고 다른 설정을 보존한 �
       rightPanelOpen: false,
     })
     assert.deepEqual(JSON.parse(await readFile(path, "utf8")), next)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test("이전 설정의 메뉴 애니메이션은 켜기로 읽고 사용자 선택은 재시작 후에도 보존한다", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "my-hub-menu-motion-"))
+  try {
+    const path = join(directory, "app-settings.json")
+    const legacy: Record<string, unknown> = {
+      ...DEFAULT_APP_SETTINGS,
+      theme: "dark",
+      rightPanelWidth: 350,
+    }
+    delete legacy.shortcutMenuMotion
+    delete legacy.shortcutMenuItems
+    await writeFile(path, JSON.stringify(legacy))
+    const repository = new AppSettingsRepository(directory)
+    assert.deepEqual(await repository.read(), {
+      ...legacy,
+      shortcutMenuMotion: "on",
+      shortcutMenuItems: DEFAULT_APP_SETTINGS.shortcutMenuItems,
+    })
+    assert.deepEqual(JSON.parse(await readFile(path, "utf8")), legacy)
+    await repository.update({ shortcutMenuMotion: "off" })
+    const restored = new AppSettingsRepository(directory)
+    assert.equal((await restored.read()).shortcutMenuMotion, "off")
+    assert.equal(
+      (await restored.update({ theme: "light" })).shortcutMenuMotion,
+      "off"
+    )
+    assert.equal(
+      (await restored.update({ shortcutMenuMotion: "system" }))
+        .shortcutMenuMotion,
+      "system"
+    )
+    assert.equal((await restored.read()).rightPanelWidth, 350)
+    assert.deepEqual(AppSettingsPatchSchema.parse({ theme: "dark" }), {
+      theme: "dark",
+    })
+    assert.equal(
+      AppSettingsPatchSchema.safeParse({ shortcutMenuMotion: "invalid" })
+        .success,
+      false
+    )
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test("커서 메뉴는 중복 없이 최대 8개를 저장하고 등록된 바로가기 ID를 복원한다", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "my-hub-menu-items-"))
+  try {
+    const repository = new AppSettingsRepository(directory)
+    const items = [
+      ...DEFAULT_APP_SETTINGS.shortcutMenuItems,
+      { kind: "action" as const, action: "home" as const },
+      { kind: "action" as const, action: "notes" as const },
+      { kind: "shortcut" as const, id: "11111111-1111-4111-8111-111111111111" },
+    ]
+    await repository.update({ shortcutMenuItems: items })
+    assert.deepEqual(
+      (await new AppSettingsRepository(directory).read()).shortcutMenuItems,
+      items
+    )
+    assert.equal(
+      AppSettingsPatchSchema.safeParse({
+        shortcutMenuItems: [...items, { kind: "action", action: "calendar" }],
+      }).success,
+      false
+    )
+    assert.equal(
+      AppSettingsPatchSchema.safeParse({
+        shortcutMenuItems: [items[0], items[0]],
+      }).success,
+      false
+    )
+    assert.equal(
+      AppSettingsPatchSchema.safeParse({
+        shortcutMenuItems: [{ kind: "shortcut", id: "C:\\program.exe" }],
+      }).success,
+      false
+    )
+    assert.deepEqual(
+      (await repository.update({ shortcutMenuItems: [] })).shortcutMenuItems,
+      []
+    )
   } finally {
     await rm(directory, { recursive: true, force: true })
   }

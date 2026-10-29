@@ -89,7 +89,7 @@ export function HomeCreateDialog({
                 : "바로가기 등록"}
           </DialogTitle>
           <DialogDescription>
-            홈을 나가지 않고 새 항목을 등록합니다.
+            현재 화면을 나가지 않고 새 항목을 등록합니다.
           </DialogDescription>
         </DialogHeader>
         {error && (

@@ -114,6 +114,674 @@ app.whenReady().then(async () => {
         )
         if (
           theme === "light" &&
+          story.importPath.endsWith("/configured-quick-menu.stories.tsx")
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const hold = async () => {
+            await run(
+              `document.body.dispatchEvent(new MouseEvent('mousemove',{clientX:400,clientY:260,bubbles:true}));document.body.dispatchEvent(new KeyboardEvent('keydown',{key:'Control',ctrlKey:true,bubbles:true}))`
+            )
+            await delay(250)
+          }
+          await hold()
+          assert.equal(
+            await run(
+              `document.querySelectorAll('.floating-quick-action').length`
+            ),
+            8
+          )
+          assert.equal(
+            await run(
+              `document.querySelector('.floating-quick-menu').dataset.open`
+            ),
+            "true"
+          )
+          await run(
+            `document.querySelector('[data-action="shortcut:11111111-1111-4111-8111-111111111111"]').click()`
+          )
+          await delay(50)
+          assert.equal(
+            await run(
+              `document.querySelector('[data-testid="configured-menu-result"]').textContent`
+            ),
+            "shortcut-launched"
+          )
+          await run(
+            `document.body.dispatchEvent(new KeyboardEvent('keyup',{key:'Control',bubbles:true}))`
+          )
+          await hold()
+          await run(
+            `document.querySelector('[data-action="action:home"]').click()`
+          )
+          await delay(30)
+          assert.equal(
+            await run(
+              `document.querySelector('[data-testid="configured-menu-result"]').textContent`
+            ),
+            "home"
+          )
+          await run(
+            `document.body.dispatchEvent(new KeyboardEvent('keyup',{key:'Control',bubbles:true}))`
+          )
+        }
+        if (
+          story.importPath.endsWith("/floating-quick-menu.stories.tsx") ||
+          story.importPath.endsWith("/shortcut-menu.stories.tsx")
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const expanded = () =>
+            run(
+              `document.querySelector('.floating-quick-menu').dataset.open === 'true'`
+            )
+          const key = (type, value, ctrlKey = false) =>
+            run(
+              `document.querySelector('textarea').dispatchEvent(new KeyboardEvent(${JSON.stringify(type)}, {key:${JSON.stringify(value)}, ctrlKey:${ctrlKey}, bubbles:true, cancelable:true}))`
+            )
+          const point = () =>
+            run(
+              `(() => { const b=document.querySelector('[data-slot="floating-quick-menu"]').getBoundingClientRect(); return {x:b.left+b.width/2,y:b.top+b.height/2} })()`
+            )
+          let held = null
+          const release = async () => {
+            if (held === "control") await key("keyup", "Control")
+            if (held === "middle")
+              await run(
+                `document.body.dispatchEvent(new MouseEvent('mouseup',{button:1,bubbles:true}))`
+              )
+            held = null
+            await delay(30)
+          }
+          const hold = async (button = "control", at) => {
+            await release()
+            at ??= await point()
+            await run(
+              `document.body.dispatchEvent(new MouseEvent('mousemove',{clientX:${at.x},clientY:${at.y},bubbles:true}))`
+            )
+            held = button
+            if (button === "control") await key("keydown", "Control", true)
+            else
+              assert.equal(
+                await run(
+                  `!document.body.dispatchEvent(new MouseEvent('mousedown',{button:1,clientX:${at.x},clientY:${at.y},bubbles:true,cancelable:true}))`
+                ),
+                true
+              )
+            await delay(250)
+          }
+          const fit = async () => {
+            await delay(450)
+            const boxes = await run(`(() => {
+              const root = document.querySelector('[data-slot="floating-quick-menu"]').getBoundingClientRect();
+              return [...document.querySelectorAll('.floating-quick-action')].map(item => {
+                const b = item.getBoundingClientRect();
+                return { left:b.left-root.left, top:b.top-root.top, right:root.right-b.right, bottom:root.bottom-b.bottom };
+              });
+            })()`)
+            assert.equal(boxes.length, story.name === "Eight Actions" ? 8 : 5)
+            if (story.name !== "Small Workspace")
+              assert.ok(
+                boxes.every((b) => Object.values(b).every((v) => v >= -1)),
+                `cursor menu must fit: ${JSON.stringify(boxes)}`
+              )
+          }
+          assert.equal(
+            await run(
+              `document.querySelector('.floating-quick-menu-trigger') === null`
+            ),
+            true,
+            "no permanent floating button"
+          )
+          if (
+            [
+              "Open",
+              "Near Edge",
+              "Small Workspace",
+              "Disabled Action",
+              ...(story.importPath.endsWith("/floating-quick-menu.stories.tsx")
+                ? ["Eight Actions"]
+                : []),
+            ].includes(story.name)
+          )
+            await fit()
+          if (story.name === "Closed") {
+            assert.equal(
+              await run(
+                `document.querySelector('.floating-quick-actions').inert && [...document.querySelectorAll('.floating-quick-action')].every(b=>b.tabIndex===-1)`
+              ),
+              true
+            )
+          }
+          if (story.name === "Disabled Action") {
+            assert.equal(
+              await run(
+                `document.querySelector('[data-action="note"]').disabled`
+              ),
+              true
+            )
+          }
+          if (story.name === "Disabled") {
+            await hold()
+            assert.equal(await expanded(), false)
+          }
+          if (theme === "light" && story.name === "Offset Workspace") {
+            await hold("control", { x: 8, y: 8 })
+            assert.equal(
+              await expanded(),
+              false,
+              "sidebar input must not open the workspace menu"
+            )
+            await hold()
+            const expected = await point()
+            const actual = await run(
+              `(() => {const b=document.querySelector('.floating-quick-menu').getBoundingClientRect();return {x:b.left,y:b.top}})()`
+            )
+            assert.deepEqual(
+              actual,
+              expected,
+              "viewport coordinates must be converted relative to the workspace"
+            )
+          }
+          if (["Motion Enabled", "Motion Disabled"].includes(story.name)) {
+            win.webContents.debugger.attach("1.3")
+            // Exercise the opposite OS preference to prove the app override.
+            await win.webContents.debugger.sendCommand(
+              "Emulation.setEmulatedMedia",
+              {
+                features: [
+                  {
+                    name: "prefers-reduced-motion",
+                    value:
+                      story.name === "Motion Enabled"
+                        ? "reduce"
+                        : "no-preference",
+                  },
+                ],
+              }
+            )
+            await hold()
+            assert.equal(await expanded(), true)
+            assert.equal(
+              await run(
+                `[...document.querySelectorAll('.floating-quick-action')].every(b=>getComputedStyle(b).transitionDuration==='0s')`
+              ),
+              story.name === "Motion Disabled"
+            )
+            await win.webContents.debugger.sendCommand(
+              "Emulation.setEmulatedMedia",
+              { features: [] }
+            )
+            win.webContents.debugger.detach()
+          }
+          if (
+            story.name === "Eight Actions" &&
+            story.importPath.endsWith("/shortcut-menu.stories.tsx")
+          ) {
+            await hold()
+            assert.equal(await expanded(), true)
+            assert.equal(
+              await run(
+                `document.querySelector('.floating-quick-menu').dataset.layout`
+              ),
+              "circle"
+            )
+            await fit()
+            await release()
+            assert.equal(await expanded(), false)
+          }
+          if (theme === "light" && story.name === "Interactive") {
+            win.webContents.debugger.attach("1.3")
+            await win.webContents.debugger.sendCommand(
+              "Emulation.setEmulatedMedia",
+              {
+                features: [
+                  { name: "prefers-reduced-motion", value: "no-preference" },
+                ],
+              }
+            )
+            assert.equal(await expanded(), false)
+            assert.equal(
+              await run(
+                `document.querySelector('.floating-quick-actions').inert`
+              ),
+              true
+            )
+            await run(`document.querySelector('textarea').focus()`)
+            win.webContents.insertText("Keep this scratchpad")
+            const cursor = await point()
+            await run(
+              `document.body.dispatchEvent(new MouseEvent('mousemove',{clientX:${cursor.x},clientY:${cursor.y},bubbles:true}))`
+            )
+            await key("keydown", "Control", true)
+            await delay(80)
+            await key("keyup", "Control")
+            await delay(450)
+            assert.equal(
+              await expanded(),
+              false,
+              "short Ctrl press must not open"
+            )
+            await run(
+              `document.body.dispatchEvent(new WheelEvent('wheel',{deltaY:100,bubbles:true}))`
+            )
+            await delay(450)
+            assert.equal(await expanded(), false, "scroll must not open")
+            await key("keydown", "Control", true)
+            await key("keydown", "k", true)
+            await delay(450)
+            await key("keyup", "Control")
+            assert.equal(
+              await expanded(),
+              false,
+              "Ctrl combinations must not open"
+            )
+            await hold()
+            assert.equal(
+              await expanded(),
+              true,
+              "Ctrl hold must open in 200ms while the key is held"
+            )
+            await release()
+            assert.equal(
+              await expanded(),
+              false,
+              "releasing Ctrl must close immediately"
+            )
+            await hold()
+            const center = await run(
+              `(() => {const b=document.querySelector('.floating-quick-menu').getBoundingClientRect();return {x:b.left,y:b.top}})()`
+            )
+            assert.deepEqual(
+              center,
+              cursor,
+              "menu must originate at the cursor"
+            )
+            const checkTravel = async (origin) => {
+              const motion = await run(`(() => {
+                const root = document.querySelector('.floating-quick-menu');
+                const items = [...root.querySelectorAll('.floating-quick-action')];
+                items.forEach(item => getComputedStyle(item).transform);
+                const animations = root.getAnimations({subtree:true});
+                animations.forEach(a => a.pause());
+                const box = root.getBoundingClientRect();
+                const sample = time => {
+                  animations.forEach(a => a.currentTime = time);
+                  return items.map(item => {
+                    const style = getComputedStyle(item);
+                    const matrix = new DOMMatrixReadOnly(style.transform);
+                    return {x:box.left+matrix.m41,y:box.top+matrix.m42,opacity:Number(style.opacity)};
+                  });
+                };
+                const start=sample(0), middle=sample(120), end=sample(1000);
+                animations.forEach(a => a.finish());
+                return {start,middle,end};
+              })()`)
+              const distance = (point) =>
+                Math.hypot(point.x - origin.x, point.y - origin.y)
+              assert.ok(
+                motion.start.every((p) => distance(p) < 1),
+                `all buttons must start at the cursor: ${JSON.stringify(motion.start)}`
+              )
+              assert.ok(
+                distance(motion.middle[0]) > 10,
+                "the first button must visibly travel outward"
+              )
+              assert.ok(
+                distance(motion.middle[4]) < 1 &&
+                  motion.middle[4].opacity === 0,
+                "later buttons must wait at the cursor"
+              )
+              assert.ok(
+                motion.end.every((p) => p.opacity === 1),
+                "all buttons must finish their entrance"
+              )
+            }
+            await checkTravel(cursor)
+            assert.equal(
+              await run(
+                `document.activeElement === document.querySelector('.floating-quick-actions')`
+              ),
+              true
+            )
+            win.webContents.sendInputEvent({ type: "keyDown", keyCode: "Tab" })
+            win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Tab" })
+            await delay(50)
+            assert.equal(
+              await run(`document.activeElement?.dataset.action`),
+              "note"
+            )
+            win.webContents.sendInputEvent({
+              type: "keyDown",
+              keyCode: "Enter",
+            })
+            win.webContents.sendInputEvent({ type: "char", keyCode: "\r" })
+            win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Enter" })
+            await delay(50)
+            assert.equal(await expanded(), false)
+            assert.equal(
+              await run(
+                `document.querySelector('[role="status"]').textContent.includes(document.querySelector('[data-action="note"] .floating-quick-action-label').textContent)`
+              ),
+              true
+            )
+            for (const action of ["todo", "event", "shortcut", "calculator"]) {
+              await hold(action === "todo" ? "middle" : "control")
+              assert.equal(await expanded(), true)
+              await run(
+                `document.querySelector('[data-action="${action}"]').click()`
+              )
+              await delay(30)
+              assert.equal(await expanded(), false)
+            }
+            await hold()
+            await run(
+              `document.querySelector('.floating-quick-actions').dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}))`
+            )
+            await delay(30)
+            assert.equal(await expanded(), false)
+            assert.equal(
+              await run(
+                `document.activeElement === document.querySelector('textarea')`
+              ),
+              true
+            )
+            await hold()
+            await run(
+              `document.querySelector('textarea').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}))`
+            )
+            await delay(30)
+            assert.equal(await expanded(), false)
+            assert.equal(
+              await run(`document.querySelector('textarea').value`),
+              "Keep this scratchpad"
+            )
+            await hold("middle")
+            assert.equal(await expanded(), true)
+            await release()
+            assert.equal(
+              await expanded(),
+              false,
+              "releasing the wheel must close immediately"
+            )
+            await hold("middle", { x: 8, y: 8 })
+            await checkTravel({ x: 8, y: 8 })
+            await fit()
+            await run(
+              `const d=document.createElement('div');d.id='quick-menu-modal';d.setAttribute('role','dialog');d.setAttribute('data-open','');document.body.append(d)`
+            )
+            await delay(30)
+            assert.equal(await expanded(), false)
+            await hold()
+            assert.equal(await expanded(), false, "modal blocks hold gesture")
+            await run(`document.querySelector('#quick-menu-modal').remove()`)
+            await hold()
+            win.setSize(360, 800)
+            await delay(400)
+            await fit()
+            assert.equal(await expanded(), true)
+            win.setSize(width, 800)
+            await delay(400)
+            await win.webContents.debugger.sendCommand(
+              "Emulation.setEmulatedMedia",
+              {
+                features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+              }
+            )
+            assert.equal(
+              await run(
+                `[...document.querySelectorAll('.floating-quick-action')].every(b=>getComputedStyle(b).transitionDuration==='0s')`
+              ),
+              true
+            )
+            await win.webContents.debugger.sendCommand(
+              "Emulation.setEmulatedMedia",
+              { features: [] }
+            )
+            win.webContents.debugger.detach()
+            console.log(
+              "PASS cursor-anchored Ctrl/middle hold, short presses, shortcuts, keyboard actions, bounds, modals and reduced motion"
+            )
+          }
+          if (
+            story.name === "Open" ||
+            (story.name === "Eight Actions" &&
+              story.importPath.endsWith("/floating-quick-menu.stories.tsx"))
+          ) {
+            const output = path.resolve("out/tests/storybook")
+            fs.mkdirSync(output, { recursive: true })
+            fs.writeFileSync(
+              path.join(
+                output,
+                `quick-menu-${story.name === "Eight Actions" ? "eight-" : ""}${theme}-${width}.png`
+              ),
+              (
+                await win.capturePage(undefined, {
+                  stayHidden: true,
+                  stayAwake: true,
+                })
+              ).toPNG()
+            )
+          }
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/calculator.stories.tsx")
+        ) {
+          if (story.name === "Collapsible")
+            await win.webContents.executeJavaScript(
+              `document.querySelector('summary').click()`
+            )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('input').focus()`
+          )
+          win.webContents.insertText("(1200 + 350) * 2")
+          await delay(30)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('output').textContent`
+            ),
+            "3,100"
+          )
+        }
+        if (story.importPath.endsWith("/shortcut-wheel.stories.tsx")) {
+          if (["Open", "Near Edge"].includes(story.name)) {
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[data-slot="shortcut-wheel-ring"]') !== null`
+              ),
+              false,
+              "only the eight small circles should be visible"
+            )
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelectorAll('[data-slot="shortcut-wheel-item"]').length`
+              ),
+              8
+            )
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.documentElement.scrollWidth > innerWidth`
+              ),
+              false,
+              "wheel at the viewport edge must not add scrollbars"
+            )
+          }
+          if (theme === "light" && story.name === "Hold To Open") {
+            win.webContents.debugger.attach("1.3")
+            await win.webContents.debugger.sendCommand(
+              "Emulation.setEmulatedMedia",
+              {
+                features: [
+                  { name: "prefers-reduced-motion", value: "no-preference" },
+                ],
+              }
+            )
+            const shown = () =>
+              win.webContents.executeJavaScript(
+                `!!document.querySelector('[data-slot="shortcut-wheel"]')`
+              )
+            const key = (type, value, ctrlKey = false) =>
+              win.webContents.executeJavaScript(
+                `document.querySelector('input').dispatchEvent(new KeyboardEvent(${JSON.stringify(type)}, {key:${JSON.stringify(value)}, ctrlKey:${ctrlKey}, cancelable:true, bubbles:true}))`
+              )
+            await key("keydown", "Control", true)
+            await delay(80)
+            await key("keyup", "Control")
+            await delay(450)
+            assert.equal(
+              await shown(),
+              false,
+              "short Ctrl press must not open the wheel"
+            )
+            await win.webContents.executeJavaScript(
+              `document.body.dispatchEvent(new WheelEvent('wheel', {deltaY:100, bubbles:true}))`
+            )
+            await delay(450)
+            assert.equal(
+              await shown(),
+              false,
+              "normal wheel scrolling must not open the wheel"
+            )
+            await win.webContents.executeJavaScript(
+              `document.body.dispatchEvent(new MouseEvent('mousemove', {clientX:450, clientY:320, bubbles:true}))`
+            )
+            await key("keydown", "Control", true)
+            await delay(450)
+            assert.equal(await shown(), true)
+            await win.webContents.executeJavaScript(
+              `[...document.querySelectorAll('[data-slot="shortcut-wheel-item"]')].map(item => getComputedStyle(item).opacity)`
+            )
+            await delay(180)
+            const animation = await win.webContents.executeJavaScript(`(() => {
+              const root = document.querySelector('[data-slot="shortcut-wheel"]'); const box = root.getBoundingClientRect();
+              const items = [...root.querySelectorAll('[data-slot="shortcut-wheel-item"]')];
+              return { x: box.left + box.width/2, y: box.top + box.height/2, count:items.length, first:Number(getComputedStyle(items[0]).opacity), last:Number(getComputedStyle(items[7]).opacity), delays:items.map(item => parseFloat(getComputedStyle(item).animationDelay)), pointerEvents:getComputedStyle(root).pointerEvents };
+            })()`)
+            assert.equal(animation.x, 450)
+            assert.equal(animation.y, 320)
+            assert.equal(animation.count, 8)
+            const angles = await win.webContents.executeJavaScript(`(() => {
+              const root = document.querySelector('[data-slot="shortcut-wheel"]');
+              return [...root.querySelectorAll('.shortcut-wheel-item-position')].map(item =>
+                Math.round((Math.atan2(parseFloat(item.style.top) - 107, parseFloat(item.style.left) - 107) * 180 / Math.PI + 450) % 360)
+              );
+            })()`)
+            assert.deepEqual(angles, [0, 45, 90, 135, 180, 225, 270, 315])
+            assert.equal(animation.pointerEvents, "none")
+            assert.ok(
+              animation.first > 0 && animation.last === 0,
+              `outer circles must appear sequentially: ${JSON.stringify(animation)}`
+            )
+            assert.ok(
+              animation.delays.every(
+                (value, index) =>
+                  index === 0 || value > animation.delays[index - 1]
+              )
+            )
+            await delay(500)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `[...document.querySelectorAll('[data-slot="shortcut-wheel-item"]')].every(item => Number(getComputedStyle(item).opacity) === 1)`
+              ),
+              true
+            )
+            await win.webContents.executeJavaScript(
+              `document.body.dispatchEvent(new MouseEvent('mousemove', {clientX:550, clientY:350, bubbles:true}))`
+            )
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[data-slot="shortcut-wheel"]').style.left`
+              ),
+              "450px",
+              "wheel center must stay anchored after opening"
+            )
+            await key("keyup", "Control")
+            await delay(30)
+            assert.equal(await shown(), false)
+            await key("keydown", "Control", true)
+            await key("keydown", "k", true)
+            await delay(450)
+            assert.equal(
+              await shown(),
+              false,
+              "Ctrl combinations must cancel the hold gesture"
+            )
+            await key("keyup", "Control")
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `const event = new MouseEvent('mousedown', {button:1, clientX:400, clientY:300, cancelable:true, bubbles:true}); document.body.dispatchEvent(event); event.defaultPrevented`
+              ),
+              true
+            )
+            await delay(450)
+            assert.equal(
+              await shown(),
+              true,
+              "held middle button must open the wheel"
+            )
+            await win.webContents.executeJavaScript(
+              `document.body.dispatchEvent(new MouseEvent('mouseup', {button:1, bubbles:true}))`
+            )
+            await delay(30)
+            assert.equal(
+              await shown(),
+              false,
+              "middle button release must close the wheel"
+            )
+            await key("keydown", "Control", true)
+            await delay(450)
+            await key("keydown", "Escape", true)
+            await delay(30)
+            assert.equal(await shown(), false)
+            await key("keyup", "Control")
+            await key("keydown", "Control", true)
+            await delay(450)
+            await win.webContents.executeJavaScript(
+              `window.dispatchEvent(new Event('blur'))`
+            )
+            await delay(30)
+            assert.equal(await shown(), false)
+            await win.webContents.executeJavaScript(
+              `const dialog = document.createElement('div'); dialog.id='wheel-test-dialog'; dialog.setAttribute('role','dialog'); dialog.setAttribute('data-open',''); document.body.append(dialog)`
+            )
+            await key("keydown", "Control", true)
+            await delay(450)
+            assert.equal(
+              await shown(),
+              false,
+              "open dialogs must suppress the wheel"
+            )
+            await key("keyup", "Control")
+            await win.webContents.executeJavaScript(
+              `document.querySelector('#wheel-test-dialog').remove()`
+            )
+            await win.webContents.debugger.sendCommand(
+              "Emulation.setEmulatedMedia",
+              {
+                features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+              }
+            )
+            await key("keydown", "Control", true)
+            await delay(450)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `[...document.querySelectorAll('[data-slot="shortcut-wheel-item"]')].every(item => getComputedStyle(item).animationDelay === '0s')`
+              ),
+              true,
+              "reduced motion must remove animation staggering"
+            )
+            await key("keyup", "Control")
+            await win.webContents.debugger.sendCommand(
+              "Emulation.setEmulatedMedia",
+              { features: [] }
+            )
+            win.webContents.debugger.detach()
+            console.log(
+              "PASS shortcut wheel hold, cursor anchor, staggered animation, release, shortcuts and modal guard"
+            )
+          }
+        }
+        if (
+          theme === "light" &&
           story.importPath.endsWith("/navigation-shortcuts.stories.tsx")
         ) {
           const activeView = () =>
@@ -182,6 +850,13 @@ app.whenReady().then(async () => {
             await activeView(),
             "home",
             "physical Ctrl+H must work with Korean input layout"
+          )
+          assert.deepEqual(
+            await win.webContents.executeJavaScript(
+              `JSON.parse(document.querySelector('[data-testid="visited-workspaces"]').textContent).sort()`
+            ),
+            ["calendar", "home", "notes", "shortcuts", "todos"],
+            "navigation must retain every visited workspace"
           )
           await win.webContents.executeJavaScript(
             `window.dispatchEvent(new Event('blur'))`
@@ -325,6 +1000,146 @@ app.whenReady().then(async () => {
           )
           console.log(
             `PASS home registration dialogs ${failed ? "failure recovery" : "save and shared stores"}, scratchpad preserved`
+          )
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/settings-sheet.stories.tsx") &&
+          story.name === "Motion Preference"
+        ) {
+          for (const action of ["home", "notes", "calendar"]) {
+            await win.webContents.executeJavaScript(`(() => {
+              const select=document.querySelector('select[aria-label="메뉴 항목 추가"]');
+              select.value=${JSON.stringify(`action:${action}`)};
+              select.dispatchEvent(new Event('change',{bubbles:true}));
+            })()`)
+            await delay(30)
+          }
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelectorAll('[data-slot=sheet-content] ol li').length`
+            ),
+            8
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('select[aria-label="메뉴 항목 추가"]').disabled`
+            ),
+            true
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelectorAll('[data-slot=sheet-content] ol button')[5].click()`
+          )
+          await delay(30)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelectorAll('[data-slot=sheet-content] ol li').length`
+            ),
+            7
+          )
+          await win.webContents.executeJavaScript(`(() => {
+            const select=document.querySelector('select[aria-label="메뉴 항목 추가"]');
+            select.value='shortcut:11111111-1111-4111-8111-111111111111';
+            select.dispatchEvent(new Event('change',{bubbles:true}));
+          })()`)
+          await delay(30)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelectorAll('[data-slot=sheet-content] ol li').length`
+            ),
+            8
+          )
+          for (const value of ["system", "off", "on"]) {
+            await win.webContents.executeJavaScript(`(() => {
+              const select=document.querySelector('select[id$="-menu-motion"]');
+              select.value=${JSON.stringify(value)};
+              select.dispatchEvent(new Event('change',{bubbles:true}));
+            })()`)
+            await delay(30)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('select[id$="-menu-motion"]').value`
+              ),
+              value
+            )
+          }
+        }
+        if (story.importPath.endsWith("/home-page-view.stories.tsx")) {
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.querySelector('textarea').disabled`
+            ),
+            story.name === "Saving"
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `!!document.querySelector('[role="alert"]')`
+            ),
+            story.name === "Save Error"
+          )
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/scratchpad-save.stories.tsx")
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const writes = () =>
+            run(
+              `JSON.parse(document.querySelector('[data-testid="scratchpad-writes"]').textContent)`
+            )
+          const save = async () => {
+            await run(
+              `document.querySelector('textarea').dispatchEvent(new KeyboardEvent('keydown',{key:'s',ctrlKey:true,bubbles:true,cancelable:true}))`
+            )
+            await delay(50)
+          }
+          await run(`document.querySelector('textarea').focus()`)
+          win.webContents.insertText("First scratchpad draft")
+          await delay(30)
+          await save()
+          if (["Ai Failure", "Missing Ai"].includes(story.name)) {
+            assert.deepEqual(
+              await writes(),
+              [],
+              "AI failures must not write a note"
+            )
+            assert.equal(
+              await run(`!!document.querySelector('[role="alert"]')`),
+              true
+            )
+          } else {
+            const first = (await writes())[0]
+            assert.equal(first.previous, null)
+            assert.equal(first.markdown, "First scratchpad draft")
+            assert.equal(
+              await run(`!!document.querySelector('[role="alert"]')`),
+              story.name === "Retry After Write Failure"
+            )
+            // Rerender the entire hook caller with new input before repeating save.
+            await run(`document.querySelector('textarea').focus()`)
+            win.webContents.insertText(" updated")
+            await delay(30)
+            await save()
+            const second = (await writes())[1]
+            assert.deepEqual(second.previous, {
+              key: "fixture-note",
+              markdown: first.markdown,
+            })
+            assert.equal(second.title, first.title)
+            assert.equal(
+              await run(`!!document.querySelector('[role="alert"]')`),
+              false
+            )
+            assert.equal((await writes()).length, 2)
+          }
+          assert.equal(
+            await run(
+              `document.querySelector('textarea').value.startsWith('First scratchpad draft')`
+            ),
+            true
+          )
+          console.log(
+            "PASS scratchpad title/save composition, identity retention, retry and AI failure isolation"
           )
         }
         if (

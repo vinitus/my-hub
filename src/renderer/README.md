@@ -23,9 +23,53 @@ Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/f
 
 워크스페이스 메뉴와 번호는 `src/app/config/navigation.ts`에서 함께 관리한다.
 홈은 앱의 시작 화면이고 Ctrl+H 홈, Ctrl+1 바로가기, Ctrl+2 메모, Ctrl+3 캘린더, Ctrl+4 할일로 이동한다.
+`src/app/model/use-workspace-navigation.ts`가 선택 화면과 방문 이력을 한 상태로 관리한다.
+방문 집합은 직접 변경하지 않고 화면 전환 시 필요한 경우에만 새 집합을 만든다.
 `src/app/model/use-navigation-shortcuts.ts`가 키 입력을 처리하며 Ctrl을 누르는 동안
 사이드바에 H·1·2·3·4를 표시한다. 키를 놓거나 창 포커스를 잃으면 단축키 표시를 숨긴다.
 등록/수정 모달이 열린 동안에는 화면 이동 단축키를 적용하지 않는다.
+
+중앙 작업 영역의 `features/shortcut-wheel` 공개 `ShortcutMenu`는 상시 버튼 없이
+Ctrl 단독 또는 마우스 가운데(휠) 버튼을 200ms 누르면 커서 중심에 최대 8개 작업을 표시한다.
+같은 slice의 `model/use-hold-quick-menu.ts`가 길게 누르기를 구독하고 짧은 입력·일반 스크롤·
+Ctrl 조합 단축키·영역 밖 입력·열린 모달을 구분한다. 키/버튼을 누른 채 클릭해 선택하고,
+놓으면 대기 타이머와 열린 메뉴를 즉시 취소한다. `App`이 기능 콜백을 주입하며
+새 패키지나 전역 상태를 추가하지 않는다. 메모 작성은 기존 미저장 메모 처리 경로를 사용한다.
+`model/use-shortcut-menu.ts`는 크기 측정·열림/닫힘·포커스·모달 구독 수명을 관리한다.
+`shared/ui/floating-quick-menu.tsx`는 props/콜백만 사용하는 제어된 표시 컴포넌트다.
+좌표 보정과 원형 배치는 순수 함수 `shared/lib/quick-menu-layout.ts`로 계산한다.
+표시 상태 스토리는 고정 좌표·크기를 사용하고, feature 스토리에서 실제 길게 누르기를 검증한다.
+할일·일정·바로가기는 `useHomeCreate`의 공용 store와 기존 Dialog 폼을 사용한다.
+`features/calculator`는 홈의 접이식 계산기와 플로팅 메뉴의 계산기 Dialog가 공유한다.
+계산 로직은 기존 사칙연산 파서를 그대로 사용하며 eval을 사용하지 않는다.
+메뉴는 커서 중심에서 12시부터 시계 방향으로 펼쳐지고 ResizeObserver로 크기를 관찰한다.
+반경은 5개 이하 80px, 6~8개 100px로 간격을 줄였다. 가장자리에서는 도착 위치를 보정한다.
+원의 크기와 개수에 비해 작업 영역이 작으면
+스크롤 가능한 목록으로 바꿔 사이드바와 현황 패널을 침범하지 않는다.
+녹색 FAB 대신 앱의 popover·muted·accent 토큰을 사용해 차분한 중립색으로 표시한다.
+CSS transform·opacity 열기 전환은 240ms/130ms, 항목 간격은 40ms이며 반복 호출도
+현재 위치에서 반전된다. 닫힌 항목은 inert·tabIndex로 포커스에서 제외하고,
+가장자리에서 배치 중심을 보정해도 각 항목은 실제 커서 위치에서 출발한다.
+외부 클릭·Escape·포커스 이탈·다른 모달 열기·창 포커스 해제 시 닫는다.
+영역 전체는 pointer-events: none이며 버튼만 입력을 받아 낙서장·스크롤을 가로채지 않는다.
+설정의 **메뉴 애니메이션**은 켜기(기본)·시스템 설정 따르기·끄기를 제공한다.
+`shortcutMenuMotion`은 기존 app-settings.json에 저장하고, 이전 파일에 없으면 켜기로 읽는다.
+켜기는 OS의 모션 감소 설정과 관계없이 메뉴를 움직이고, 시스템 모드만
+prefers-reduced-motion을 따른다. 끄기는 즉시 표시한다. 다른 UI의 모션 설정은 바꾸지 않는다.
+다크 모드를 지원하고 Storybook은 로컬 콜백만 사용한다.
+설정의 **커서 메뉴**에서 앱 기능과 등록된 프로그램·폴더·웹사이트 바로가기를 추가·제거한다.
+`shortcutMenuItems`는 중복 없는 최대 8개 항목이며, 기본 5개를 유지해 app-settings.json에 저장한다.
+main에서 개수·중복·UUID를 검증하며 이전 설정 파일은 기본 목록으로 읽는다.
+`app/model/use-configured-quick-menu.tsx`가 공용 ShortcutStore를 구독하고 설정 ID를 실제 기능에 연결한다.
+삭제된 바로가기 항목은 비활성으로 표시해 설정에서 제거할 수 있으며 임의 경로를 설정에서 실행하지 않는다.
+
+같은 slice의 이전 `ui/shortcut-wheel.tsx`는 Storybook에서만 사용하는 8개 원 애니메이션 미리보기다.
+앱에는 `ShortcutMenu`만 마운트해 미리보기 및 기존 Ctrl 단축키와 중복 동작하지 않는다.
+미리보기는 Ctrl 단독 또는 마우스 가운데(휠) 버튼을 400ms 누르면
+커서 위치를 중심으로 작은 원 8개만 12시부터 시계 방향으로 순서대로 표시하는 미리보기다.
+중심은 열린 위치에 고정하며 키/버튼 해제·Escape·창 포커스 해제 시 닫힌다.
+기존 Ctrl 조합 단축키와 일반 휠 스크롤은 그대로 사용하고 열린 모달에서는 표시하지 않는다.
+클릭·포커스를 가로채지 않는 애니메이션 단계이며 항목 등록·실행은 아직 연결하지 않았다.
 
 사이드바 하단의 **설정**은 `src/features/settings/ui/settings-sheet.tsx`에서 표시한다.
 `Ctrl+O`로도 열 수 있다. `src/app/App.tsx`에서 처리하며 다른 모달이 열려 있으면 중첩해서 열지 않는다.
@@ -42,6 +86,10 @@ Open-Meteo 연결과 저장·갱신 규칙은 [날씨 유지보수 안내](src/f
 대상 검증과 로컬 저장 구조는 [바로가기 유지보수 안내](src/features/shortcuts/README.md)를 참고한다.
 
 앱 첫 화면은 `src/pages/home`의 독립된 낙서장이다. 테두리 없는 입력 영역이 남은 높이를 채운다.
+`ui/home-page.tsx`가 `model/use-scratchpad.ts`와 props 기반 `ui/home-page-view.tsx`를 연결한다.
+저장 결과는 idle/saving/saved/error 중 한 상태로만 관리해 모순된 플래그 조합을 피한다.
+`app/model/use-scratchpad-save.ts`가 제목 생성과 기존 NoteStore 저장을 연결한다.
+반복 저장용 문서 식별자는 화면에 표시하지 않으므로 state 대신 ref에 보관한다.
 평소 입력은 메모에 연결하거나 자동 저장하지 않는다. Ctrl+S를 누르면 `codex:note-title`로
 본문 앞 6,000자를 연결된 AI에 보내 제목을 생성한다. 기존 Codex 모델·사고 수준 설정을 사용하며
 전체 본문은 NoteStore의 `saveText`로 전달해 기본 메모 폴더에 Markdown 파일로 저장한다.
@@ -53,7 +101,7 @@ AI 제목을 파일명으로 검증하고 생성 중 상태·저장된 파일명
 빠른 등록 버튼은 홈에 머문 채 shadcn Base UI Dialog로 할일·일정·바로가기 등록 폼을 연다.
 `app/model/use-home-create.ts`가 공용 store 초기화와 모달 시작 시 revision을 고정하고,
 `app/ui/home-create-dialog.tsx`가 기존 TodoForm·EventSheet·ShortcutSheet를 조합한다.
-일정·바로가기 화면의 기존 Sheet는 유지하며 홈에서만 Dialog 표시를 사용한다.
+일정·바로가기 화면의 기존 Sheet는 유지하며 홈과 커서 메뉴의 빠른 등록은 Dialog 표시를 사용한다.
 저장은 기존 store 경로로 목록과 우측 패널에 반영하고, 실패하면 폼 입력을 유지한다.
 닫기·저장 후에도 낙서장을 유지하며 모달 안에서는 홈 저장·메뉴 이동 단축키를 적용하지 않는다.
 메모 전체 편집은 메모 메뉴에서 계속 사용할 수 있다. AI 요청은 Ctrl+K로 여는 한 줄 모달에 입력하고,
@@ -301,7 +349,7 @@ props와 고정 fixture로 동작해 Electron API나 실제 계정·파일을 �
 기준 문서는 루트의 `storybook-prompt.md`다 (기존 파일명의 오타를 정정했다).
 공용 `shared/ui` 22개 모듈과 일정 편집·알림, 바로가기 편집·타일, 날씨 표시·검색,
 Codex 연결·모델·첫 안내, 설정 시트, 메모 파일명·편집기, 빠른 입력과 앱 위젯을 다룬다.
-기존 일정 상태 카드와 앱 패널·제어된 테마·Textarea·Dialog·홈 등록 모달·이동 단축키·AI 제목 저장을 포함해 177개 typed CSF 3 스토리가 있다.
+기존 일정 상태 카드와 앱 패널·제어된 테마·Textarea·Dialog·홈 등록 모달·이동 단축키·AI 제목 저장·바로가기 휠·플로팅 퀵 메뉴·계산기·낙서장 표시/저장 상태를 포함해 205개 typed CSF 3 스토리가 있다.
 각 상태는 별도 스토리로 구성하고, 날짜·시간·서비스 응답은 고정 fixture로 제공한다.
 Toolbar의 Light/Dark는 포털을 포함해 문서 루트에 테마 클래스를 적용한다.
 

@@ -2,7 +2,9 @@ import { useId } from "react"
 import { FolderCogIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { CodexConnectionPanel } from "./codex-connection"
+import { QuickMenuSettings, type QuickMenuOption } from "./quick-menu-settings"
 import { useTheme } from "@/shared/lib/theme-provider"
+import type { AppSettings } from "../../../../../shared/app-settings"
 import {
   Sheet,
   SheetContent,
@@ -28,6 +30,12 @@ export function SettingsSheet({
   error,
   settingsError = "",
   onChooseDirectory,
+  shortcutMenuMotion = "on",
+  onShortcutMenuMotionChange,
+  shortcutMenuItems,
+  quickMenuOptions,
+  quickMenuError,
+  onShortcutMenuItemsChange,
 }: {
   connectionPanel?: React.ReactNode
   open: boolean
@@ -38,6 +46,14 @@ export function SettingsSheet({
   error: string
   settingsError?: string
   onChooseDirectory: () => void
+  shortcutMenuMotion: AppSettings["shortcutMenuMotion"]
+  onShortcutMenuMotionChange: (
+    motion: AppSettings["shortcutMenuMotion"]
+  ) => void
+  shortcutMenuItems: AppSettings["shortcutMenuItems"]
+  quickMenuOptions: readonly QuickMenuOption[]
+  quickMenuError?: string
+  onShortcutMenuItemsChange: (items: AppSettings["shortcutMenuItems"]) => void
 }) {
   const sectionId = useId()
   const { theme, setTheme } = useTheme()
@@ -47,7 +63,7 @@ export function SettingsSheet({
         <SheetHeader>
           <SheetTitle>설정</SheetTitle>
           <SheetDescription>
-            앱 테마, 메모 저장 폴더와 AI 연결을 설정합니다.
+            앱 테마, 메뉴 애니메이션, 메모 저장 폴더와 AI 연결을 설정합니다.
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-6">
@@ -83,6 +99,38 @@ export function SettingsSheet({
                 </Button>
               ))}
             </div>
+          </section>
+          <QuickMenuSettings
+            items={shortcutMenuItems}
+            options={quickMenuOptions}
+            error={quickMenuError}
+            onChange={onShortcutMenuItemsChange}
+          />
+          <section className="space-y-3 border-t pt-6">
+            <label
+              htmlFor={`${sectionId}-menu-motion`}
+              className="text-sm font-medium"
+            >
+              메뉴 애니메이션
+            </label>
+            <select
+              id={`${sectionId}-menu-motion`}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={shortcutMenuMotion}
+              onChange={(event) => {
+                const value = event.target.value
+                if (value === "on" || value === "system" || value === "off")
+                  onShortcutMenuMotionChange(value)
+              }}
+            >
+              <option value="on">켜기</option>
+              <option value="system">시스템 설정 따르기</option>
+              <option value="off">끄기</option>
+            </select>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Ctrl·휠 길게 누르기 메뉴에 적용됩니다. ‘켜기’는 Windows 애니메이션
+              설정과 관계없이 움직임을 표시합니다.
+            </p>
           </section>
           <section
             aria-labelledby={`${sectionId}-settings-notes`}

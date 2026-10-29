@@ -1,20 +1,20 @@
-import { useState } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { AppSidebar } from "@/widgets/app-sidebar"
 import { SidebarProvider } from "@/shared/ui/sidebar"
 import { Input } from "@/shared/ui/input"
-import { NAVIGATION_ITEMS, type AppView } from "../config/navigation"
+import { NAVIGATION_ITEMS } from "../config/navigation"
 import { useNavigationShortcuts } from "../model/use-navigation-shortcuts"
+import { useWorkspaceNavigation } from "../model/use-workspace-navigation"
 
 function NavigationShortcuts() {
-  const [view, setView] = useState<AppView>("notes")
-  const showNavigationNumbers = useNavigationShortcuts(setView)
+  const { view, visited, navigate } = useWorkspaceNavigation("notes")
+  const showNavigationNumbers = useNavigationShortcuts(navigate)
   return (
     <SidebarProvider>
       <AppSidebar
         navigationItems={NAVIGATION_ITEMS}
         activeView={view}
-        onNavigate={setView}
+        onNavigate={navigate}
         showNavigationNumbers={showNavigationNumbers}
         scheduleStatus={null}
         weather={null}
@@ -30,6 +30,9 @@ function NavigationShortcuts() {
       />
       <main className="flex min-w-0 flex-1 flex-col gap-4 p-4">
         <output data-testid="active-workspace">{view}</output>
+        <output data-testid="visited-workspaces" className="sr-only">
+          {JSON.stringify([...visited])}
+        </output>
         <Input aria-label="단축키 테스트 입력" />
       </main>
     </SidebarProvider>

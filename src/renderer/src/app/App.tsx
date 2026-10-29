@@ -13,7 +13,7 @@ import { QuickCommand, AIQuickCommand } from "@/features/quick-command"
 import { Calculator } from "@/features/calculator"
 import {
   InboxCaptureDialog,
-  InboxQuickAddDialog,
+  InboxQuickAddPopover,
   InboxStore,
 } from "@/features/inbox"
 import { ShortcutMenu } from "@/features/shortcut-wheel"
@@ -324,17 +324,6 @@ export function App() {
             open={inboxDialogOpen}
             onOpenChange={setInboxDialogOpen}
           />
-          <InboxQuickAddDialog
-            open={inboxQuickAddOpen}
-            onOpenChange={setInboxQuickAddOpen}
-            onSave={async (content) => {
-              if (!(await inboxStore.captureText(content, "홈 빠른 추가")))
-                throw new Error(
-                  inboxStore.getSnapshot().error ||
-                    "인박스가 준비되지 않았습니다. 잠시 후 다시 시도해 주세요."
-                )
-            }}
-          />
           <Dialog open={calculatorOpen} onOpenChange={setCalculatorOpen}>
             <DialogContent>
               <DialogHeader>
@@ -409,7 +398,19 @@ export function App() {
             onCreateTodo={() => creation.open("todo")}
             onCreateEvent={() => creation.open("event")}
             onCreateShortcut={() => creation.open("shortcut")}
-            onCreateInbox={() => setInboxQuickAddOpen(true)}
+            inboxAction={
+              <InboxQuickAddPopover
+                open={inboxQuickAddOpen}
+                onOpenChange={setInboxQuickAddOpen}
+                onSave={async (content) => {
+                  if (!(await inboxStore.captureText(content, "홈 빠른 추가")))
+                    throw new Error(
+                      inboxStore.getSnapshot().error ||
+                        "인박스가 준비되지 않았습니다. 잠시 후 다시 시도해 주세요."
+                    )
+                }}
+              />
+            }
             recentInboxItems={inbox.viewProps.items}
             inboxBusy={inbox.viewProps.busy}
             onOpenInbox={(itemId) => {

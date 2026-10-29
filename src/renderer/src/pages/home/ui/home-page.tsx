@@ -7,6 +7,7 @@ type Props = Pick<
   | "onCreateEvent"
   | "onCreateShortcut"
   | "onCreateInbox"
+  | "inboxAction"
   | "recentInboxItems"
   | "inboxBusy"
   | "onOpenInbox"

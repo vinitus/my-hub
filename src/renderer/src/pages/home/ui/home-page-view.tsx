@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type Ref } from "react"
+import { useId, useRef, useState, type Ref, type ReactNode } from "react"
 import {
   CalendarPlusIcon,
   LayoutGridIcon,
@@ -31,6 +31,7 @@ export type HomePageViewProps = {
   onCreateEvent: () => void
   onCreateShortcut: () => void
   onCreateInbox?: () => void
+  inboxAction?: ReactNode
   recentInboxItems?: InboxItem[]
   inboxBusy?: boolean
   onOpenInbox?: (id: string) => void
@@ -45,6 +46,7 @@ export function HomePageView({
   onCreateEvent,
   onCreateShortcut,
   onCreateInbox,
+  inboxAction,
   recentInboxItems = [],
   inboxBusy = false,
   onOpenInbox,
@@ -79,16 +81,18 @@ export function HomePageView({
             <ListTodoIcon />
             할일 추가
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="min-h-11"
-            onClick={onCreateInbox}
-            disabled={!onCreateInbox}
-          >
-            <InboxIcon />
-            인박스 추가
-          </Button>
+          {inboxAction ?? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="min-h-11"
+              onClick={onCreateInbox}
+              disabled={!onCreateInbox}
+            >
+              <InboxIcon />
+              인박스 추가
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger
               render={<Button variant="ghost" size="sm" className="min-h-11" />}

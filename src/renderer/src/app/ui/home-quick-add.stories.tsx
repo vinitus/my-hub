@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { HomePage } from "@/pages/home"
-import { InboxStore, InboxQuickAddDialog, InboxView } from "@/features/inbox"
+import { InboxStore, InboxQuickAddPopover, InboxView } from "@/features/inbox"
 import type { InboxSnapshot } from "../../../../shared/inbox"
 
 function HomeQuickAdd({ failSave = false }: { failSave?: boolean }) {
@@ -79,7 +79,17 @@ function HomeQuickAdd({ failSave = false }: { failSave?: boolean }) {
           onCreateTodo={() => {}}
           onCreateEvent={() => {}}
           onCreateShortcut={() => {}}
-          onCreateInbox={() => setOpen(true)}
+          inboxAction={
+            <InboxQuickAddPopover
+              open={open}
+              onOpenChange={setOpen}
+              onSave={async (content) => {
+                await store.initialize()
+                if (!(await store.captureText(content, "홈 빠른 추가")))
+                  throw new Error(store.getSnapshot().error)
+              }}
+            />
+          }
           recentInboxItems={state.snapshot?.items}
           onOpenInbox={(itemId) => {
             setFocusRequest((current) => ({
@@ -90,15 +100,6 @@ function HomeQuickAdd({ failSave = false }: { failSave?: boolean }) {
           }}
         />
       )}
-      <InboxQuickAddDialog
-        open={open}
-        onOpenChange={setOpen}
-        onSave={async (content) => {
-          await store.initialize()
-          if (!(await store.captureText(content, "홈 빠른 추가")))
-            throw new Error(store.getSnapshot().error)
-        }}
-      />
       <output className="sr-only" data-testid="home-inbox-items">
         {JSON.stringify(state.snapshot?.items ?? [])}
       </output>

@@ -1268,10 +1268,7 @@ app.whenReady().then(async () => {
             story.name === "Save Error"
           )
         }
-        if (
-          theme === "light" &&
-          story.importPath.endsWith("/home-quick-add.stories.tsx")
-        ) {
+        if (story.importPath.endsWith("/home-quick-add.stories.tsx")) {
           const run = (code) => win.webContents.executeJavaScript(code)
           const items = () =>
             run(
@@ -1304,6 +1301,78 @@ app.whenReady().then(async () => {
           )
           assert.equal(
             await run(
+              `!!document.querySelector('[data-slot="dialog-overlay"]')`
+            ),
+            false
+          )
+          assert.equal(
+            await run(
+              `document.querySelector('[role="dialog"]').getAttribute('aria-modal')==='true'`
+            ),
+            false
+          )
+          assert.equal(
+            await run(
+              `(()=>{const p=document.querySelector('[role="dialog"]').getBoundingClientRect();const t=[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 추가').getBoundingClientRect();return p.left>=0&&p.right<=innerWidth&&p.top>=t.bottom&&p.width<=420})()`
+            ),
+            true
+          )
+          win.webContents.insertText("draft")
+          await delay(30)
+          await run(
+            `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 추가').click()`
+          )
+          await delay(50)
+          assert.equal(
+            await run(`!!document.querySelector('[role="dialog"][data-open]')`),
+            false
+          )
+          await run(
+            `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 추가').click()`
+          )
+          await delay(50)
+          assert.equal(
+            await run(`document.querySelector('[role="dialog"] input').value`),
+            "draft"
+          )
+          await run(
+            `document.querySelector('textarea').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,pointerType:'mouse',button:0}));document.querySelector('textarea').click();document.querySelector('textarea').focus()`
+          )
+          await delay(50)
+          assert.equal(
+            await run(`!!document.querySelector('[role="dialog"][data-open]')`),
+            false
+          )
+          await run(
+            `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 추가').click()`
+          )
+          await delay(50)
+          await run(
+            `document.querySelector('[aria-label="인박스 추가 닫기"]').click()`
+          )
+          await delay(50)
+          await run(
+            `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 추가').click()`
+          )
+          await delay(50)
+          await run(
+            `[...document.querySelectorAll('[role="dialog"] button')].find(b=>b.innerText==='취소').click()`
+          )
+          await delay(50)
+          await run(
+            `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 추가').click()`
+          )
+          await delay(50)
+          assert.equal(
+            await run(`document.querySelector('[role="dialog"] input').value`),
+            "draft"
+          )
+          await run(
+            `(()=>{const i=document.querySelector('[role="dialog"] input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'');i.dispatchEvent(new Event('input',{bubbles:true}))})()`
+          )
+          await delay(30)
+          assert.equal(
+            await run(
               `document.querySelector('[aria-label="인박스에 추가할 내용"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true}))`
             ),
             false
@@ -1323,6 +1392,9 @@ app.whenReady().then(async () => {
           )
           await run(
             `window.dispatchEvent(new KeyboardEvent('keydown',{key:'s',ctrlKey:true,bubbles:true,cancelable:true}))`
+          )
+          await run(
+            `document.querySelector('[role="dialog"] form').requestSubmit();document.querySelector('[role="dialog"] form').requestSubmit()`
           )
           await delay(180)
           if (story.name === "Save Failure") {
@@ -1352,6 +1424,11 @@ app.whenReady().then(async () => {
             )
           } else {
             assert.equal(
+              (await items()).length,
+              1,
+              "repeated submissions capture once"
+            )
+            assert.equal(
               await run(
                 `!!document.querySelector('[role="dialog"][data-open]')`
               ),
@@ -1366,6 +1443,28 @@ app.whenReady().then(async () => {
             assert.equal(saved.kind, "link")
             assert.equal(saved.processedAt, null)
             assert.equal(saved.source, "홈 빠른 추가")
+            await run(
+              `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 추가').click()`
+            )
+            await delay(50)
+            assert.equal(
+              await run(
+                `document.querySelector('[role="dialog"] input').value`
+              ),
+              ""
+            )
+            win.webContents.sendInputEvent({
+              type: "keyDown",
+              keyCode: "Escape",
+            })
+            win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" })
+            await delay(50)
+            assert.equal(
+              await run(
+                `document.activeElement.textContent.includes('인박스 추가')`
+              ),
+              true
+            )
           }
           assert.equal(
             await run(`document.querySelector('textarea').value`),

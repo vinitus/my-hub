@@ -71,9 +71,12 @@ export const Busy: Story = { args: { busy: true } }
 function MotionPreferencePreview(args: ComponentProps<typeof SettingsSheet>) {
   const [motion, setMotion] = useState(args.shortcutMenuMotion)
   const [items, setItems] = useState(args.shortcutMenuItems)
+  const [shortcut, setShortcut] = useState(args.launcherShortcut ?? "ctrl+k")
   return (
     <SettingsSheet
       {...args}
+      launcherShortcut={shortcut}
+      onLauncherShortcutChange={setShortcut}
       shortcutMenuMotion={motion}
       onShortcutMenuMotionChange={setMotion}
       shortcutMenuItems={items}

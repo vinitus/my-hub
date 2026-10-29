@@ -1,39 +1,61 @@
-import type { CommandResult } from "../model/command-runner"
-import { useState } from "react"
+﻿import { useState } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
-import { QuickCommand } from "./quick-command"
-// 모든 요청은 스토리의 로컬 응답을 사용하며 IPC나 실제 계정에 접근하지 않는다.
+import { QuickCommand } from "./action-launcher"
+import { AIQuickCommand } from "./ai-quick-command"
+import type { LauncherAction } from "../model/action-search"
+const localActions: LauncherAction[] = [
+  {
+    id: "note:C:/메모/팀 회의.md",
+    kind: "note",
+    title: "팀 회의 메모",
+    description: "즐겨찾는 메모",
+    label: "열기",
+    execute: () => "메모를 열었습니다.",
+  },
+  {
+    id: "event:meeting",
+    kind: "event",
+    title: "팀 회의",
+    description: "2026. 10. 30. 오후 3:00",
+    label: "열기",
+    execute: () => "일정을 열었습니다.",
+  },
+  {
+    id: "todo:report",
+    kind: "todo",
+    title: "보고서 작성",
+    description: "미완료 · 마감 2026-10-30",
+    label: "완료",
+    execute: () => "보고서 작성 완료",
+  },
+  {
+    id: "shortcut:code",
+    kind: "shortcut",
+    title: "VS Code",
+    description: "등록된 프로그램",
+    label: "실행",
+    execute: () => "VS Code 열기 요청을 보냈습니다.",
+  },
+  {
+    id: "command:settings",
+    kind: "command",
+    title: "설정",
+    description: "앱 설정과 AI 연결",
+    label: "열기",
+    execute: () => "설정을 열었습니다.",
+  },
+]
 const meta = {
-  title: "빠른 입력/요청",
+  title: "통합 액션 런처/검색과 실행",
   component: QuickCommand,
   parameters: { layout: "fullscreen" },
-  args: {
-    open: true,
-    onOpenChange: () => {},
-    apply: async (): Promise<CommandResult> => ({
-      status: "success",
-      message: "2건 저장 완료",
-      changed: ["calendar", "todos"],
-      undoToken: "00000000-0000-4000-8000-000000000002",
-    }),
-    undo: async (): Promise<CommandResult> => ({
-      status: "success",
-      message: "2건 실행 취소 완료",
-      changed: ["calendar", "todos"],
-    }),
-    discard: async () => {},
-    runCommand: async (): Promise<CommandResult> => ({
-      status: "success",
-      message: "일정 1건 저장 완료",
-      changed: ["calendar"],
-    }),
-  },
+  args: { open: true, onOpenChange: () => {}, actions: localActions },
   render: function Input(args) {
     const [open, setOpen] = useState(args.open)
     return (
       <>
         <button type="button" onClick={() => setOpen(true)}>
-          빠른 입력 열기
+          통합 검색 열기
         </button>
         <QuickCommand {...args} open={open} onOpenChange={setOpen} />
       </>
@@ -43,105 +65,44 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Open: Story = {}
-
-export const NeedsConnection: Story = {
-  args: {
-    runCommand: async () => ({
-      status: "needs-connection",
-      message: "설정에서 ChatGPT를 연결해 주세요.",
-      changed: [],
-    }),
-  },
+export const LocalActions: Story = {}
+export const Empty: Story = { args: { actions: [] } }
+export const Loading: Story = { args: { actions: [], loading: true } }
+export const UnavailableSource: Story = {
+  args: { error: "일정 목록에 접근할 수 없습니다." },
 }
-export const Clarification: Story = {
-  args: {
-    runCommand: async () => ({
-      status: "clarification",
-      message: "할일의 마감일을 알려 주세요.",
-      changed: [],
-    }),
-  },
+export const AlternateShortcut: Story = {
+  args: { shortcut: "ctrl+alt+k", open: false },
 }
-export const Failure: Story = {
-  args: {
-    runCommand: async () => ({
-      status: "error",
-      message: "해석 중 목록이 변경되었습니다. 다시 요청해 주세요.",
-      changed: [],
-    }),
-  },
-}
-export const Partial: Story = {
-  args: {
-    runCommand: async () => ({
-      status: "partial",
-      message:
-        "1건만 저장했습니다. 나머지 작업은 중단했습니다. 목록을 확인해 주세요.",
-      changed: ["todos"],
-    }),
-  },
-}
-
-const preview: CommandResult = {
-  status: "preview",
-  message: "회의 시간을 변경하고 보고서 할일을 삭제합니다.",
-  changed: [],
-  preview: {
-    token: "00000000-0000-4000-8000-000000000001",
-    changes: [
-      {
-        id: "00000000-0000-4000-8000-000000000003",
-        domain: "calendar",
-        operation: "update",
-        before:
-          "팀 회의\n2026-10-29T15:00:00+09:00 → 2026-10-29T16:00:00+09:00",
-        after: "팀 회의\n2026-10-29T16:00:00+09:00 → 2026-10-29T17:00:00+09:00",
-      },
-      {
-        id: "00000000-0000-4000-8000-000000000004",
-        domain: "todos",
-        operation: "remove",
-        before: "보고서 작성\n마감: 2026-10-30 · 미완료",
-        after: null,
-      },
-    ],
-  },
-}
-export const Preview: Story = { args: { runCommand: async () => preview } }
-export const Discard: Story = { args: { runCommand: async () => preview } }
-export const Undo: Story = {
-  args: {
-    runCommand: async () => ({
-      status: "success",
-      message: "2건 저장 완료",
-      changed: ["calendar", "todos"],
-      undoToken: "00000000-0000-4000-8000-000000000002",
-    }),
-  },
-}
-export const ApplyConflict: Story = {
-  args: {
-    runCommand: async () => preview,
-    apply: async () => ({
-      status: "error",
-      message:
-        "목록이 변경되었습니다. 최신 목록을 확인하고 다시 요청해 주세요.",
-      changed: [],
-    }),
-  },
-}
-export const PartialUndo: Story = {
-  args: {
-    runCommand: async () => ({
-      status: "partial",
-      message: "1건만 저장했습니다.",
-      changed: ["todos"],
-      undoToken: "00000000-0000-4000-8000-000000000002",
-    }),
-    undo: async () => ({
-      status: "success",
-      message: "1건 실행 취소 완료",
-      changed: ["todos"],
-    }),
+export const ShortcutSeparation: Story = {
+  render: function Separate(args) {
+    const [open, setOpen] = useState(false)
+    const [aiOpen, setAIOpen] = useState(false)
+    return (
+      <>
+        <p>Ctrl+K 통합 검색 · Ctrl+Shift+K AI 빠른 입력</p>
+        <QuickCommand {...args} open={open} onOpenChange={setOpen} />
+        <AIQuickCommand
+          open={aiOpen}
+          onOpenChange={setAIOpen}
+          runCommand={async () => ({
+            status: "success",
+            message: "AI 요청 완료",
+            changed: [],
+          })}
+          apply={async () => ({
+            status: "success",
+            message: "적용 완료",
+            changed: [],
+          })}
+          undo={async () => ({
+            status: "success",
+            message: "취소 완료",
+            changed: [],
+          })}
+          discard={async () => {}}
+        />
+      </>
+    )
   },
 }

@@ -39,6 +39,7 @@ const QuickMenuItemsSchema = z
 export const AppSettingsSchema = z
   .object({
     theme: z.enum(["dark", "light", "system"]),
+    launcherShortcut: z.enum(["ctrl+k", "ctrl+alt+k", "ctrl+shift+space"]),
     shortcutMenuMotion: z.enum(["on", "system", "off"]),
     shortcutMenuItems: QuickMenuItemsSchema,
     sidebarOpen: z.boolean(),
@@ -58,6 +59,7 @@ export const AppSettingsSchema = z
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   theme: "system",
+  launcherShortcut: "ctrl+k",
   shortcutMenuMotion: "on",
   shortcutMenuItems: [
     { kind: "action", action: "note" },

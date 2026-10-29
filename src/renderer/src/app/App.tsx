@@ -9,7 +9,7 @@ import { HomePage } from "@/pages/home"
 import { CalendarReminderCenter } from "@/features/calendar"
 import { CalendarStore } from "@/entities/calendar-event"
 import { useNote } from "@/features/notes"
-import { QuickCommand } from "@/features/quick-command"
+import { QuickCommand, AIQuickCommand } from "@/features/quick-command"
 import { Calculator } from "@/features/calculator"
 import { ShortcutMenu } from "@/features/shortcut-wheel"
 import {
@@ -32,6 +32,7 @@ import { useWorkspaceNavigation } from "./model/use-workspace-navigation"
 import { useScratchpadSave } from "./model/use-scratchpad-save"
 
 import { useConfiguredQuickMenu } from "./model/use-configured-quick-menu"
+import { useActionLauncher } from "./model/use-action-launcher"
 import { DEFAULT_APP_SETTINGS } from "../../../shared/app-settings"
 
 const TodoWorkspace = lazy(() => import("@/pages/todos"))
@@ -48,9 +49,15 @@ export function App() {
   } = useAppSettings()
   const { view, visited, navigate } = useWorkspaceNavigation()
   const [calculatorOpen, setCalculatorOpen] = useState(false)
+  const [calendarFocus, setCalendarFocus] = useState<{
+    id: number
+    date: string
+  } | null>(null)
   const {
     commandOpen,
     setCommandOpen,
+    aiCommandOpen,
+    setAICommandOpen,
     settingsOpen,
     setSettingsOpen,
     codexSetup,
@@ -76,6 +83,7 @@ export function App() {
   const memo = useNote(
     view === "notes" &&
       !commandOpen &&
+      !aiCommandOpen &&
       !settingsOpen &&
       !codexPromptOpen &&
       !calculatorOpen &&
@@ -107,6 +115,103 @@ export function App() {
     },
   })
   const showNavigationNumbers = useNavigationShortcuts(navigate)
+  const launcher = useActionLauncher({
+    open: commandOpen,
+    library: memo.library,
+    noteBusy: memo.busy,
+    refreshNotes: memo.refresh,
+    onOpenTodos: () => navigate("todos"),
+    openNote: async (name) => {
+      navigate("notes")
+      await memo.openNote(name)
+    },
+    todoStore,
+    calendarStore,
+    shortcutStore,
+    onOpenEvent: (event) => {
+      navigate("calendar")
+      setCalendarFocus((current) => ({
+        id: (current?.id ?? 0) + 1,
+        date: event.start,
+      }))
+    },
+    commands: [
+      ...NAVIGATION_ITEMS.map((item) => ({
+        id: `navigate:${item.id}`,
+        kind: "command" as const,
+        title: `${item.label} 열기`,
+        description: "화면 이동",
+        label: "열기",
+        execute: () => navigate(item.id),
+      })),
+      {
+        id: "create:note",
+        kind: "command",
+        title: "새 메모",
+        description: "메모 작성",
+        label: "만들기",
+        disabled: memo.busy,
+        execute: async () => {
+          navigate("notes")
+          await memo.newNote()
+        },
+      },
+      {
+        id: "create:todo",
+        kind: "command",
+        title: "새 할일",
+        description: "할일 추가",
+        label: "만들기",
+        execute: () => creation.open("todo"),
+      },
+      {
+        id: "create:event",
+        kind: "command",
+        title: "새 일정",
+        description: "일정 추가",
+        label: "만들기",
+        execute: () => creation.open("event"),
+      },
+      {
+        id: "create:shortcut",
+        kind: "command",
+        title: "프로그램 등록",
+        description: "프로그램·폴더·웹사이트 바로가기 추가",
+        label: "등록",
+        execute: () => creation.open("shortcut"),
+      },
+      {
+        id: "calendar:today",
+        kind: "command",
+        title: "오늘 일정",
+        description: "캘린더에서 오늘의 일정 보기",
+        label: "열기",
+        execute: () => {
+          navigate("calendar")
+          setCalendarFocus((current) => ({
+            id: (current?.id ?? 0) + 1,
+            date: new Date().toISOString(),
+          }))
+        },
+      },
+      {
+        id: "calculator",
+        kind: "command",
+        title: "계산기",
+        description: "빠른 계산",
+        label: "열기",
+        execute: () => setCalculatorOpen(true),
+      },
+      {
+        id: "settings",
+        kind: "command",
+        title: "설정",
+        description: "앱 설정과 AI 연결",
+        label: "열기",
+        execute: () => setSettingsOpen(true),
+      },
+    ],
+  })
   return (
     <WorkspaceLayout
       settings={settings}
@@ -150,6 +255,8 @@ export function App() {
         <SiteHeader
           title={NAVIGATION_ITEMS.find((item) => item.id === view)!.label}
           onQuickCommand={() => setCommandOpen(true)}
+          onAIQuickCommand={() => setAICommandOpen(true)}
+          launcherShortcut={settings.launcherShortcut}
         />
       }
       statusPanel={
@@ -168,7 +275,16 @@ export function App() {
       }
       overlays={
         <>
-          <QuickCommand open={commandOpen} onOpenChange={setCommandOpen} />
+          <QuickCommand
+            open={commandOpen}
+            onOpenChange={setCommandOpen}
+            {...launcher}
+            shortcut={settings.launcherShortcut}
+          />
+          <AIQuickCommand
+            open={aiCommandOpen}
+            onOpenChange={setAICommandOpen}
+          />
           <CalendarReminderCenter />
           <HomeCreateDialog {...creation} />
           <Dialog open={calculatorOpen} onOpenChange={setCalculatorOpen}>
@@ -183,6 +299,10 @@ export function App() {
             </DialogContent>
           </Dialog>
           <SettingsSheet
+            launcherShortcut={settings.launcherShortcut}
+            onLauncherShortcutChange={(launcherShortcut) =>
+              void updateSettings({ launcherShortcut })
+            }
             shortcutMenuItems={menuItems}
             quickMenuOptions={quickMenu.options}
             quickMenuError={quickMenu.error}
@@ -284,7 +404,10 @@ export function App() {
                 </p>
               }
             >
-              <CalendarWorkspace store={calendarStore} />
+              <CalendarWorkspace
+                store={calendarStore}
+                focusRequest={calendarFocus}
+              />
             </Suspense>
           </div>
         )}

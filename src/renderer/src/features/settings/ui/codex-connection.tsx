@@ -184,8 +184,8 @@ export function CodexConnectionPanel({
           busy={busy || connecting}
         />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          현재는 계정 연결과 모델 설정까지 지원하며, Ctrl+K의 일정·메모 실행은
-          준비 중입니다.
+          연결한 계정과 모델 설정은 Ctrl+Shift+K의 일정·할일 AI 요청에
+          사용합니다.
         </p>
       </div>
     </section>

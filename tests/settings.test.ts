@@ -13,6 +13,78 @@ import {
 } from "../src/shared/app-settings"
 import { BrowserWindow, handlers } from "./fakes/electron"
 import { AppSettingsStore } from "../src/renderer/src/app/model/app-settings-store"
+import { matchesLauncherShortcut } from "../src/shared/launcher-shortcut"
+
+test("launcher shortcuts exclude AI, composition and extra modifiers", () => {
+  const event = {
+    key: "k",
+    code: "KeyK",
+    ctrlKey: true,
+    altKey: false,
+    shiftKey: false,
+    metaKey: false,
+    isComposing: false,
+  }
+  assert.equal(matchesLauncherShortcut(event, "ctrl+k"), true)
+  assert.equal(
+    matchesLauncherShortcut({ ...event, shiftKey: true }, "ctrl+k"),
+    false
+  )
+  assert.equal(
+    matchesLauncherShortcut({ ...event, shiftKey: true }, "ctrl+alt+k"),
+    false
+  )
+  assert.equal(
+    matchesLauncherShortcut({ ...event, altKey: true }, "ctrl+alt+k"),
+    true
+  )
+  assert.equal(matchesLauncherShortcut(event, "ctrl+alt+k"), false)
+  assert.equal(
+    matchesLauncherShortcut(
+      { ...event, key: " ", code: "Space", shiftKey: true },
+      "ctrl+shift+space"
+    ),
+    true
+  )
+  assert.equal(
+    matchesLauncherShortcut({ ...event, isComposing: true }, "ctrl+k"),
+    false
+  )
+  assert.equal(
+    matchesLauncherShortcut({ ...event, metaKey: true }, "ctrl+k"),
+    false
+  )
+})
+
+test("launcher shortcut migrates old settings, persists and rejects reserved AI shortcut", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "my-hub-launcher-shortcut-"))
+  try {
+    const legacy: Record<string, unknown> = { ...DEFAULT_APP_SETTINGS }
+    delete legacy.launcherShortcut
+    await writeFile(
+      join(directory, "app-settings.json"),
+      JSON.stringify(legacy)
+    )
+    const repository = new AppSettingsRepository(directory)
+    assert.equal((await repository.read()).launcherShortcut, "ctrl+k")
+    await repository.update({ launcherShortcut: "ctrl+alt+k" })
+    assert.equal(
+      (await new AppSettingsRepository(directory).read()).launcherShortcut,
+      "ctrl+alt+k"
+    )
+    assert.equal(
+      AppSettingsPatchSchema.safeParse({ launcherShortcut: "ctrl+shift+k" })
+        .success,
+      false
+    )
+    assert.equal(
+      (await repository.update({ theme: "dark" })).launcherShortcut,
+      "ctrl+alt+k"
+    )
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
 
 function memoryTheme(initial: string | null = null) {
   let value = initial

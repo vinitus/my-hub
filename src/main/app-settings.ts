@@ -15,6 +15,7 @@ import {
 // 이전 버전의 유효한 너비(최대 640px)는 읽을 때 새 상한으로 보정한다.
 // 새 변경 요청은 AppSettingsPatchSchema의 320px 제한을 그대로 적용한다.
 const StoredAppSettingsSchema = AppSettingsSchema.extend({
+  launcherShortcut: AppSettingsSchema.shape.launcherShortcut.default("ctrl+k"),
   shortcutMenuMotion: AppSettingsSchema.shape.shortcutMenuMotion.default("on"),
   shortcutMenuItems: AppSettingsSchema.shape.shortcutMenuItems.default(() =>
     DEFAULT_APP_SETTINGS.shortcutMenuItems.map((item) => ({ ...item }))

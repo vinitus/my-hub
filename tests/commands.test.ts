@@ -20,6 +20,96 @@ import { CodexRPC } from "../src/main/codex-rpc"
 import { registerCommands } from "../src/main/commands"
 import { BrowserWindow, handlers } from "./fakes/electron"
 import type { CommandPlan, CommandResult } from "../src/shared/command"
+import {
+  searchActions,
+  type LauncherAction,
+} from "../src/renderer/src/features/quick-command/model/action-search"
+
+test("launcher scopes searches, ranks exact matches and handles local action phrases without executing", () => {
+  const execute = () => {
+    throw new Error("search must not execute")
+  }
+  const items: LauncherAction[] = [
+    {
+      id: "note",
+      kind: "note",
+      title: "보고서 회의 메모",
+      description: "메모",
+      label: "열기",
+      execute,
+    },
+    {
+      id: "todo",
+      kind: "todo",
+      title: "보고서",
+      description: "미완료",
+      label: "완료",
+      execute,
+    },
+    {
+      id: "code",
+      kind: "shortcut",
+      title: "VS Code",
+      description: "프로그램",
+      label: "실행",
+      execute,
+    },
+    {
+      id: "event",
+      kind: "event",
+      title: "회의",
+      description: "2026-10-30",
+      label: "열기",
+      execute,
+    },
+  ]
+  assert.deepEqual(
+    searchActions(items, "보고서").map((item) => item.id),
+    ["todo", "note"]
+  )
+  assert.deepEqual(
+    searchActions(items, "메모 보고서 검색").map((item) => item.id),
+    ["note"]
+  )
+  assert.deepEqual(
+    searchActions(items, "할일 보고서 완료").map((item) => item.id),
+    ["todo"]
+  )
+  assert.deepEqual(
+    searchActions(items, "vscode 실행").map((item) => item.id),
+    ["code"]
+  )
+  assert.deepEqual(
+    searchActions(items, "일정 2026-10-30").map((item) => item.id),
+    ["event"]
+  )
+  assert.deepEqual(
+    searchActions(items, "메모 회의 보고서").map((item) => item.id),
+    ["note"]
+  )
+  assert.equal(searchActions(items, "없는 항목").length, 0)
+  assert.equal(searchActions(items, "constructor").length, 0)
+  assert.deepEqual(
+    searchActions(items, "보고서 완료해줘").map((item) => item.id),
+    ["todo"]
+  )
+  assert.deepEqual(
+    searchActions(items, "VS Code 실행해줘").map((item) => item.id),
+    ["code"]
+  )
+  const registration: LauncherAction = {
+    id: "register",
+    kind: "command",
+    title: "프로그램 등록",
+    description: "바로가기 추가",
+    label: "등록",
+    execute,
+  }
+  assert.equal(
+    searchActions([...items, registration], "프로그램 등록")[0]?.id,
+    "register"
+  )
+})
 
 const todoAction = () => ({
   domain: "todos" as const,

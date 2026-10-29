@@ -6,6 +6,10 @@ import { QuickMenuSettings, type QuickMenuOption } from "./quick-menu-settings"
 import { useTheme } from "@/shared/lib/theme-provider"
 import type { AppSettings } from "../../../../../shared/app-settings"
 import {
+  LAUNCHER_SHORTCUTS,
+  type LauncherShortcut,
+} from "../../../../../shared/launcher-shortcut"
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -36,6 +40,8 @@ export function SettingsSheet({
   quickMenuOptions,
   quickMenuError,
   onShortcutMenuItemsChange,
+  launcherShortcut = "ctrl+k",
+  onLauncherShortcutChange,
 }: {
   connectionPanel?: React.ReactNode
   open: boolean
@@ -54,6 +60,8 @@ export function SettingsSheet({
   quickMenuOptions: readonly QuickMenuOption[]
   quickMenuError?: string
   onShortcutMenuItemsChange: (items: AppSettings["shortcutMenuItems"]) => void
+  launcherShortcut?: LauncherShortcut
+  onLauncherShortcutChange?: (shortcut: LauncherShortcut) => void
 }) {
   const sectionId = useId()
   const { theme, setTheme } = useTheme()
@@ -63,7 +71,7 @@ export function SettingsSheet({
         <SheetHeader>
           <SheetTitle>설정</SheetTitle>
           <SheetDescription>
-            앱 테마, 메뉴 애니메이션, 메모 저장 폴더와 AI 연결을 설정합니다.
+            앱 테마, 실행 단축키, 메뉴, 메모 저장 폴더와 AI 연결을 설정합니다.
           </SheetDescription>
         </SheetHeader>
         <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 pb-6">
@@ -99,6 +107,38 @@ export function SettingsSheet({
                 </Button>
               ))}
             </div>
+          </section>
+          <section className="space-y-3 border-t pt-6">
+            <label
+              htmlFor={`${sectionId}-launcher-shortcut`}
+              className="text-sm font-medium"
+            >
+              통합 검색 실행 단축키
+            </label>
+            <select
+              id={`${sectionId}-launcher-shortcut`}
+              value={launcherShortcut}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              onChange={(event) => {
+                const value = event.target.value
+                if (
+                  value === "ctrl+k" ||
+                  value === "ctrl+alt+k" ||
+                  value === "ctrl+shift+space"
+                )
+                  onLauncherShortcutChange?.(value)
+              }}
+            >
+              {Object.entries(LAUNCHER_SHORTCUTS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              앱 안에서 사용하는 단축키입니다. AI 빠른 입력은 Ctrl+Shift+K로
+              열며, 두 단축키는 중복되지 않습니다.
+            </p>
           </section>
           <QuickMenuSettings
             items={shortcutMenuItems}

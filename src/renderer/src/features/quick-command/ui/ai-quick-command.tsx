@@ -1,4 +1,4 @@
-import { hasOpenDialog } from "@/shared/lib/has-open-dialog"
+﻿import { hasOpenDialog } from "@/shared/lib/has-open-dialog"
 import { useEffect, useEffectEvent, useRef, useState } from "react"
 import { Dialog } from "@base-ui/react/dialog"
 import {
@@ -28,7 +28,7 @@ type Task = {
   undoToken?: string
 }
 
-export function QuickCommand({
+export function AIQuickCommand({
   open,
   onOpenChange,
   runCommand = executeCommand,
@@ -55,7 +55,7 @@ export function QuickCommand({
       !event.ctrlKey ||
       event.altKey ||
       event.metaKey ||
-      event.shiftKey ||
+      !event.shiftKey ||
       event.isComposing ||
       event.key.toLowerCase() !== "k"
     )

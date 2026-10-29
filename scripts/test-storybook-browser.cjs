@@ -1079,6 +1079,27 @@ app.whenReady().then(async () => {
             ),
             8
           )
+          for (const value of ["ctrl+alt+k", "ctrl+shift+space", "ctrl+k"]) {
+            await win.webContents.executeJavaScript(`(() => {
+              const select=document.querySelector('select[id$="-launcher-shortcut"]');
+              select.value=${JSON.stringify(value)};
+              select.dispatchEvent(new Event('change',{bubbles:true}));
+            })()`)
+            await delay(30)
+            assert.equal(
+              await win.webContents.executeJavaScript(
+                `document.querySelector('select[id$="-launcher-shortcut"]').value`
+              ),
+              value
+            )
+          }
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `!!document.querySelector('select[id$="-launcher-shortcut"] option[value="ctrl+shift+k"]')`
+            ),
+            false,
+            "AI shortcut stays reserved"
+          )
           for (const value of ["system", "off", "on"]) {
             await win.webContents.executeJavaScript(`(() => {
               const select=document.querySelector('select[id$="-menu-motion"]');
@@ -1786,8 +1807,207 @@ app.whenReady().then(async () => {
           }
         }
         if (
+          story.importPath.endsWith("/quick-command.stories.tsx") &&
+          story.name === "Open"
+        ) {
+          const output = path.resolve("out/tests/storybook")
+          fs.mkdirSync(output, { recursive: true })
+          fs.writeFileSync(
+            path.join(output, `action-launcher-${theme}-${width}.png`),
+            (await win.capturePage()).toPNG()
+          )
+        }
+        if (
           theme === "light" &&
-          story.importPath.endsWith("quick-command.stories.tsx")
+          story.importPath.endsWith("/calendar-page.stories.tsx")
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          await delay(100)
+          assert.ok(
+            await run(
+              `document.querySelector('#storybook-root h1').innerText.includes('11월 13일')`
+            ),
+            `event search opens the requested date: ${await run("document.body.innerText.slice(0, 2000)")}`
+          )
+          assert.equal(
+            await run(
+              `[...document.querySelectorAll('[aria-label="캘린더 보기"] button')].find(b=>b.innerText==='일간 목록').getAttribute('aria-pressed')`
+            ),
+            "true"
+          )
+          await run(`document.querySelector('#storybook-root button').click()`)
+          await delay(100)
+          assert.ok(
+            await run(
+              `document.querySelector('#storybook-root h1').innerText.includes('10월 30일')`
+            ),
+            "today command changes an already visited calendar"
+          )
+          console.log(
+            "PASS launcher calendar date navigation and repeat requests"
+          )
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/quick-command.stories.tsx") &&
+          ["Shortcut Separation", "Alternate Shortcut"].includes(story.name)
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const key = async (shiftKey = false, altKey = false) => {
+            await run(
+              `window.dispatchEvent(new KeyboardEvent('keydown',{key:'k',code:'KeyK',ctrlKey:true,shiftKey:${shiftKey},altKey:${altKey},bubbles:true,cancelable:true}))`
+            )
+            await delay(70)
+          }
+          const searchOpen = () =>
+            run(`!!document.querySelector('[role=combobox]')`)
+          const aiOpen = () =>
+            run(`!!document.querySelector('[aria-label="AI에게 요청할 내용"]')`)
+          if (story.name === "Alternate Shortcut") {
+            await key()
+            assert.equal(
+              await searchOpen(),
+              false,
+              "default shortcut is disabled after customization"
+            )
+            await key(true)
+            assert.equal(
+              await searchOpen(),
+              false,
+              "AI key must never open search"
+            )
+            await key(false, true)
+            assert.equal(
+              await searchOpen(),
+              true,
+              "custom shortcut opens search"
+            )
+          } else {
+            await key()
+            assert.equal(await searchOpen(), true)
+            assert.equal(await aiOpen(), false)
+            await key(true)
+            assert.equal(
+              await aiOpen(),
+              false,
+              "another open modal has priority"
+            )
+            await key()
+            assert.equal(await searchOpen(), false)
+            await key(true)
+            assert.equal(await aiOpen(), true)
+            assert.equal(await searchOpen(), false)
+            await key()
+            assert.equal(
+              await searchOpen(),
+              false,
+              "search cannot cover AI input"
+            )
+            await key(true)
+            assert.equal(await aiOpen(), false)
+          }
+          console.log(`PASS ${story.name}: search and AI shortcut separation`)
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/quick-command.stories.tsx") &&
+          story.name === "Local Actions"
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const fill = async (value) => {
+            await run(`(() => {
+              const input=document.querySelector('[role=combobox]');
+              Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)});
+              input.dispatchEvent(new Event('input',{bubbles:true})); input.focus();
+            })()`)
+            await delay(50)
+          }
+          await fill("없는 프로그램")
+          await run(`document.querySelector('form').requestSubmit()`)
+          await delay(50)
+          assert.equal(
+            await run(`!!document.querySelector('[role=dialog][data-open]')`),
+            true,
+            "simple missing search must not call AI"
+          )
+          await fill("VS Code 실행")
+          assert.equal(
+            await run(
+              `document.querySelector('[role=combobox]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true}))`
+            ),
+            false,
+            "IME Enter is prevented"
+          )
+          for (const [query, message] of [
+            ["VS Code 실행", "VS Code 열기 요청"],
+            ["VS Code 실행해줘", "VS Code 열기 요청"],
+            ["할일 보고서 완료", "보고서 작성 완료"],
+            ["보고서 완료해줘", "보고서 작성 완료"],
+            ["메모 팀 회의 검색", "메모를 열었습니다"],
+            ["일정 팀 회의", "일정을 열었습니다"],
+            ["설정", "설정을 열었습니다"],
+          ]) {
+            if (
+              !(await run(
+                `!!document.querySelector('[role=dialog][data-open]')`
+              ))
+            ) {
+              await run(
+                `document.querySelector('#storybook-root button').click()`
+              )
+              await delay(70)
+            }
+            await fill(query)
+            win.webContents.sendInputEvent({
+              type: "keyDown",
+              keyCode: "Down",
+            })
+            win.webContents.sendInputEvent({
+              type: "keyUp",
+              keyCode: "Down",
+            })
+            await delay(30)
+            assert.ok(
+              await run(
+                `!!document.getElementById(document.querySelector('[role=combobox]').getAttribute('aria-activedescendant')) && !document.querySelector('[role=listbox]').innerText.includes('AI에게 요청')`
+              ),
+              `${query}: keyboard selection references a local result`
+            )
+            win.webContents.sendInputEvent({
+              type: "keyDown",
+              keyCode: "Up",
+            })
+            win.webContents.sendInputEvent({
+              type: "keyUp",
+              keyCode: "Up",
+            })
+            await delay(30)
+            win.webContents.sendInputEvent({
+              type: "keyDown",
+              keyCode: "Enter",
+            })
+            win.webContents.sendInputEvent({ type: "char", keyCode: "\r" })
+            win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Enter" })
+            await delay(100)
+            assert.ok(
+              await run(
+                `document.body.innerText.includes(${JSON.stringify(message)})`
+              ),
+              query
+            )
+            assert.equal(
+              await run(
+                `!!document.querySelector('[aria-label="AI 작업 상태"]')`
+              ),
+              false,
+              "local actions never call AI"
+            )
+          }
+          console.log("PASS launcher search, keyboard, IME and local routing")
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/ai-quick-command.stories.tsx")
         ) {
           await win.webContents.executeJavaScript(
             `document.querySelector('[aria-label="AI에게 요청할 내용"]').focus()`
@@ -1800,6 +2020,9 @@ app.whenReady().then(async () => {
           await delay(100)
           const expected = {
             Open: "완료",
+            Empty: "완료",
+            Loading: "완료",
+            "Unavailable Source": "완료",
             "Needs Connection": "AI 연결 필요",
             Clarification: "추가 설명 필요",
             Failure: "처리 실패",

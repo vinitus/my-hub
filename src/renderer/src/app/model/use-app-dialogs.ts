@@ -4,6 +4,7 @@ import { hasOpenDialog } from "@/shared/lib/has-open-dialog"
 
 export function useAppDialogs() {
   const [commandOpen, setCommandOpen] = useState(false)
+  const [aiCommandOpen, setAICommandOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [codexSetup, setCodexSetup] = useState<"intro" | "login" | null>(() => {
     if (!window.api?.codex) return null
@@ -53,10 +54,13 @@ export function useAppDialogs() {
   return {
     commandOpen,
     setCommandOpen,
+    aiCommandOpen,
+    setAICommandOpen,
     settingsOpen,
     setSettingsOpen,
     codexSetup,
     setCodexSetup,
-    codexPromptOpen: codexSetup !== null && !settingsOpen && !commandOpen,
+    codexPromptOpen:
+      codexSetup !== null && !settingsOpen && !commandOpen && !aiCommandOpen,
   }
 }

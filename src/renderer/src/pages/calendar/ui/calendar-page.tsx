@@ -43,20 +43,36 @@ const views = [
   { id: "timeGridWeek", label: "주" },
   { id: "timeGridDay", label: "일" },
   { id: "listWeek", label: "목록" },
+  { id: "listDay", label: "일간 목록" },
 ]
 type Editor = { event: CalendarEvent; existing: boolean; revision: string }
 
 export default function CalendarWorkspace({
   store,
   createRequest = 0,
+  focusRequest = null,
 }: {
   store: CalendarStore
   createRequest?: number
+  focusRequest?: { id: number; date: string } | null
 }) {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [editor, setEditor] = useState<Editor | null>(null)
   const handledCreateRequest = useRef(0)
+  const handledFocusRequest = useRef(focusRequest?.id ?? 0)
   const controller = useCalendarController()
+  const calendarReady = Boolean(controller.view)
+  useEffect(() => {
+    if (
+      !focusRequest ||
+      focusRequest.id <= handledFocusRequest.current ||
+      !calendarReady
+    )
+      return
+    handledFocusRequest.current = focusRequest.id
+    controller.gotoDate(focusRequest.date)
+    controller.changeView("listDay")
+  }, [focusRequest, controller, calendarReady])
   const disabled = state.busy || state.loading || !state.snapshot
   const events = useMemo(
     () =>
@@ -200,7 +216,8 @@ export default function CalendarWorkspace({
           <EventCalendarViews
             controller={controller}
             plugins={plugins}
-            initialView="dayGridMonth"
+            initialView={focusRequest ? "listDay" : "dayGridMonth"}
+            initialDate={focusRequest?.date}
             height="100%"
             headerToolbar={false}
             locale={koLocale}

@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react"
-import { CheckIcon, XIcon } from "lucide-react"
+import { toast } from "sonner"
 import { EventSheet } from "@/features/calendar"
 import { ShortcutSheet } from "@/features/shortcuts"
 import { TodoForm } from "@/features/todos"
@@ -31,46 +30,7 @@ type Props = {
   onChooseFile?: () => Promise<string | null | undefined>
 }
 
-export function HomeCreateDialog(props: Props) {
-  const [notice, setNotice] = useState(0)
-  useEffect(() => {
-    if (!notice) return
-    const timer = window.setTimeout(() => setNotice(0), 4000)
-    return () => window.clearTimeout(timer)
-  }, [notice])
-  return (
-    <>
-      <HomeCreateContent
-        {...props}
-        onSaveTodo={async (todo) => {
-          const saved = await props.onSaveTodo(todo)
-          if (saved) setNotice((current) => current + 1)
-          return saved
-        }}
-      />
-      {notice > 0 && (
-        <aside
-          role="status"
-          aria-label="할일 등록 결과"
-          className="fixed bottom-4 left-1/2 z-40 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border bg-popover p-3 text-sm text-popover-foreground shadow-lg"
-        >
-          <CheckIcon aria-hidden className="size-4 shrink-0" />
-          <span>할일을 등록했습니다.</span>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label="할일 등록 안내 닫기"
-            onClick={() => setNotice(0)}
-          >
-            <XIcon />
-          </Button>
-        </aside>
-      )}
-    </>
-  )
-}
-
-function HomeCreateContent({
+export function HomeCreateDialog({
   session,
   busy,
   error,
@@ -147,7 +107,16 @@ function HomeCreateContent({
             dialog
             item={session.kind === "todo" ? (session.todo ?? null) : null}
             busy={busy}
-            onSave={onSaveTodo}
+            onSave={async (todo) => {
+              const saved = await onSaveTodo(todo)
+              if (saved)
+                toast.success("할일을 등록했습니다.", {
+                  id: "home-capture-result",
+                  toasterId: "home-actions",
+                  testId: "todo-add-result",
+                })
+              return saved
+            }}
             onCancel={onClose}
           />
         ) : error ? (

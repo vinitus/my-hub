@@ -1,7 +1,8 @@
 import { useRef, useState } from "react"
-import { CheckIcon, InboxIcon, XIcon } from "lucide-react"
+import { InboxIcon, XIcon } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { Input } from "@/shared/ui/input"
+import { toast } from "sonner"
 import { Popover } from "@base-ui/react/popover"
 
 export function InboxQuickAddPopover({
@@ -18,7 +19,6 @@ export function InboxQuickAddPopover({
   const [content, setContent] = useState("")
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
-  const [notice, setNotice] = useState<number | null>(null)
   async function save() {
     const value = content.trim()
     if (!value || submitting.current) return
@@ -29,7 +29,11 @@ export function InboxQuickAddPopover({
       await onSave(value)
       setContent("")
       onOpenChange(false)
-      setNotice((current) => (current ?? 0) + 1)
+      toast.success("인박스에 추가했습니다.", {
+        id: "home-capture-result",
+        toasterId: "home-actions",
+        testId: "inbox-add-result",
+      })
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -144,25 +148,6 @@ export function InboxQuickAddPopover({
           </Popover.Positioner>
         </Popover.Portal>
       </Popover.Root>
-      {notice !== null && (
-        <aside
-          key={notice}
-          role="status"
-          aria-label="인박스 추가 결과"
-          className="fixed bottom-4 left-1/2 z-40 flex max-w-[calc(100%-2rem)] -translate-x-1/2 items-center gap-3 rounded-lg border bg-popover p-3 text-sm text-popover-foreground shadow-lg"
-        >
-          <CheckIcon aria-hidden className="size-4 shrink-0" />
-          <span>인박스에 추가했습니다.</span>
-          <Button
-            variant="ghost"
-            size="icon-xs"
-            aria-label="인박스 추가 안내 닫기"
-            onClick={() => setNotice(null)}
-          >
-            <XIcon />
-          </Button>
-        </aside>
-      )}
     </>
   )
 }

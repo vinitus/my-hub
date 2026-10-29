@@ -1,3 +1,4 @@
+import { Toaster } from "@/shared/ui/sonner"
 import { useState, useSyncExternalStore } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { HomePage } from "@/pages/home"
@@ -110,6 +111,20 @@ const meta = {
   title: "앱/홈 인박스 빠른 추가",
   component: HomeQuickAdd,
   parameters: { layout: "fullscreen" },
+  decorators: [
+    (Story, context) => (
+      <>
+        <Story />
+        <Toaster
+          id="home-actions"
+          hotkey={[]}
+          theme={context.globals.theme === "dark" ? "dark" : "light"}
+          position="bottom-center"
+          closeButton
+        />
+      </>
+    ),
+  ],
 } satisfies Meta<typeof HomeQuickAdd>
 export default meta
 type Story = StoryObj<typeof meta>

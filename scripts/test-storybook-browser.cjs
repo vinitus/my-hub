@@ -1196,7 +1196,7 @@ app.whenReady().then(async () => {
             if (count === "todos" && !failed) {
               assert.equal(
                 await win.webContents.executeJavaScript(
-                  `document.querySelector('[aria-label="할일 등록 결과"]').textContent.includes('할일을 등록했습니다')`
+                  `document.querySelector('[data-testid="todo-add-result"]').textContent.includes('할일을 등록했습니다')`
                 ),
                 true
               )
@@ -1230,6 +1230,108 @@ app.whenReady().then(async () => {
           console.log(
             `PASS home registration dialogs ${failed ? "failure recovery" : "save and shared stores"}, scratchpad preserved`
           )
+        }
+        if (
+          story.importPath.endsWith("/home-create-dialog.stories.tsx") &&
+          story.name === "Combined Actions"
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const click = async (label) => {
+            const { x, y } = await run(
+              `(()=>{const r=[...document.querySelectorAll('button')].find(b=>b.textContent.trim()===${JSON.stringify(label)}).getBoundingClientRect();return {x:Math.round(r.x+r.width/2),y:Math.round(r.y+r.height/2)}})()`
+            )
+            win.webContents.sendInputEvent({
+              type: "mouseDown",
+              x,
+              y,
+              button: "left",
+              clickCount: 1,
+            })
+            win.webContents.sendInputEvent({
+              type: "mouseUp",
+              x,
+              y,
+              button: "left",
+              clickCount: 1,
+            })
+            await delay(80)
+          }
+          await run(`document.querySelector('textarea').focus()`)
+          win.webContents.insertText("공통 홈의 낙서")
+          await delay(20)
+          await click("인박스 추가")
+          win.webContents.insertText("보존할 인박스 초안")
+          await delay(20)
+          await click("할일 추가")
+          assert.equal(
+            await run(
+              `document.querySelector('[role="dialog"] h2')?.textContent ?? document.querySelector('[data-slot="dialog-title"]')?.textContent`
+            ),
+            "할일 등록"
+          )
+          await click("취소")
+          await click("인박스 추가")
+          assert.equal(
+            await run(`document.querySelector('[role="dialog"] input').value`),
+            "보존할 인박스 초안"
+          )
+          await click("저장")
+          await click("할일 추가")
+          win.webContents.insertText("확정한 독립 할일")
+          await delay(20)
+          await click("추가")
+          await delay(150)
+          assert.equal(
+            await run(
+              `JSON.parse(document.querySelector('[data-testid="combined-captures"]').textContent).length`
+            ),
+            1
+          )
+          const todos = await run(
+            `JSON.parse(document.querySelector('[data-testid="saved-todos"]').textContent)`
+          )
+          assert.equal(todos.length, 1)
+          assert.equal(todos[0].dueDate, undefined)
+          assert.equal(todos[0].completed, false)
+          assert.equal(
+            await run(`document.querySelector('textarea').value`),
+            "공통 홈의 낙서"
+          )
+          assert.equal(
+            await run(
+              `(()=>{const a=document.querySelector('[data-testid="inbox-add-result"]')?.getBoundingClientRect();const b=document.querySelector('[data-testid="todo-add-result"]')?.getBoundingClientRect();return !!a&&!!b&&a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top})()`
+            ),
+            false,
+            "success notices must not overlap"
+          )
+          assert.equal(
+            await run(
+              `document.querySelectorAll('[data-sonner-toast]').length`
+            ),
+            1
+          )
+          assert.equal(
+            await run(
+              `!!document.querySelector('[data-testid="todo-add-result"]')`
+            ),
+            true
+          )
+          await click("할일 추가")
+          assert.equal(
+            await run(
+              `document.querySelector('[role="dialog"] input[type="text"]').value`
+            ),
+            ""
+          )
+          await run(
+            `document.querySelector('[data-slot="dialog-close"]').click()`
+          )
+          await delay(80)
+          assert.equal(
+            await run(`!!document.querySelector('[role="dialog"][data-open]')`),
+            false
+          )
+          console.log("PASS combined home capture and todo flows")
         }
         if (
           story.importPath.endsWith("/settings-sheet.stories.tsx") &&
@@ -1516,6 +1618,12 @@ app.whenReady().then(async () => {
             ),
             1
           )
+          const output = path.resolve("out/tests/storybook")
+          fs.mkdirSync(output, { recursive: true })
+          fs.writeFileSync(
+            path.join(output, `inbox-popover-${theme}-${width}.png`),
+            (await win.capturePage()).toPNG()
+          )
           assert.equal(
             await run(
               `!!document.querySelector('[data-slot="dialog-overlay"]')`
@@ -1653,7 +1761,7 @@ app.whenReady().then(async () => {
             )
             assert.ok(
               await run(
-                `document.querySelector('[aria-label="인박스 추가 결과"]').textContent.includes('인박스에 추가했습니다')`
+                `document.querySelector('[data-testid="inbox-add-result"]').textContent.includes('인박스에 추가했습니다')`
               )
             )
             const saved = (await items())[0]

@@ -1,3 +1,4 @@
+import { Toaster } from "@/shared/ui/sonner"
 import { TodoStore } from "@/features/todos"
 import { AppSidebar } from "@/widgets/app-sidebar"
 import { SiteHeader } from "@/widgets/site-header"
@@ -307,6 +308,14 @@ export function App() {
       }
       overlays={
         <>
+          {/* Both home capture flows replace the same brief success notice. */}
+          <Toaster
+            id="home-actions"
+            hotkey={[]}
+            theme={settings.theme}
+            position="bottom-center"
+            closeButton
+          />
           <QuickCommand
             open={commandOpen}
             onOpenChange={setCommandOpen}

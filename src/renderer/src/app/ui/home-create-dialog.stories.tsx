@@ -1,7 +1,9 @@
+import { Toaster } from "@/shared/ui/sonner"
 import { useState, useSyncExternalStore } from "react"
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { CalendarStore } from "@/entities/calendar-event"
 import { TodoStore } from "@/features/todos"
+import { InboxQuickAddPopover } from "@/features/inbox"
 import { ShortcutStore } from "@/features/shortcuts"
 import { HomePage } from "@/pages/home"
 import type {
@@ -10,6 +12,7 @@ import type {
 } from "../../../../shared/calendar"
 import type { TodoSnapshot } from "../../../../shared/todos"
 import type { ShortcutSnapshot } from "../../../../shared/shortcuts"
+import type { InboxItem } from "../../../../shared/inbox"
 import { useHomeCreate } from "../model/use-home-create"
 import { HomeCreateDialog } from "./home-create-dialog"
 
@@ -30,6 +33,20 @@ const meta = {
   title: "앱/홈 등록 모달",
   component: HomeCreateDialog,
   parameters: { layout: "fullscreen" },
+  decorators: [
+    (Story, context) => (
+      <>
+        <Story />
+        <Toaster
+          id="home-actions"
+          hotkey={[]}
+          theme={context.globals.theme === "dark" ? "dark" : "light"}
+          position="bottom-center"
+          closeButton
+        />
+      </>
+    ),
+  ],
   args: {
     session: { kind: "todo", revision: "fixture-0" },
     busy: false,
@@ -94,6 +111,8 @@ export const DatedCompleted: Story = {
 
 // 실제 controller·store를 로컬 메모리 API로 연결한다. 파일·계정·Electron 브리지는 사용하지 않는다.
 function HomeRegistration({ failSave = false }: { failSave?: boolean }) {
+  const [inboxOpen, setInboxOpen] = useState(false)
+  const [captures, setCaptures] = useState<InboxItem[]>([])
   const [stores] = useState(() => {
     let todos: TodoSnapshot = {
       items: [],
@@ -198,6 +217,27 @@ function HomeRegistration({ failSave = false }: { failSave?: boolean }) {
         onCreateTodo={() => creation.open("todo")}
         onCreateEvent={() => creation.open("event")}
         onCreateShortcut={() => creation.open("shortcut")}
+        inboxAction={
+          <InboxQuickAddPopover
+            open={inboxOpen}
+            onOpenChange={setInboxOpen}
+            onSave={async (content) => {
+              setCaptures((items) => [
+                ...items,
+                {
+                  id: event.id,
+                  kind: "text",
+                  content,
+                  source: "홈 빠른 추가",
+                  createdAt: "2026-10-30T01:00:00.000Z",
+                  processedAt: null,
+                  destination: null,
+                },
+              ])
+            }}
+          />
+        }
+        recentInboxItems={captures}
       />
       <output data-testid="saved-counts" className="sr-only">
         {JSON.stringify({
@@ -208,6 +248,9 @@ function HomeRegistration({ failSave = false }: { failSave?: boolean }) {
       </output>
       <output data-testid="saved-todos" className="sr-only">
         {JSON.stringify(todos.snapshot?.items ?? [])}
+      </output>
+      <output data-testid="combined-captures" className="sr-only">
+        {JSON.stringify(captures)}
       </output>
       <HomeCreateDialog
         {...creation}
@@ -220,3 +263,4 @@ export const HomeActions: Story = { render: () => <HomeRegistration /> }
 export const HomeSaveFailure: Story = {
   render: () => <HomeRegistration failSave />,
 }
+export const CombinedActions: Story = { render: () => <HomeRegistration /> }

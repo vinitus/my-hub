@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from "react"
 import { LinkIcon } from "lucide-react"
-import type { ShortcutStore } from "@/features/shortcuts"
+import { ShortcutIcon, type ShortcutStore } from "@/features/shortcuts"
 import type { QuickAction } from "@/shared/ui/floating-quick-menu"
 import { QUICK_MENU_ACTIONS } from "../config/quick-menu"
 import {
@@ -29,14 +29,18 @@ export function useConfiguredQuickMenu({
     if (needsShortcuts) void store.initialize()
   }, [needsShortcuts, store])
   const shortcuts = state.snapshot?.items ?? []
-  const options: { item: QuickMenuItem; label: string }[] = [
+  const options = [
     ...QUICK_MENU_ACTIONS.map((action) => ({
       item: { kind: "action" as const, action: action.id },
       label: action.label,
+      icon: <action.icon />,
     })),
     ...shortcuts.map((shortcut) => ({
       item: { kind: "shortcut" as const, id: shortcut.id },
       label: shortcut.name,
+      icon: (
+        <ShortcutIcon item={shortcut} revision={state.snapshot!.revision} />
+      ),
     })),
   ]
   const actions: QuickAction[] = items.map((item) => {
@@ -56,7 +60,12 @@ export function useConfiguredQuickMenu({
     return {
       id: quickMenuItemKey(item),
       label: shortcut?.name ?? "없는 바로가기",
-      icon: <LinkIcon />,
+      icon:
+        shortcut && state.snapshot ? (
+          <ShortcutIcon item={shortcut} revision={state.snapshot.revision} />
+        ) : (
+          <LinkIcon />
+        ),
       disabled: !shortcut || state.busy || state.loading,
       onSelect: () => {
         if (shortcut) void store.launch(shortcut)

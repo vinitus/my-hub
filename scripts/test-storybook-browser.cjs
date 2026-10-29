@@ -1003,17 +1003,33 @@ app.whenReady().then(async () => {
           )
         }
         if (
+          story.importPath.endsWith("/settings-sheet.stories.tsx") &&
+          story.name === "Registered Shortcuts"
+        ) {
+          assert.deepEqual(
+            await win.webContents.executeJavaScript(`(() => {
+            const image=document.querySelector('[data-slot=sheet-content] ol img');
+            const frame=getComputedStyle(image.parentElement);
+            const style=getComputedStyle(image);
+            return [frame.width,parseFloat(frame.borderRadius)>=parseFloat(frame.width)/2,frame.overflow,style.objectFit];
+          })()`),
+            ["20px", true, "hidden", "cover"]
+          )
+        }
+        if (
           theme === "light" &&
           story.importPath.endsWith("/settings-sheet.stories.tsx") &&
           story.name === "Motion Preference"
         ) {
           for (const action of ["home", "notes", "calendar"]) {
-            await win.webContents.executeJavaScript(`(() => {
-              const select=document.querySelector('select[aria-label="메뉴 항목 추가"]');
-              select.value=${JSON.stringify(`action:${action}`)};
-              select.dispatchEvent(new Event('change',{bubbles:true}));
-            })()`)
-            await delay(30)
+            await win.webContents.executeJavaScript(
+              `document.querySelector('button[aria-label="메뉴 항목 추가"]').click()`
+            )
+            await delay(120)
+            await win.webContents.executeJavaScript(
+              `document.querySelector('[data-menu-item-key="action:${action}"]').click()`
+            )
+            await delay(120)
           }
           assert.equal(
             await win.webContents.executeJavaScript(
@@ -1023,7 +1039,7 @@ app.whenReady().then(async () => {
           )
           assert.equal(
             await win.webContents.executeJavaScript(
-              `document.querySelector('select[aria-label="메뉴 항목 추가"]').disabled`
+              `document.querySelector('button[aria-label="메뉴 항목 추가"]').disabled`
             ),
             true
           )
@@ -1037,12 +1053,26 @@ app.whenReady().then(async () => {
             ),
             7
           )
-          await win.webContents.executeJavaScript(`(() => {
-            const select=document.querySelector('select[aria-label="메뉴 항목 추가"]');
-            select.value='shortcut:11111111-1111-4111-8111-111111111111';
-            select.dispatchEvent(new Event('change',{bubbles:true}));
-          })()`)
-          await delay(30)
+          await win.webContents.executeJavaScript(
+            `document.querySelector('button[aria-label="메뉴 항목 추가"]').click()`
+          )
+          await delay(120)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `!!document.querySelector('[data-menu-item-key="shortcut:11111111-1111-4111-8111-111111111111"] svg')`
+            ),
+            true
+          )
+          await win.webContents.executeJavaScript(
+            `document.querySelector('[data-menu-item-key="shortcut:11111111-1111-4111-8111-111111111111"]').click()`
+          )
+          await delay(120)
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `!!document.querySelector('[data-slot=sheet-content] ol li:last-child svg.lucide-folder')`
+            ),
+            true
+          )
           assert.equal(
             await win.webContents.executeJavaScript(
               `document.querySelectorAll('[data-slot=sheet-content] ol li').length`

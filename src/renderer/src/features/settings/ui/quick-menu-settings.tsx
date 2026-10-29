@@ -1,12 +1,24 @@
-import { useId } from "react"
-import { XIcon } from "lucide-react"
+import { useId, type ReactNode } from "react"
+import { ChevronDownIcon, XIcon } from "lucide-react"
 import { Button } from "@/shared/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu"
 import {
   quickMenuItemKey,
   type QuickMenuItem,
 } from "../../../../../shared/app-settings"
 
-export type QuickMenuOption = { item: QuickMenuItem; label: string }
+export type QuickMenuOption = {
+  item: QuickMenuItem
+  label: string
+  icon?: ReactNode
+}
 export function QuickMenuSettings({
   items,
   options,
@@ -33,15 +45,22 @@ export function QuickMenuSettings({
       <ol className="space-y-2">
         {items.map((item, index) => {
           const key = quickMenuItemKey(item)
-          const label =
-            options.find((option) => quickMenuItemKey(option.item) === key)
-              ?.label ?? "없는 바로가기"
+          const option = options.find(
+            (option) => quickMenuItemKey(option.item) === key
+          )
+          const label = option?.label ?? "없는 바로가기"
           return (
             <li
               key={key}
               className="flex items-center gap-2 rounded-md border px-3 py-1 text-sm"
             >
               <span className="text-xs text-muted-foreground">{index + 1}</span>
+              <span
+                aria-hidden="true"
+                className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted [&_img]:size-full [&_img]:object-cover [&_svg]:size-4"
+              >
+                {option?.icon}
+              </span>
               <span className="min-w-0 flex-1 truncate">{label}</span>
               <Button
                 variant="ghost"
@@ -64,39 +83,62 @@ export function QuickMenuSettings({
           메뉴에 표시할 항목을 추가하세요.
         </p>
       )}
-      <select
-        aria-label="메뉴 항목 추가"
-        className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
-        value=""
-        disabled={items.length >= 8}
-        onChange={(event) => {
-          const option = options.find(
-            (option) => quickMenuItemKey(option.item) === event.target.value
-          )
-          if (
-            option &&
-            items.length < 8 &&
-            !selected.has(quickMenuItemKey(option.item))
-          )
-            onChange([...items, option.item])
-        }}
-      >
-        <option value="">
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button variant="outline" className="w-full justify-between" />
+          }
+          aria-label="메뉴 항목 추가"
+          disabled={items.length >= 8}
+        >
           {items.length >= 8
             ? "최대 8개까지 추가할 수 있습니다."
             : "항목 추가…"}
-        </option>
-        {options
-          .filter((option) => !selected.has(quickMenuItemKey(option.item)))
-          .map((option) => (
-            <option
-              key={quickMenuItemKey(option.item)}
-              value={quickMenuItemKey(option.item)}
-            >
-              {option.label}
-            </option>
+          <ChevronDownIcon />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          {(["action", "shortcut"] as const).map((kind) => (
+            <DropdownMenuGroup key={kind}>
+              <DropdownMenuLabel>
+                {kind === "action" ? "앱 기능" : "등록된 바로가기"}
+              </DropdownMenuLabel>
+              {options
+                .filter(
+                  (option) =>
+                    option.item.kind === kind &&
+                    !selected.has(quickMenuItemKey(option.item))
+                )
+                .map((option) => (
+                  <DropdownMenuItem
+                    key={quickMenuItemKey(option.item)}
+                    data-menu-item-key={quickMenuItemKey(option.item)}
+                    onClick={() => {
+                      if (
+                        items.length < 8 &&
+                        !selected.has(quickMenuItemKey(option.item))
+                      )
+                        onChange([...items, option.item])
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted [&_img]:size-full [&_img]:object-cover [&_svg]:size-4"
+                    >
+                      {option.icon}
+                    </span>
+                    <span className="truncate">{option.label}</span>
+                  </DropdownMenuItem>
+                ))}
+              {kind === "shortcut" &&
+                !options.some((option) => option.item.kind === "shortcut") && (
+                  <p className="px-2 py-1.5 text-xs text-muted-foreground">
+                    바로가기 탭에서 먼저 등록하세요.
+                  </p>
+                )}
+            </DropdownMenuGroup>
           ))}
-      </select>
+        </DropdownMenuContent>
+      </DropdownMenu>
       <p className="text-xs text-muted-foreground">
         앱 기능과 등록된 프로그램·폴더·웹사이트 바로가기를 추가할 수 있습니다.
       </p>

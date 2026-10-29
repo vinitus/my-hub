@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite"
 import { useState, type ComponentProps } from "react"
+import { FolderIcon } from "lucide-react"
 import { ThemeProvider } from "@/shared/lib/theme-provider"
 import { SettingsSheet } from "./settings-sheet"
 import { DEFAULT_APP_SETTINGS } from "../../../../../shared/app-settings"
@@ -42,6 +43,18 @@ const meta = {
       {
         item: { kind: "shortcut", id: "11111111-1111-4111-8111-111111111111" },
         label: "작업 폴더",
+        icon: <FolderIcon />,
+      },
+      {
+        item: { kind: "shortcut", id: "22222222-2222-4222-8222-222222222222" },
+        label: "프로젝트 사이트",
+        icon: (
+          <img
+            alt=""
+            draggable={false}
+            src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Cpath fill='%232563eb' d='M0 0h64v64H0z'/%3E%3Ccircle cx='32' cy='32' r='16' fill='white'/%3E%3C/svg%3E"
+          />
+        ),
       },
     ],
     connectionPanel: <p>연결 상태별 UI는 설정/Codex 연결에서 확인합니다.</p>,
@@ -69,5 +82,14 @@ function MotionPreferencePreview(args: ComponentProps<typeof SettingsSheet>) {
   )
 }
 export const MotionPreference: Story = {
+  render: (args) => <MotionPreferencePreview {...args} />,
+}
+export const RegisteredShortcuts: Story = {
+  args: {
+    shortcutMenuItems: [
+      { kind: "shortcut", id: "11111111-1111-4111-8111-111111111111" },
+      { kind: "shortcut", id: "22222222-2222-4222-8222-222222222222" },
+    ],
+  },
   render: (args) => <MotionPreferencePreview {...args} />,
 }

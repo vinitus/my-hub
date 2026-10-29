@@ -7,9 +7,9 @@ type Props = Pick<
   | "onCreateEvent"
   | "onCreateShortcut"
   | "onCreateInbox"
-  | "recentNotes"
-  | "notesBusy"
-  | "onOpenNote"
+  | "recentInboxItems"
+  | "inboxBusy"
+  | "onOpenInbox"
 > & {
   active: boolean
   onSave: SaveScratchpad

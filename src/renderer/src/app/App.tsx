@@ -58,6 +58,10 @@ export function App() {
   const [calculatorOpen, setCalculatorOpen] = useState(false)
   const [inboxDialogOpen, setInboxDialogOpen] = useState(false)
   const [inboxQuickAddOpen, setInboxQuickAddOpen] = useState(false)
+  const [inboxFocus, setInboxFocus] = useState<{
+    id: number
+    itemId: string
+  } | null>(null)
   const [calendarFocus, setCalendarFocus] = useState<{
     id: number
     date: string
@@ -390,7 +394,7 @@ export function App() {
                 </p>
               }
             >
-              <InboxWorkspace {...inbox.viewProps} />
+              <InboxWorkspace {...inbox.viewProps} focusRequest={inboxFocus} />
             </Suspense>
           </div>
         )}
@@ -406,11 +410,14 @@ export function App() {
             onCreateEvent={() => creation.open("event")}
             onCreateShortcut={() => creation.open("shortcut")}
             onCreateInbox={() => setInboxQuickAddOpen(true)}
-            recentNotes={memo.library?.notes}
-            notesBusy={memo.busy}
-            onOpenNote={(name) => {
-              navigate("notes")
-              void memo.openNote(name)
+            recentInboxItems={inbox.viewProps.items}
+            inboxBusy={inbox.viewProps.busy}
+            onOpenInbox={(itemId) => {
+              navigate("inbox")
+              setInboxFocus((current) => ({
+                id: (current?.id ?? 0) + 1,
+                itemId,
+              }))
             }}
           />
         </div>

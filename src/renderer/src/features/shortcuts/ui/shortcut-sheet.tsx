@@ -100,9 +100,7 @@ export function ShortcutSheet({
       >
         <Header className={presentation === "dialog" ? "p-4 pr-14" : undefined}>
           <Title>{existing ? "바로가기 수정" : "바로가기 추가"}</Title>
-          <Description>
-            자주 사용하는 프로그램, 폴더, 파일, 웹사이트를 등록하세요.
-          </Description>
+          <Description>자주 사용하는 대상을 등록하세요.</Description>
         </Header>
         <form
           className="flex min-h-0 flex-1 flex-col"

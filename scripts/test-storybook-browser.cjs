@@ -908,8 +908,20 @@ app.whenReady().then(async () => {
               "shortcuts",
             ],
           ]) {
+            if (count !== "todos") {
+              await win.webContents.executeJavaScript(
+                `document.querySelector('[aria-label="빠른 작업 더 보기"]').click()`
+              )
+              await delay(60)
+              assert.ok(
+                await win.webContents.executeJavaScript(
+                  `(() => { const item=[...document.querySelectorAll('[role="menuitem"]')].find(n=>n.textContent.trim()===${JSON.stringify(label)}); return getComputedStyle(item).whiteSpace==='nowrap' && item.getBoundingClientRect().height<=40 })()`
+                ),
+                "registration menu labels remain on one line"
+              )
+            }
             await win.webContents.executeJavaScript(
-              `Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === ${JSON.stringify(label)}).click()`
+              `Array.from(document.querySelectorAll('button,[role="menuitem"]')).find(b => b.textContent.trim() === ${JSON.stringify(label)}).click()`
             )
             await delay(150)
             assert.equal(
@@ -1121,54 +1133,72 @@ app.whenReady().then(async () => {
             await run(
               `document.querySelectorAll('[aria-label="빠른 작업"] button').length`
             ),
-            4
+            3
           )
           assert.equal(
             await run(`document.querySelector('details').open`),
             false,
             "calculator starts collapsed"
           )
-          if (story.name === "Recent Notes") {
+          assert.ok(
+            await run(
+              `[...document.querySelectorAll('[aria-label="빠른 작업"] button')].every(b=>b.getBoundingClientRect().height>=44)`
+            ),
+            "quick actions retain their click target height"
+          )
+          if (["Recent Inbox", "Narrow Workspace"].includes(story.name)) {
             const names = await run(
-              `[...document.querySelectorAll('[aria-label="이어서 작업하기"] li p')].map(p=>p.textContent)`
+              `[...document.querySelectorAll('[aria-label="최근 인박스"] li p')].map(p=>p.textContent)`
             )
             assert.equal(names.length, 3)
             assert.ok(names[0].startsWith("아주 긴 이름"))
             assert.equal(names[1], "다음 주 계획")
             assert.equal(
-              names.includes("오래된 즐겨찾기"),
+              names.includes("오래된 수집 항목"),
               false,
-              "mtime determines recent work independently of favorites"
+              "recent inbox is ordered by capture time"
             )
             await run(
-              `document.querySelector('[aria-label="이어서 작업하기"] button').click()`
+              `document.querySelector('[aria-label="최근 인박스"] button').click()`
             )
             await delay(30)
             assert.ok(
               await run(
-                `document.querySelector('[data-testid="recent-note-opened"]').textContent.startsWith('아주 긴 이름')`
+                `document.querySelector('[data-testid="recent-inbox-opened"]').textContent==='33333333-3333-4333-8333-333333333333'`
               )
             )
             const output = path.resolve("out/tests/storybook")
             fs.mkdirSync(output, { recursive: true })
             fs.writeFileSync(
-              path.join(output, `home-recent-${theme}-${width}.png`),
+              path.join(
+                output,
+                `home-recent-${story.name === "Narrow Workspace" ? "narrow-" : ""}${theme}-${width}.png`
+              ),
               (await win.capturePage()).toPNG()
             )
-            const bounds = await run(
-              `(() => { const a=document.querySelector('[aria-label="이어서 작업하기"]').getBoundingClientRect(); const b=document.querySelector('[aria-label="빠른 작업"]').getBoundingClientRect(); return { sameRow: Math.abs(a.top-b.top)<2, width: document.querySelector('[aria-label="홈"]').clientWidth } })()`
-            )
-            assert.equal(
-              bounds.sameRow,
-              bounds.width >= 640,
-              "home cards adapt to the workspace width"
-            )
-            assert.equal(
+            assert.ok(
               await run(
-                `getComputedStyle(document.querySelector('textarea')).resize`
-              ),
-              "vertical"
+                `document.querySelector('[aria-label="빠른 작업"]').getBoundingClientRect().bottom <= document.querySelector('[aria-label="최근 인박스"]').getBoundingClientRect().top`
+              )
             )
+            const initialHeight = await run(
+              `document.querySelector('[aria-label="낙서장"]').getBoundingClientRect().height`
+            )
+            await run(
+              `document.querySelector('[aria-label="낙서장 높이 조절"]').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowUp',bubbles:true,cancelable:true}))`
+            )
+            await delay(40)
+            assert.ok(
+              Math.abs(
+                (await run(
+                  `document.querySelector('[aria-label="낙서장"]').getBoundingClientRect().height`
+                )) - Math.max(256, initialHeight - 32)
+              ) < 2
+            )
+            await run(
+              `document.querySelector('[aria-label="낙서장 높이 조절"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Home',bubbles:true,cancelable:true}))`
+            )
+            await delay(40)
             const before = await run(`document.querySelector('textarea').value`)
             await run(
               `document.querySelector('[aria-label="낙서장 확대"]').click()`
@@ -1176,7 +1206,7 @@ app.whenReady().then(async () => {
             await delay(50)
             assert.equal(
               await run(
-                `document.querySelector('[aria-label="이어서 작업하기"]').checkVisibility()`
+                `document.querySelector('[aria-label="최근 인박스"]').checkVisibility()`
               ),
               false
             )
@@ -1190,19 +1220,41 @@ app.whenReady().then(async () => {
             await delay(50)
             assert.equal(
               await run(
-                `document.querySelector('[aria-label="이어서 작업하기"]').checkVisibility()`
+                `document.querySelector('[aria-label="최근 인박스"]').checkVisibility()`
               ),
               true
             )
             console.log(
-              "PASS recent notes order, reopen action, responsive cards and scratchpad expand/collapse"
+              "PASS recent inbox order, item navigation, scratchpad resize and expand/collapse"
             )
-          } else
+          } else {
+            assert.equal(
+              await run(
+                `!!document.querySelector('[aria-label="최근 인박스"]')`
+              ),
+              false,
+              "empty recent inbox leaves no card or space"
+            )
             assert.ok(
               await run(
-                `document.querySelector('[aria-label="이어서 작업하기"]').innerText.includes('최근 수정한 메모가 없습니다')`
-              )
+                `document.querySelector('textarea').getBoundingClientRect().height > document.querySelector('[aria-label="홈"]').clientHeight / 2`
+              ),
+              "scratchpad uses the available height"
             )
+            assert.ok(
+              await run(
+                `Math.abs(document.querySelector('[aria-label="홈"]').getBoundingClientRect().bottom-document.querySelector('details').getBoundingClientRect().bottom) < 24`
+              ),
+              "no large empty space beneath calculator"
+            )
+            const output = path.resolve("out/tests/storybook")
+            fs.mkdirSync(output, { recursive: true })
+            if (story.name === "Draft")
+              fs.writeFileSync(
+                path.join(output, `home-empty-${theme}-${width}.png`),
+                (await win.capturePage()).toPNG()
+              )
+          }
           assert.equal(
             await win.webContents.executeJavaScript(
               `document.querySelector('textarea').disabled`
@@ -1229,7 +1281,7 @@ app.whenReady().then(async () => {
           win.webContents.insertText("낙서장에 남겨 둔 생각")
           await delay(30)
           await run(
-            `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스에 추가').click()`
+            `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 추가').click()`
           )
           await delay(80)
           assert.equal(
@@ -1329,13 +1381,18 @@ app.whenReady().then(async () => {
           )
           if (story.name !== "Save Failure") {
             await run(
-              `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 화면 확인').click()`
+              `document.querySelector('[aria-label="최근 인박스"] button').click()`
             )
             await delay(50)
             assert.ok(
               await run(
                 `document.querySelector('ul[aria-label="수집한 항목"]').innerText.includes('https://example.com/saved-for-later')`
               )
+            )
+            assert.equal(
+              await run(`document.activeElement.tagName`),
+              "ARTICLE",
+              "recent inbox opens and focuses the saved item"
             )
           }
           console.log(`PASS home inbox quick add: ${story.name}`)
@@ -1419,7 +1476,7 @@ app.whenReady().then(async () => {
             await win.webContents.executeJavaScript(
               `document.querySelector('textarea').hasAttribute('placeholder')`
             ),
-            false
+            true
           )
           await win.webContents.executeJavaScript(
             `document.querySelector('input').focus(); window.dispatchEvent(new Event('focus'))`
@@ -1766,22 +1823,143 @@ app.whenReady().then(async () => {
         }
         if (
           story.importPath.endsWith("/status-panel.stories.tsx") &&
+          story.name === "Empty"
+        ) {
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `!!document.querySelector('[aria-label="최근 사용한 바로가기"]')`
+            ),
+            false
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `!!document.querySelector('[aria-label="예정된 실행"]')`
+            ),
+            false
+          )
+        }
+        if (
+          story.importPath.endsWith("/status-panel.stories.tsx") &&
+          ["Priority Summary", "Narrow Summary"].includes(story.name)
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const titles = await run(
+            `[...document.querySelectorAll('[aria-label="할일"] p[title]')].map(p=>p.title)`
+          )
+          assert.deepEqual(titles, [
+            "지난 기한 자료 제출",
+            "오늘 마감 확인",
+            "내일 마감인 긴 제목의 프로젝트 문서를 정리하고 검토 요청 보내기",
+          ])
+          assert.equal(
+            await run(
+              `document.querySelectorAll('[aria-label="할일"] input[type="checkbox"]').length`
+            ),
+            3
+          )
+          assert.ok(
+            await run(
+              `document.querySelector('[aria-label="할일"]').innerText.includes('외 2개')`
+            )
+          )
+          assert.ok(
+            await run(
+              `document.querySelector('[aria-label="할일"]').innerText.includes('기한 지남')`
+            )
+          )
+          assert.ok(
+            await run(
+              `document.querySelector('[aria-label="오늘의 일정"]').innerText.includes('10분 후')`
+            )
+          )
+          assert.ok(
+            await run(
+              `!document.querySelector('[aria-label="오늘의 일정"]').innerText.includes('30분 후')`
+            )
+          )
+          assert.ok(
+            await run(
+              `document.querySelector('[aria-label="오늘의 일정"]').innerText.includes('외 4개 보기')`
+            )
+          )
+          assert.equal(
+            await run(
+              `document.querySelectorAll('[aria-label="예정된 실행"] > ul > li > p[title]').length`
+            ),
+            2
+          )
+          assert.equal(
+            await run(
+              `document.querySelectorAll('[aria-label="최근 사용한 바로가기"] ul button[title]').length`
+            ),
+            3
+          )
+          const output = path.resolve("out/tests/storybook")
+          fs.mkdirSync(output, { recursive: true })
+          fs.writeFileSync(
+            path.join(
+              output,
+              `panel-summary-${story.name === "Narrow Summary" ? "narrow-" : ""}${theme}-${width}.png`
+            ),
+            (await win.capturePage()).toPNG()
+          )
+          await run(
+            `[...document.querySelectorAll('[aria-label="할일"] button')].find(b=>b.innerText.startsWith('외 ')).click()`
+          )
+          await delay(30)
+          assert.equal(
+            await run(
+              `document.querySelector('[data-testid="panel-navigation"]').textContent`
+            ),
+            "todos"
+          )
+          await run(
+            `[...document.querySelectorAll('[aria-label="오늘의 일정"] button')].find(b=>b.innerText.startsWith('외 ')).click()`
+          )
+          await delay(30)
+          assert.equal(
+            await run(
+              `document.querySelector('[data-testid="panel-navigation"]').textContent`
+            ),
+            "calendar"
+          )
+          await run(
+            `[...document.querySelectorAll('[aria-label="최근 사용한 바로가기"] button')].find(b=>b.innerText.startsWith('외 ')).click()`
+          )
+          await delay(30)
+          assert.equal(
+            await run(
+              `document.querySelector('[data-testid="panel-navigation"]').textContent`
+            ),
+            "shortcuts"
+          )
+          console.log(
+            "PASS concise panel summaries, deadline priority, hidden counts and full-list navigation"
+          )
+        }
+        if (
+          story.importPath.endsWith("/status-panel.stories.tsx") &&
           story.name === "Populated"
         ) {
           const panel = await win.webContents.executeJavaScript(`(() => {
             const today = document.querySelector('[aria-label="오늘의 일정"]').innerText;
             const executions = document.querySelector('[aria-label="예정된 실행"]').innerText;
-            return { today, executions, width: document.querySelector('aside').getBoundingClientRect().width, overflow: document.documentElement.scrollWidth > innerWidth };
+            const targets = [...document.querySelectorAll('[aria-label="예정된 실행"] button[title]')].map(b=>b.title).join(' | ');
+            return { today, executions, targets, width: document.querySelector('aside').getBoundingClientRect().width, overflow: document.documentElement.scrollWidth > innerWidth };
           })()`)
           assert.ok(panel.today.includes("기획 회의"))
           assert.ok(!panel.today.includes("진행 중이라 숨겨지는 일정"))
           assert.ok(!panel.today.includes("내일 일정"))
           assert.ok(panel.executions.includes("시작 시 자동 실행"))
           assert.ok(panel.executions.includes("알림 클릭 시 실행"))
-          assert.ok(panel.executions.includes("회의자료.pdf"))
+          assert.ok(panel.targets.includes("회의자료.pdf"))
           assert.ok(!panel.executions.includes("자동 실행 안 함"))
           assert.equal(panel.width, 280)
-          assert.equal(panel.overflow, false)
+          assert.equal(
+            panel.overflow,
+            false,
+            "status panel must stay within the viewport"
+          )
           await win.webContents.executeJavaScript(
             `document.querySelector('[aria-label="이번 주 일정 정리 완료"]').click()`
           )
@@ -2016,6 +2194,23 @@ app.whenReady().then(async () => {
             )
             console.log("PASS TODO create, complete, edit and delete")
           }
+        }
+        if (
+          story.importPath.endsWith("/inbox-view.stories.tsx") &&
+          story.name === "Focus Processed"
+        ) {
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `document.activeElement.getAttribute('aria-label')`
+            ),
+            "디자인 검토 자료 정리"
+          )
+          assert.equal(
+            await win.webContents.executeJavaScript(
+              `[...document.querySelectorAll('[aria-label="처리 상태 필터"] button')].find(b=>b.innerText==='전체').getAttribute('aria-pressed')`
+            ),
+            "true"
+          )
         }
         if (
           story.importPath.endsWith("/inbox-view.stories.tsx") &&

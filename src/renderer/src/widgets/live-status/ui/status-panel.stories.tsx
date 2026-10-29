@@ -30,8 +30,12 @@ function InteractivePanel(args: StatusPanelProps) {
   const [open, setOpen] = useState(args.open)
   const [launched, setLaunched] = useState("")
   const [completed, setCompleted] = useState("")
+  const [navigation, setNavigation] = useState("")
   return (
     <div className="relative flex h-[700px] w-full justify-end">
+      <output className="sr-only top-0 left-0" data-testid="panel-navigation">
+        {navigation}
+      </output>
       {launched && (
         <span role="status" className="absolute bottom-2 left-2 text-xs">
           {launched} 실행 요청
@@ -50,6 +54,18 @@ function InteractivePanel(args: StatusPanelProps) {
         onToggleTodo={(todo, isCompleted) =>
           setCompleted(isCompleted ? todo.title : "")
         }
+        onOpenTodos={() => {
+          setNavigation("todos")
+          args.onOpenTodos()
+        }}
+        onOpenCalendar={() => {
+          setNavigation("calendar")
+          args.onOpenCalendar()
+        }}
+        onOpenShortcuts={() => {
+          setNavigation("shortcuts")
+          args.onOpenShortcuts()
+        }}
       />
     </div>
   )
@@ -158,4 +174,69 @@ export const LongContent: Story = {
       }),
     ],
   },
+}
+export const PrioritySummary: Story = {
+  args: {
+    ...Populated.args,
+    todos: [
+      {
+        id: "undated",
+        title: "즐겨찾기지만 기한 없는 항목",
+        completed: false,
+        favorite: true,
+      },
+      {
+        id: "future",
+        title: "다음 달 할일",
+        dueDate: "2026-11-01",
+        completed: false,
+        favorite: true,
+      },
+      {
+        id: "tomorrow",
+        title:
+          "내일 마감인 긴 제목의 프로젝트 문서를 정리하고 검토 요청 보내기",
+        dueDate: "2026-10-29",
+        completed: false,
+      },
+      {
+        id: "overdue",
+        title: "지난 기한 자료 제출",
+        dueDate: "2026-10-27",
+        completed: false,
+      },
+      {
+        id: "today",
+        title: "오늘 마감 확인",
+        dueDate: "2026-10-28",
+        completed: false,
+      },
+      {
+        id: "done",
+        title: "완료한 항목",
+        dueDate: "2026-10-25",
+        completed: true,
+      },
+    ],
+    events: [60, 10, 30, 90, 120].map((minutes) =>
+      event(`event-${minutes}`, minutes, {
+        title: `${minutes}분 후 예정된 긴 제목의 일정`,
+        openLinks: "at-start",
+        referenceUrls: [
+          "https://example.com/first",
+          "https://example.com/second",
+          "https://example.com/third",
+        ],
+      })
+    ),
+    shortcuts: Array.from({ length: 5 }, (_, index) => ({
+      id: `shortcut-${index}`,
+      name: `최근 사용한 프로젝트 문서 ${index + 1}`,
+      kind: "website" as const,
+      target: "https://example.com",
+    })),
+  },
+}
+export const NarrowSummary: Story = {
+  args: { ...PrioritySummary.args, width: 200 },
 }

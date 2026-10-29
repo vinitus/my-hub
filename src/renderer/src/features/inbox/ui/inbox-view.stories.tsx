@@ -67,6 +67,9 @@ export default meta
 type Story = StoryObj<typeof meta>
 export const Default: Story = {}
 export const Empty: Story = { args: { items: [] } }
+export const FocusProcessed: Story = {
+  args: { focusRequest: { id: 1, itemId: fixtures[3].id } },
+}
 export const Loading: Story = { args: { items: [], loading: true, busy: true } }
 export const LoadError: Story = {
   args: {

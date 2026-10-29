@@ -7,6 +7,10 @@ import type { InboxSnapshot } from "../../../../shared/inbox"
 function HomeQuickAdd({ failSave = false }: { failSave?: boolean }) {
   const [open, setOpen] = useState(false)
   const [showInbox, setShowInbox] = useState(false)
+  const [focusRequest, setFocusRequest] = useState<{
+    id: number
+    itemId: string
+  } | null>(null)
   const [store] = useState(() => {
     let snapshot: InboxSnapshot = {
       items: [],
@@ -53,6 +57,7 @@ function HomeQuickAdd({ failSave = false }: { failSave?: boolean }) {
       </div>
       {showInbox ? (
         <InboxView
+          focusRequest={focusRequest}
           items={state.snapshot?.items ?? []}
           loading={false}
           busy={false}
@@ -75,6 +80,14 @@ function HomeQuickAdd({ failSave = false }: { failSave?: boolean }) {
           onCreateEvent={() => {}}
           onCreateShortcut={() => {}}
           onCreateInbox={() => setOpen(true)}
+          recentInboxItems={state.snapshot?.items}
+          onOpenInbox={(itemId) => {
+            setFocusRequest((current) => ({
+              id: (current?.id ?? 0) + 1,
+              itemId,
+            }))
+            setShowInbox(true)
+          }}
         />
       )}
       <InboxQuickAddDialog

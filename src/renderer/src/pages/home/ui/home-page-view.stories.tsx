@@ -35,29 +35,45 @@ export const SaveError: Story = {
     saveState: { status: "error", message: "파일에 접근할 수 없습니다." },
   },
 }
-export const RecentNotes: Story = {
+export const RecentInbox: Story = {
   args: {
-    recentNotes: [
+    recentInboxItems: [
       {
-        name: "오래된 즐겨찾기.md",
-        path: "C:/Notes/old.md",
-        modifiedAt: Date.parse("2026-10-20T01:00:00Z"),
-        favorite: true,
+        id: "11111111-1111-4111-8111-111111111111",
+        kind: "text",
+        content: "오래된 수집 항목",
+        source: "직접 입력",
+        createdAt: "2026-10-20T01:00:00.000Z",
+        processedAt: null,
+        destination: null,
       },
       {
-        name: "다음 주 계획.md",
-        path: "C:/Notes/plans.md",
-        modifiedAt: Date.parse("2026-10-29T01:00:00Z"),
+        id: "22222222-2222-4222-8222-222222222222",
+        kind: "text",
+        content: "다음 주 계획",
+        source: "홈 빠른 추가",
+        createdAt: "2026-10-29T01:00:00.000Z",
+        processedAt: null,
+        destination: null,
       },
       {
-        name: "아주 긴 이름을 가진 프로젝트 회의에서 정리한 참고 자료와 앞으로 진행할 작업 목록.md",
-        path: "C:/Notes/latest.md",
-        modifiedAt: Date.parse("2026-10-30T01:00:00Z"),
+        id: "33333333-3333-4333-8333-333333333333",
+        kind: "text",
+        content:
+          "아주 긴 이름을 가진 프로젝트 회의에서 정리한 참고 자료와 앞으로 진행할 작업 목록",
+        source: "직접 입력",
+        createdAt: "2026-10-30T01:00:00.000Z",
+        processedAt: "2026-10-30T02:00:00.000Z",
+        destination: { kind: "todo", title: "자료 검토" },
       },
       {
-        name: "조사 기록.md",
-        path: "C:/Notes/research.md",
-        modifiedAt: Date.parse("2026-10-28T01:00:00Z"),
+        id: "44444444-4444-4444-8444-444444444444",
+        kind: "text",
+        content: "조사 기록",
+        source: "직접 입력",
+        createdAt: "2026-10-28T01:00:00.000Z",
+        processedAt: null,
+        destination: null,
       },
     ],
   },
@@ -65,11 +81,21 @@ export const RecentNotes: Story = {
     const [opened, setOpened] = useState("")
     return (
       <>
-        <HomePageView {...args} onOpenNote={setOpened} />
-        <output className="sr-only" data-testid="recent-note-opened">
+        <HomePageView {...args} onOpenInbox={setOpened} />
+        <output className="sr-only" data-testid="recent-inbox-opened">
           {opened}
         </output>
       </>
     )
   },
+}
+export const NarrowWorkspace: Story = {
+  ...RecentInbox,
+  decorators: [
+    (Story) => (
+      <div className="flex h-screen w-56 min-w-0 flex-col">
+        <Story />
+      </div>
+    ),
+  ],
 }

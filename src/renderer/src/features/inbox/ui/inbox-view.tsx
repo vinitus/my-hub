@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import {
   InboxIcon,
   ExternalLinkIcon,
@@ -38,13 +38,41 @@ export type InboxViewProps = InboxCaptureProps & {
   onProcess: (id: string, processed: boolean) => void
   onRemove: (id: string) => Promise<boolean>
   onConvert: (item: InboxItem, kind: InboxDestination["kind"]) => void
+  focusRequest?: { id: number; itemId: string } | null
 }
 export function InboxView(props: InboxViewProps) {
+  const listId = useId()
+  const focusedRequest = useRef<number | undefined>(undefined)
   const [filter, setFilter] = useState<"pending" | "processed" | "all">(
     "pending"
   )
   const [query, setQuery] = useState("")
   const [deleting, setDeleting] = useState<InboxItem | null>(null)
+  const focusRequest = props.focusRequest
+  const [appliedFocus, setAppliedFocus] = useState<number | undefined>(
+    undefined
+  )
+  // 홈에서 선택한 항목이 기존 필터에 가려지지 않도록 표시 상태를 맞춘다.
+  if (focusRequest && appliedFocus !== focusRequest.id) {
+    setAppliedFocus(focusRequest.id)
+    setFilter("all")
+    setQuery("")
+  }
+  useEffect(() => {
+    if (
+      !focusRequest ||
+      focusedRequest.current === focusRequest.id ||
+      filter !== "all" ||
+      query
+    )
+      return
+    const target = document.getElementById(`${listId}-${focusRequest.itemId}`)
+    if (target) {
+      focusedRequest.current = focusRequest.id
+      target.focus({ preventScroll: true })
+      target.scrollIntoView({ block: "nearest" })
+    }
+  }, [focusRequest, filter, query, props.items, listId])
   const pending = props.items.filter((item) => !item.processedAt).length
   const needle = query.trim().toLocaleLowerCase()
   const items = props.items
@@ -167,7 +195,12 @@ export function InboxView(props: InboxViewProps) {
                   : ""
             return (
               <li key={item.id} className="rounded-xl border bg-card p-4">
-                <article aria-label={inboxTitle(item)}>
+                <article
+                  id={`${listId}-${item.id}`}
+                  tabIndex={-1}
+                  aria-label={inboxTitle(item)}
+                  className="rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
                   <div className="flex min-w-0 items-start gap-3">
                     <Icon
                       aria-hidden

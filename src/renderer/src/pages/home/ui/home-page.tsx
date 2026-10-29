@@ -3,7 +3,13 @@ import { HomePageView, type HomePageViewProps } from "./home-page-view"
 
 type Props = Pick<
   HomePageViewProps,
-  "onCreateTodo" | "onCreateEvent" | "onCreateShortcut"
+  | "onCreateTodo"
+  | "onCreateEvent"
+  | "onCreateShortcut"
+  | "onCreateInbox"
+  | "recentNotes"
+  | "notesBusy"
+  | "onOpenNote"
 > & {
   active: boolean
   onSave: SaveScratchpad

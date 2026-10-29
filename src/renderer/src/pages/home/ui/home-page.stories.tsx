@@ -18,6 +18,7 @@ const meta = {
     onCreateTodo: () => {},
     onCreateEvent: () => {},
     onCreateShortcut: () => {},
+    onCreateInbox: () => {},
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof HomePage>

@@ -900,8 +900,8 @@ app.whenReady().then(async () => {
           await delay(50)
           const failed = story.name === "Home Save Failure"
           for (const [label, selector, count] of [
-            ["할일 등록", 'input[placeholder="할일을 입력하세요"]', "todos"],
-            ["일정 등록", 'input[placeholder="일정 제목"]', "events"],
+            ["할일 추가", 'input[placeholder="할일을 입력하세요"]', "todos"],
+            ["일정 추가", 'input[placeholder="일정 제목"]', "events"],
             [
               "바로가기 등록",
               'input[placeholder="예: 작업 폴더"]',
@@ -985,7 +985,7 @@ app.whenReady().then(async () => {
             )
           }
           await win.webContents.executeJavaScript(
-            `Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === '할일 등록').click()`
+            `Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === '할일 추가').click()`
           )
           await delay(100)
           win.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" })
@@ -1116,6 +1116,93 @@ app.whenReady().then(async () => {
           }
         }
         if (story.importPath.endsWith("/home-page-view.stories.tsx")) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          assert.equal(
+            await run(
+              `document.querySelectorAll('[aria-label="빠른 작업"] button').length`
+            ),
+            4
+          )
+          assert.equal(
+            await run(`document.querySelector('details').open`),
+            false,
+            "calculator starts collapsed"
+          )
+          if (story.name === "Recent Notes") {
+            const names = await run(
+              `[...document.querySelectorAll('[aria-label="이어서 작업하기"] li p')].map(p=>p.textContent)`
+            )
+            assert.equal(names.length, 3)
+            assert.ok(names[0].startsWith("아주 긴 이름"))
+            assert.equal(names[1], "다음 주 계획")
+            assert.equal(
+              names.includes("오래된 즐겨찾기"),
+              false,
+              "mtime determines recent work independently of favorites"
+            )
+            await run(
+              `document.querySelector('[aria-label="이어서 작업하기"] button').click()`
+            )
+            await delay(30)
+            assert.ok(
+              await run(
+                `document.querySelector('[data-testid="recent-note-opened"]').textContent.startsWith('아주 긴 이름')`
+              )
+            )
+            const output = path.resolve("out/tests/storybook")
+            fs.mkdirSync(output, { recursive: true })
+            fs.writeFileSync(
+              path.join(output, `home-recent-${theme}-${width}.png`),
+              (await win.capturePage()).toPNG()
+            )
+            const bounds = await run(
+              `(() => { const a=document.querySelector('[aria-label="이어서 작업하기"]').getBoundingClientRect(); const b=document.querySelector('[aria-label="빠른 작업"]').getBoundingClientRect(); return { sameRow: Math.abs(a.top-b.top)<2, width: document.querySelector('[aria-label="홈"]').clientWidth } })()`
+            )
+            assert.equal(
+              bounds.sameRow,
+              bounds.width >= 640,
+              "home cards adapt to the workspace width"
+            )
+            assert.equal(
+              await run(
+                `getComputedStyle(document.querySelector('textarea')).resize`
+              ),
+              "vertical"
+            )
+            const before = await run(`document.querySelector('textarea').value`)
+            await run(
+              `document.querySelector('[aria-label="낙서장 확대"]').click()`
+            )
+            await delay(50)
+            assert.equal(
+              await run(
+                `document.querySelector('[aria-label="이어서 작업하기"]').checkVisibility()`
+              ),
+              false
+            )
+            assert.equal(
+              await run(`document.querySelector('textarea').value`),
+              before
+            )
+            await run(
+              `document.querySelector('[aria-label="낙서장 축소"]').click()`
+            )
+            await delay(50)
+            assert.equal(
+              await run(
+                `document.querySelector('[aria-label="이어서 작업하기"]').checkVisibility()`
+              ),
+              true
+            )
+            console.log(
+              "PASS recent notes order, reopen action, responsive cards and scratchpad expand/collapse"
+            )
+          } else
+            assert.ok(
+              await run(
+                `document.querySelector('[aria-label="이어서 작업하기"]').innerText.includes('최근 수정한 메모가 없습니다')`
+              )
+            )
           assert.equal(
             await win.webContents.executeJavaScript(
               `document.querySelector('textarea').disabled`
@@ -1128,6 +1215,130 @@ app.whenReady().then(async () => {
             ),
             story.name === "Save Error"
           )
+        }
+        if (
+          theme === "light" &&
+          story.importPath.endsWith("/home-quick-add.stories.tsx")
+        ) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const items = () =>
+            run(
+              `JSON.parse(document.querySelector('[data-testid="home-inbox-items"]').textContent)`
+            )
+          await run(`document.querySelector('textarea').focus()`)
+          win.webContents.insertText("낙서장에 남겨 둔 생각")
+          await delay(30)
+          await run(
+            `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스에 추가').click()`
+          )
+          await delay(80)
+          assert.equal(
+            await run(
+              `document.activeElement===document.querySelector('[aria-label="인박스에 추가할 내용"]')`
+            ),
+            true
+          )
+          assert.equal(
+            await run(
+              `document.querySelector('[role="dialog"] button[type="submit"]').disabled`
+            ),
+            true
+          )
+          assert.equal(
+            await run(
+              `document.querySelectorAll('[role="dialog"] input').length`
+            ),
+            1
+          )
+          assert.equal(
+            await run(
+              `document.querySelector('[aria-label="인박스에 추가할 내용"]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',isComposing:true,bubbles:true,cancelable:true}))`
+            ),
+            false
+          )
+          assert.equal((await items()).length, 0)
+          win.webContents.insertText("https://example.com/saved-for-later")
+          await delay(30)
+          win.webContents.sendInputEvent({ type: "keyDown", keyCode: "Enter" })
+          win.webContents.sendInputEvent({ type: "char", keyCode: "\r" })
+          win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Enter" })
+          await delay(40)
+          assert.equal(
+            await run(
+              `document.querySelector('[role="dialog"] button[type="submit"]').textContent`
+            ),
+            "저장 중…"
+          )
+          await run(
+            `window.dispatchEvent(new KeyboardEvent('keydown',{key:'s',ctrlKey:true,bubbles:true,cancelable:true}))`
+          )
+          await delay(180)
+          if (story.name === "Save Failure") {
+            assert.equal(
+              await run(
+                `document.querySelector('[aria-label="인박스에 추가할 내용"]').value`
+              ),
+              "https://example.com/saved-for-later"
+            )
+            assert.ok(
+              await run(
+                `document.querySelector('[role="alert"]').textContent.includes('인박스 저장 실패')`
+              )
+            )
+            assert.equal((await items()).length, 0)
+            win.webContents.sendInputEvent({
+              type: "keyDown",
+              keyCode: "Escape",
+            })
+            win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" })
+            await delay(120)
+            assert.equal(
+              await run(
+                `!!document.querySelector('[role="dialog"][data-open]')`
+              ),
+              false
+            )
+          } else {
+            assert.equal(
+              await run(
+                `!!document.querySelector('[role="dialog"][data-open]')`
+              ),
+              false
+            )
+            assert.ok(
+              await run(
+                `document.querySelector('[aria-label="인박스 추가 결과"]').textContent.includes('인박스에 추가했습니다')`
+              )
+            )
+            const saved = (await items())[0]
+            assert.equal(saved.kind, "link")
+            assert.equal(saved.processedAt, null)
+            assert.equal(saved.source, "홈 빠른 추가")
+          }
+          assert.equal(
+            await run(`document.querySelector('textarea').value`),
+            "낙서장에 남겨 둔 생각",
+            "quick capture preserves the scratchpad"
+          )
+          assert.equal(
+            await run(
+              `document.querySelector('[aria-label="낙서장"] [role="status"]').textContent`
+            ),
+            "Ctrl+S로 메모 저장",
+            "Ctrl+S is ignored while quick capture is open"
+          )
+          if (story.name !== "Save Failure") {
+            await run(
+              `[...document.querySelectorAll('button')].find(b=>b.innerText==='인박스 화면 확인').click()`
+            )
+            await delay(50)
+            assert.ok(
+              await run(
+                `document.querySelector('ul[aria-label="수집한 항목"]').innerText.includes('https://example.com/saved-for-later')`
+              )
+            )
+          }
+          console.log(`PASS home inbox quick add: ${story.name}`)
         }
         if (
           theme === "light" &&

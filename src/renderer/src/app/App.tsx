@@ -11,7 +11,11 @@ import { CalendarStore } from "@/entities/calendar-event"
 import { useNote } from "@/features/notes"
 import { QuickCommand, AIQuickCommand } from "@/features/quick-command"
 import { Calculator } from "@/features/calculator"
-import { InboxCaptureDialog, InboxStore } from "@/features/inbox"
+import {
+  InboxCaptureDialog,
+  InboxQuickAddDialog,
+  InboxStore,
+} from "@/features/inbox"
 import { ShortcutMenu } from "@/features/shortcut-wheel"
 import {
   Dialog,
@@ -53,6 +57,7 @@ export function App() {
   const { view, visited, navigate } = useWorkspaceNavigation()
   const [calculatorOpen, setCalculatorOpen] = useState(false)
   const [inboxDialogOpen, setInboxDialogOpen] = useState(false)
+  const [inboxQuickAddOpen, setInboxQuickAddOpen] = useState(false)
   const [calendarFocus, setCalendarFocus] = useState<{
     id: number
     date: string
@@ -67,7 +72,7 @@ export function App() {
     codexSetup,
     setCodexSetup,
     codexPromptOpen,
-  } = useAppDialogs(inboxDialogOpen)
+  } = useAppDialogs(inboxDialogOpen || inboxQuickAddOpen)
   const [todoStore] = useState(() => new TodoStore(window.api?.todos))
   const [calendarStore] = useState(
     () => new CalendarStore(window.api?.calendar)
@@ -93,6 +98,7 @@ export function App() {
       !codexPromptOpen &&
       !calculatorOpen &&
       !inboxDialogOpen &&
+      !inboxQuickAddOpen &&
       creation.session === null
   )
   const saveScratchpad = useScratchpadSave(
@@ -314,6 +320,17 @@ export function App() {
             open={inboxDialogOpen}
             onOpenChange={setInboxDialogOpen}
           />
+          <InboxQuickAddDialog
+            open={inboxQuickAddOpen}
+            onOpenChange={setInboxQuickAddOpen}
+            onSave={async (content) => {
+              if (!(await inboxStore.captureText(content, "홈 빠른 추가")))
+                throw new Error(
+                  inboxStore.getSnapshot().error ||
+                    "인박스가 준비되지 않았습니다. 잠시 후 다시 시도해 주세요."
+                )
+            }}
+          />
           <Dialog open={calculatorOpen} onOpenChange={setCalculatorOpen}>
             <DialogContent>
               <DialogHeader>
@@ -388,6 +405,13 @@ export function App() {
             onCreateTodo={() => creation.open("todo")}
             onCreateEvent={() => creation.open("event")}
             onCreateShortcut={() => creation.open("shortcut")}
+            onCreateInbox={() => setInboxQuickAddOpen(true)}
+            recentNotes={memo.library?.notes}
+            notesBusy={memo.busy}
+            onOpenNote={(name) => {
+              navigate("notes")
+              void memo.openNote(name)
+            }}
           />
         </div>
         {/* 창 전체 대신 메모 본문만 스크롤한다. 상위 flex 요소의 min-h-0도 유지한다. */}

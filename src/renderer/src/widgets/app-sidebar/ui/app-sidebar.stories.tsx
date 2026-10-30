@@ -24,6 +24,7 @@ const meta = {
     activeView: "notes",
     showNavigationNumbers: false,
     busy: false,
+    saving: false,
     ready: true,
     library: {
       directory: "C:/Fixtures/Notes",

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { NodeApi } from "platejs"
 import { MarkdownPlugin } from "@platejs/markdown"
 import { toggleList } from "@platejs/list"
@@ -32,10 +32,17 @@ type Props = {
   onChange: (markdown: string) => void
   onError: (error: unknown) => void
   disabled?: boolean
+  onFocusReady?: (focus: () => void) => void
 }
 
 // 문서 교체는 부모의 key로 새 에디터를 만든다. 입력마다 역직렬화하면 커서/undo가 초기화된다.
-export function NoteEditor({ markdown, onChange, onError, disabled }: Props) {
+export function NoteEditor({
+  markdown,
+  onChange,
+  onError,
+  disabled,
+  onFocusReady,
+}: Props) {
   const editor = usePlateEditor({
     plugins: notePlugins,
     value: (editor) =>
@@ -44,6 +51,13 @@ export function NoteEditor({ markdown, onChange, onError, disabled }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState<{ top: number; left: number } | null>(null)
   const [selected, setSelected] = useState(0)
+
+  useEffect(() => {
+    onFocusReady?.(() => {
+      if (!editor.selection) editor.tf.select(editor.api.start([]))
+      editor.tf.focus()
+    })
+  }, [editor, onFocusReady])
 
   function changeBlock(type: string) {
     setMenu(null)
@@ -141,7 +155,7 @@ export function NoteEditor({ markdown, onChange, onError, disabled }: Props) {
         <PlateContent
           aria-label="메모 본문"
           className="note-editor min-h-[50vh] outline-none"
-          placeholder="메모를 작성하세요. / 로 블록을 추가할 수 있어요."
+          placeholder="메모를 작성하세요. /로 블록을 추가하고 Ctrl+S로 지금 저장할 수 있어요."
           readOnly={disabled}
           onBlur={() => setMenu(null)}
           onPaste={(event) => {

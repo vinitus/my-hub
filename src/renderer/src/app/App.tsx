@@ -315,6 +315,7 @@ export function App() {
               void memo.open()
             }}
             busy={memo.busy}
+            saving={memo.saving}
             library={memo.library}
             ready={memo.ready}
             currentPath={memo.note.file?.path}
@@ -567,7 +568,7 @@ export function App() {
                   : (memo.note.personalSourceKey ?? "note:draft")
               }
             >
-              <NotesPage memo={memo} />
+              <NotesPage memo={memo} active={view === "notes"} />
             </ContentVisibility>
           </div>
           {visited.has("shortcuts") && (

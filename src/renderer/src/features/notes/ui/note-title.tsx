@@ -6,18 +6,27 @@ type Props = {
   busy: boolean
   onRename: (name: string) => Promise<boolean | undefined>
   onSave: (saveAs: boolean) => void
+  onFocusBody?: () => void
 }
 
-export function NoteTitle({ name, path, busy, onRename, onSave }: Props) {
+export function NoteTitle({
+  name,
+  path,
+  busy,
+  onRename,
+  onSave,
+  onFocusBody = () => {},
+}: Props) {
   const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(name)
+  const title = name.replace(/\.md$/i, "")
+  const [draft, setDraft] = useState(title)
   const submitting = useRef(false)
   const cancelled = useRef(false)
 
   function start() {
     if (busy) return
     cancelled.current = false
-    setDraft(name)
+    setDraft(title)
     setEditing(true)
   }
 
@@ -25,7 +34,7 @@ export function NoteTitle({ name, path, busy, onRename, onSave }: Props) {
     if (submitting.current || cancelled.current) return
     submitting.current = true
     try {
-      const applied = await onRename(draft)
+      const applied = await onRename(draft.trim() || "제목 없는 메모")
       if (applied) setEditing(false)
       return applied
     } finally {
@@ -38,12 +47,13 @@ export function NoteTitle({ name, path, busy, onRename, onSave }: Props) {
       autoFocus
       aria-label="메모 파일명"
       value={draft}
+      placeholder="제목 없는 메모"
       readOnly={busy}
       className="h-7 w-44 rounded border border-input bg-background px-1 text-sm font-medium outline-none focus:ring-2 focus:ring-ring/50"
       onFocus={(event) =>
         event.currentTarget.setSelectionRange(
           0,
-          draft.replace(/\.md$/i, "").length
+          draft.length
         )
       }
       onChange={(event) => setDraft(event.target.value)}
@@ -65,7 +75,16 @@ export function NoteTitle({ name, path, busy, onRename, onSave }: Props) {
         if (event.key === "Enter") {
           event.preventDefault()
           event.stopPropagation()
-          void commit()
+          void commit().then((applied) => {
+            if (applied) onFocusBody()
+          })
+        }
+        if (event.key === "Tab") {
+          event.preventDefault()
+          event.stopPropagation()
+          void commit().then((applied) => {
+            if (applied) onFocusBody()
+          })
         }
         if (event.key === "Escape") {
           event.preventDefault()
@@ -90,7 +109,7 @@ export function NoteTitle({ name, path, busy, onRename, onSave }: Props) {
         }
       }}
     >
-      {name}
+      {title}
     </button>
   )
 }

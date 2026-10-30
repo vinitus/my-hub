@@ -49,6 +49,7 @@ type Props<View extends string> = ComponentProps<typeof Sidebar> & {
   onNewNote: () => void
   onOpenNote: () => void
   busy: boolean
+  saving?: boolean
   library: NoteLibrarySnapshot | null
   ready: boolean
   currentPath?: string
@@ -69,6 +70,7 @@ export function AppSidebar<View extends string>({
   onNewNote,
   onOpenNote,
   busy,
+  saving = false,
   library,
   ready,
   currentPath,
@@ -186,7 +188,24 @@ export function AppSidebar<View extends string>({
                           onClick={() => onSelectNote(note.name)}
                         >
                           <FileTextIcon />
-                          <span>{note.name.replace(/\.md$/i, "")}</span>
+                          <span className="flex min-w-0 flex-1 flex-col items-start leading-tight">
+                            <span className="w-full truncate">
+                              {note.name.replace(/\.md$/i, "")}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {saving && note.path === currentPath
+                                ? "저장 중…"
+                                : new Date(note.modifiedAt).toLocaleString(
+                                    undefined,
+                                    {
+                                      month: "numeric",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  )}
+                            </span>
+                          </span>
                           {note.favorite && (
                             <StarIcon
                               aria-hidden="true"

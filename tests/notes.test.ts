@@ -1078,3 +1078,43 @@ test("폴더 변경은 열린 파일을 이동하지 않고 다음 새 메모의
     await f.cleanup()
   }
 })
+
+test("blank notes require explicit manual save and autosave never erases content", async () => {
+  const f = await fixture()
+  const store = new NoteStore(f.api, memoryDraft(), 15)
+  const stop = store.start()
+  try {
+    await until(() => store.getSnapshot().ready)
+    await store.rename("제목 없는 메모")
+    await pause(40)
+    assert.equal((await f.api.library()).notes.length, 0)
+    assert.equal(await store.save(), false)
+    assert.equal(store.getSnapshot().note.file, null)
+    assert.match(store.getSnapshot().error, /본문이 비어 있어 저장하지 않았습니다/)
+    assert.equal((await f.api.library()).notes.length, 0)
+
+    assert.equal(await store.save(false, true), true)
+    const path = store.getSnapshot().note.file!.path
+    assert.equal(await readMarkdown(path), "")
+
+    store.change("첫 본문")
+    await until(() => store.getSnapshot().note.savedMarkdown === "첫 본문")
+
+    store.change("")
+    await until(() => store.getSnapshot().autosavePaused)
+    assert.equal(await readMarkdown(path), "첫 본문")
+    assert.equal(await store.save(), false)
+    assert.equal(await readMarkdown(path), "첫 본문")
+    assert.equal(await store.save(false, true), true)
+    assert.equal(await readMarkdown(path), "")
+
+    store.change("다시 작성한 본문")
+    await until(
+      () => store.getSnapshot().note.savedMarkdown === "다시 작성한 본문"
+    )
+    assert.equal(await readMarkdown(path), "다시 작성한 본문")
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})

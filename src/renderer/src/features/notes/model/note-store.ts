@@ -27,6 +27,8 @@ type Draft = {
   personal?: boolean
 }
 type Storage = { read: () => unknown; write: (draft: Draft) => void }
+const EMPTY_NOTE_ERROR =
+  "본문이 비어 있어 저장하지 않았습니다. 내용을 입력한 뒤 저장해 주세요."
 type State = {
   note: Note
   library: NoteLibrarySnapshot | null
@@ -49,10 +51,8 @@ function emptyNote(markdown = "", name = DEFAULT_NOTE_NAME): Note {
   }
 }
 export function hasNoteChanges(note: Note) {
-  return (
-    note.markdown !== note.savedMarkdown ||
-    (!note.file && note.name !== DEFAULT_NOTE_NAME)
-  )
+  if (!note.file && !note.markdown.trim()) return false
+  return note.markdown !== note.savedMarkdown
 }
 function message(error: unknown) {
   return error instanceof Error
@@ -188,7 +188,9 @@ export class NoteStore {
       personal:
         this.state.note.personal ??
         (this.state.note.file ? undefined : this.personalMode),
-    })
+    }, markdown.trim() && this.state.error === EMPTY_NOTE_ERROR
+      ? { autosavePaused: false, error: "" }
+      : {})
 
   start = () => {
     this.active = true
@@ -327,7 +329,7 @@ export class NoteStore {
     }
   }
 
-  private async persist(saveAs = false) {
+  private async persist(saveAs = false, allowEmpty = false) {
     if (!this.api) {
       this.report(new Error("파일 저장은 Electron 앱에서 사용할 수 있습니다."))
       return false
@@ -338,6 +340,10 @@ export class NoteStore {
       this.setNote(snapshot)
     }
     if (!saveAs && snapshot.file && !hasNoteChanges(snapshot)) return true
+    if (!snapshot.markdown.trim() && !allowEmpty) {
+      this.publish({ autosavePaused: true, error: EMPTY_NOTE_ERROR })
+      return false
+    }
     this.publish({ saving: true })
     try {
       const file = await this.api.save({
@@ -379,7 +385,8 @@ export class NoteStore {
       return false
     }
   }
-  save = (saveAs = false) => this.run(() => this.persist(saveAs))
+  save = (saveAs = false, allowEmpty = false) =>
+    this.run(() => this.persist(saveAs, allowEmpty))
 
   // 외부 작성 내용을 메모로 받아 기존 저장·복원·목록 갱신 경로를 사용한다.
   // 전달 후 다른 메모를 열었거나 본문이 바뀌었다면 별도 메모로 보존한다.

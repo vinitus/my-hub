@@ -56,7 +56,7 @@ export function useNote(
       const key = event.key.toLowerCase()
       if (!["s", "n"].includes(key)) return
       event.preventDefault()
-      if (key === "s") void store.save(event.shiftKey)
+      if (key === "s") void store.save(event.shiftKey, true)
       else void store.newNote()
     }
     const beforeUnload = (event: BeforeUnloadEvent) => {
@@ -76,7 +76,7 @@ export function useNote(
     dirty: hasNoteChanges(state.note),
     error: state.error || state.libraryError || state.draftError,
     change: store.change,
-    save: store.save,
+    save: (saveAs = false) => store.save(saveAs, true),
     saveText: store.saveText,
     rename: store.rename,
     newNote: store.newNote,

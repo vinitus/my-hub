@@ -4,6 +4,7 @@ import {
   Sidebar,
   SidebarHeader,
   SidebarContent,
+  SidebarFooter,
   SidebarTrigger,
 } from "@/shared/ui/sidebar"
 import { Button } from "@/shared/ui/button"
@@ -20,7 +21,9 @@ function InteractiveLayout(args: ComponentProps<typeof WorkspaceLayout>) {
       {...args}
       settings={settings}
       ready={ready}
-      onChange={(patch) => {
+      onChange={async (patch) => {
+        // Model the app's asynchronous settings save without calling Electron.
+        await new Promise((resolve) => setTimeout(resolve, 60))
         setSettings((current) => ({ ...current, ...patch }))
         setWrites((count) => count + 1)
       }}
@@ -30,6 +33,14 @@ function InteractiveLayout(args: ComponentProps<typeof WorkspaceLayout>) {
           <SidebarContent className="p-3">
             <Input aria-label="탐색 입력" placeholder="유지되는 입력" />
           </SidebarContent>
+          <SidebarFooter className="p-4">
+            <div
+              data-testid="sidebar-content-probe"
+              className="rounded-xl border p-3 text-sm"
+            >
+              접는 동안에도 일정과 날씨는 펼친 너비로 유지합니다.
+            </div>
+          </SidebarFooter>
         </Sidebar>
       }
       header={

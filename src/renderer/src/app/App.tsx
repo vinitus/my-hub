@@ -296,7 +296,7 @@ export function App() {
       <WorkspaceLayout
         settings={settings}
         ready={settingsReady}
-        onChange={(patch) => void updateSettings(patch)}
+        onChange={updateSettings}
         sidebar={
           <AppSidebar
             scheduleStatus={<LiveScheduleStatus store={calendarStore} />}

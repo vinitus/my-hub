@@ -2182,7 +2182,7 @@ app.whenReady().then(async () => {
           const sizes = () =>
             win.webContents.executeJavaScript(`(() => {
             const box = id => document.getElementById(id).getBoundingClientRect();
-            return { left: box('left-sidebar').width, right: box('right-status-panel').width,
+            return { left: document.querySelector('[data-slot="sidebar-gap"]').getBoundingClientRect().width, right: box('right-status-panel').width,
               height: box('main-view').height, writes: Number(document.querySelector('[data-testid="layout-writes"]').textContent) };
           })()`)
           let initial = await sizes()
@@ -2195,7 +2195,7 @@ app.whenReady().then(async () => {
             await win.webContents.executeJavaScript(
               `Array.from(document.querySelectorAll('button')).find(b => b.textContent === '저장된 레이아웃 불러오기').click()`
             )
-            await delay(100)
+            await delay(260)
             initial = await sizes()
             assert.equal(Math.round(initial.left), 300)
             assert.equal(Math.round(initial.right), 320)
@@ -2261,6 +2261,18 @@ app.whenReady().then(async () => {
                 x: point.x + dx,
                 y: point.y,
               })
+              if (label === "왼쪽 사이드바 크기 조절") {
+                await delay(20)
+                const pendingWidth = await win.webContents.executeJavaScript(
+                  `document.querySelector('[data-slot="sidebar-container"]').getBoundingClientRect().width`
+                )
+                assert.ok(
+                  Math.abs(
+                    pendingWidth - Math.max(200, Math.min(320, point.x + dx))
+                  ) < 2,
+                  "sidebar width must stay at the dragged size while settings are saving"
+                )
+              }
               await delay(100)
             }
             await drag("왼쪽 사이드바 크기 조절", 60)
@@ -2283,15 +2295,50 @@ app.whenReady().then(async () => {
               2,
               "each completed drag must persist once"
             )
-            await win.webContents.executeJavaScript(
-              `document.querySelector('[data-sidebar="trigger"]').click()`
+            const toggleSidebar = () =>
+              win.webContents.executeJavaScript(`(async () => {
+                const container = document.querySelector('[data-slot="sidebar-container"]');
+                const probe = document.querySelector('[data-testid="sidebar-content-probe"]');
+                const expectedHeight = probe.getBoundingClientRect().height;
+                const frames = [];
+                document.querySelector('[data-sidebar="trigger"]').click();
+                const start = performance.now();
+                do {
+                  await new Promise(requestAnimationFrame);
+                  frames.push({ width: container.getBoundingClientRect().width,
+                    height: probe.getBoundingClientRect().height, expectedHeight });
+                } while (performance.now() - start < 320);
+                return frames;
+              })()`)
+            const closedFrames = await toggleSidebar()
+            assert.ok(
+              closedFrames.length > 2,
+              "sample sidebar closing animation"
             )
-            await delay(100)
+            for (const frame of closedFrames) {
+              assert.ok(
+                Math.abs(frame.width - changed.left) < 1,
+                "offcanvas content must retain its expanded width"
+              )
+              assert.equal(
+                frame.height,
+                frame.expectedHeight,
+                "sidebar text must not reflow while closing"
+              )
+            }
             assert.equal(Math.round((await sizes()).left), 0)
-            await win.webContents.executeJavaScript(
-              `document.querySelector('[data-sidebar="trigger"]').click()`
-            )
-            await delay(100)
+            const openedFrames = await toggleSidebar()
+            for (const frame of openedFrames) {
+              assert.ok(
+                Math.abs(frame.width - changed.left) < 1,
+                "opening sidebar must start with its expanded content width"
+              )
+              assert.equal(
+                frame.height,
+                frame.expectedHeight,
+                "sidebar text must not reflow while opening"
+              )
+            }
             assert.ok(
               Math.abs((await sizes()).left - changed.left) < 2,
               `left reopen: ${JSON.stringify({ changed, after: await sizes() })}`
@@ -2343,7 +2390,7 @@ app.whenReady().then(async () => {
           story.importPath.endsWith("/workspace-layout.stories.tsx")
         ) {
           const mobile = await win.webContents.executeJavaScript(`({
-            sidebarWidth: document.getElementById('left-sidebar').getBoundingClientRect().width,
+            sidebarWidth: document.querySelector('[data-slot="sidebar-gap"]')?.getBoundingClientRect().width ?? 0,
             overflow: document.documentElement.scrollWidth > innerWidth,
           })`)
           assert.equal(
@@ -2592,7 +2639,7 @@ app.whenReady().then(async () => {
           story.name === "Default"
         ) {
           await win.webContents.executeJavaScript(
-            `document.querySelector('#storybook-root button').dispatchEvent(new KeyboardEvent('keydown', {key:'Enter', bubbles:true}))`
+            `(() => { const input = document.querySelector('[aria-label="메모 제목"]'); input.focus(); input.select(); })()`
           )
           await delay(50)
           win.webContents.insertText("수정된 회의록")
@@ -2603,7 +2650,7 @@ app.whenReady().then(async () => {
           await delay(100)
           assert.equal(
             await win.webContents.executeJavaScript(
-              `document.querySelector('#storybook-root button').textContent.includes('수정된 회의록')`
+              `document.querySelector('[aria-label="메모 제목"]').value === '수정된 회의록'`
             ),
             true
           )

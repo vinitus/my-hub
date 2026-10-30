@@ -52,7 +52,7 @@ export function NotesPage({
             onSave={(saveAs) => void save(saveAs)}
             onFocusBody={focusBody}
           />
-          <span role="status" className="text-xs text-muted-foreground">
+          <span role="status" className="translate-y-px text-xs text-muted-foreground">
             {busy
               ? "처리 중…"
               : memo.saving

@@ -82,7 +82,20 @@
 .note-editor ol {
   margin-left: 1.5rem !important;
 }
-.note-editor ul:has(> li > [data-task]) {
+.note-editor .note-paragraph:has(> ol[style*="todo"]) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0 !important;
+}
+.note-editor .note-paragraph > ol[style*="todo"] {
+  list-style: none !important;
+  flex: 1;
+  min-width: 0;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.note-editor .note-paragraph > ol[style*="todo"] > li {
   list-style: none !important;
 }
 .note-editor input[type="checkbox"] {

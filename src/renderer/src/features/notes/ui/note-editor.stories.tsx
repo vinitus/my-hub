@@ -18,6 +18,12 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 export const Formatted: Story = {}
+export const Checklist: Story = {
+  args: {
+    markdown:
+      "## 체크리스트\n\n- [x] 기본 자료 확인\n- [ ] 세부 내용 정리\n- [ ] 다음 단계 결정\n",
+  },
+}
 export const Empty: Story = { args: { markdown: "" } }
 export const Disabled: Story = { args: { disabled: true } }
 export const Narrow: Story = {

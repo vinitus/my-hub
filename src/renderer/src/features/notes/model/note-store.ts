@@ -14,6 +14,8 @@ type Note = {
   name: string
   markdown: string
   savedMarkdown: string
+  personalSourceKey?: string
+  personal?: boolean
   file: NoteFile | null
 }
 type Draft = {
@@ -21,6 +23,8 @@ type Draft = {
   markdown: string
   savedMarkdown?: string
   filePath?: string
+  personalSourceKey?: string
+  personal?: boolean
 }
 type Storage = { read: () => unknown; write: (draft: Draft) => void }
 type State = {
@@ -65,20 +69,31 @@ export class NoteStore {
   private readonly api: NotesAPI | undefined
   private readonly storage: Storage
   private readonly delay: number
+  private readonly afterSave: (() => Promise<unknown>) | undefined
   private readonly listeners = new Set<() => void>()
   private state: State
   private draft: Draft | null = null
   private active = false
+  private personalMode = false
+  setPersonalMode = (personal: boolean) => {
+    this.personalMode = personal
+  }
   private initialization: Promise<void> | undefined
   private tail: Promise<unknown> = Promise.resolve()
   private manualCount = 0
   private refreshVersion = 0
   private timer: ReturnType<typeof setTimeout> | undefined
 
-  constructor(api: NotesAPI | undefined, storage: Storage, delay = 1000) {
+  constructor(
+    api: NotesAPI | undefined,
+    storage: Storage,
+    delay = 1000,
+    afterSave?: () => Promise<unknown>
+  ) {
     this.api = api
     this.storage = storage
     this.delay = delay
+    this.afterSave = afterSave
     let note = emptyNote()
     try {
       const draft = storage.read()
@@ -105,7 +120,20 @@ export class NoteStore {
               ? draft.filePath
               : undefined,
         }
-        note = emptyNote(draft.markdown, name)
+        note = {
+          ...emptyNote(draft.markdown, name),
+          personal:
+            "personal" in draft && typeof draft.personal === "boolean"
+              ? draft.personal
+              : undefined,
+          personalSourceKey:
+            "personalSourceKey" in draft &&
+            typeof draft.personalSourceKey === "string"
+              ? draft.personalSourceKey
+              : this.draft.filePath
+                ? `note:${this.draft.filePath.replace(/\\/g, "/").toLowerCase()}`
+                : undefined,
+        }
       }
     } catch {
       /* 손상된 초안은 파일을 건드리지 않고 빈 문서로 시작한다. */
@@ -142,6 +170,8 @@ export class NoteStore {
         markdown: note.markdown,
         savedMarkdown: note.savedMarkdown,
         filePath: note.file?.path,
+        personalSourceKey: note.personalSourceKey,
+        personal: note.personal,
       })
     } catch {
       draftError = "임시 복원이 불가능합니다. .md 파일로 저장해 주세요."
@@ -151,7 +181,14 @@ export class NoteStore {
     this.schedule()
   }
   report = (error: unknown) => this.publish({ error: message(error) })
-  change = (markdown: string) => this.setNote({ ...this.state.note, markdown })
+  change = (markdown: string) =>
+    this.setNote({
+      ...this.state.note,
+      markdown,
+      personal:
+        this.state.note.personal ??
+        (this.state.note.file ? undefined : this.personalMode),
+    })
 
   start = () => {
     this.active = true
@@ -295,7 +332,11 @@ export class NoteStore {
       this.report(new Error("파일 저장은 Electron 앱에서 사용할 수 있습니다."))
       return false
     }
-    const snapshot = this.state.note
+    let snapshot = this.state.note
+    if (!snapshot.file && snapshot.personal === undefined) {
+      snapshot = { ...snapshot, personal: this.personalMode }
+      this.setNote(snapshot)
+    }
     if (!saveAs && snapshot.file && !hasNoteChanges(snapshot)) return true
     this.publish({ saving: true })
     try {
@@ -304,14 +345,27 @@ export class NoteStore {
         markdown: snapshot.markdown,
         name: snapshot.name,
         saveAs,
+        ...(!snapshot.file ? { personal: snapshot.personal } : {}),
+        ...(snapshot.personalSourceKey
+          ? { personalSourceKey: snapshot.personalSourceKey }
+          : {}),
       })
       if (!file) {
         this.publish({ saving: false })
         return false
       }
+      // 새 개인 지정이 렌더러에 반영된 다음 파일을 공개해 목록과 편집기의 순간 노출을 막는다.
+      await this.afterSave?.()
       const current = this.state.note
       this.setNote(
-        { ...current, file, name: file.name, savedMarkdown: snapshot.markdown },
+        {
+          ...current,
+          file,
+          name: file.name,
+          savedMarkdown: snapshot.markdown,
+          personalSourceKey: undefined,
+          personal: undefined,
+        },
         { saving: false, autosavePaused: false, error: "" }
       )
       await this.refresh()
@@ -332,7 +386,9 @@ export class NoteStore {
   saveText = (
     markdown: string,
     previous: { key: string; markdown: string } | null = null,
-    title?: string
+    title?: string,
+    personalSourceKey?: string,
+    personal = this.personalMode
   ) =>
     this.run(async () => {
       if (!this.api)
@@ -344,10 +400,13 @@ export class NoteStore {
         current.key === previous?.key && current.markdown === previous.markdown
       if (!reuse) {
         if (hasNoteChanges(current) && !(await this.persist())) return
-        this.setNote(emptyNote(markdown, name), {
-          error: "",
-          autosavePaused: false,
-        })
+        this.setNote(
+          { ...emptyNote(markdown, name), personalSourceKey, personal },
+          {
+            error: "",
+            autosavePaused: false,
+          }
+        )
       } else {
         if (name && name !== current.name) {
           const file = current.file
@@ -388,7 +447,15 @@ export class NoteStore {
             { error: "" }
           )
           await this.refresh()
-        } else this.setNote({ ...current, name }, { error: "" })
+        } else
+          this.setNote(
+            {
+              ...current,
+              name,
+              personal: current.personal ?? this.personalMode,
+            },
+            { error: "" }
+          )
       }
       return true
     })
@@ -405,7 +472,10 @@ export class NoteStore {
           return
       }
       if (target === "new") {
-        this.setNote(emptyNote(), { error: "", autosavePaused: false })
+        this.setNote(
+          { ...emptyNote(), personal: this.personalMode },
+          { error: "", autosavePaused: false }
+        )
         return
       }
       if (!this.api)

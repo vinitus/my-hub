@@ -1,4 +1,6 @@
 import { z } from "zod"
+import { ModeShortcutSchema } from "./mode-shortcut"
+import { PersonalItemKeysSchema } from "./item-mode"
 
 export const APP_PANEL_WIDTHS = {
   left: { min: 200, max: 320, default: 288 },
@@ -40,6 +42,9 @@ export const AppSettingsSchema = z
   .object({
     theme: z.enum(["dark", "light", "system"]),
     launcherShortcut: z.enum(["ctrl+k", "ctrl+alt+k", "ctrl+shift+space"]),
+    modeShortcut: ModeShortcutSchema,
+    modeEnabled: z.boolean(),
+    personalItemKeys: PersonalItemKeysSchema,
     shortcutMenuMotion: z.enum(["on", "system", "off"]),
     shortcutMenuItems: QuickMenuItemsSchema,
     sidebarOpen: z.boolean(),
@@ -60,6 +65,9 @@ export const AppSettingsSchema = z
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   theme: "system",
   launcherShortcut: "ctrl+k",
+  modeShortcut: "ctrl+shift+m",
+  modeEnabled: false,
+  personalItemKeys: [],
   shortcutMenuMotion: "on",
   shortcutMenuItems: [
     { kind: "action", action: "note" },
@@ -80,4 +88,7 @@ export type AppSettingsPatch = z.infer<typeof AppSettingsPatchSchema>
 export type AppSettingsAPI = {
   read: () => Promise<AppSettings>
   update: (patch: AppSettingsPatch) => Promise<AppSettings>
+  inheritPersonal?: (sourceKey: string, targetKey: string) => Promise<void>
+  setPersonalMode?: (personal: boolean) => Promise<boolean>
+  onChange?: (callback: () => void) => () => void
 }

@@ -1,3 +1,5 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
+import { modeItemKey, mergeVisibleOrder } from "../../../../../shared/item-mode"
 import {
   useCallback,
   useEffect,
@@ -59,6 +61,7 @@ export default function ShortcutWorkspace({
   store?: ShortcutStore
   createRequest?: number
 }) {
+  const { allows } = useContentVisibility()
   const [localStore] = useState(
     () => providedStore ?? new ShortcutStore(window.api?.shortcuts)
   )
@@ -77,7 +80,9 @@ export default function ShortcutWorkspace({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
   const disabled = state.loading || state.busy || dropBusy || !state.snapshot
-  const items = state.snapshot?.items ?? []
+  const items = (state.snapshot?.items ?? []).filter((item) =>
+    allows(modeItemKey("shortcut", item.id))
+  )
   const filtered = items.filter(
     (item) =>
       (kind === "all" || item.kind === kind) &&
@@ -142,7 +147,10 @@ export default function ShortcutWorkspace({
     if (oldIndex < 0 || newIndex < 0) return
     const next = arrayMove(items, oldIndex, newIndex)
     void store.reorder(
-      next.map((item) => item.id),
+      mergeVisibleOrder(
+        state.snapshot.items.map((item) => item.id),
+        next.map((item) => item.id)
+      ),
       state.snapshot.revision
     )
   }
@@ -153,7 +161,7 @@ export default function ShortcutWorkspace({
     dragDepth.current = 0
     setDragging(false)
     if (disabled || editor || !state.snapshot) return
-    if (items.length >= 500) {
+    if ((state.snapshot?.items.length ?? 0) >= 500) {
       setDropError("바로가기는 최대 500개까지 등록할 수 있습니다.")
       return
     }
@@ -193,13 +201,16 @@ export default function ShortcutWorkspace({
         event.preventDefault()
         event.stopPropagation()
         dragDepth.current++
-        if (!disabled && !editor && items.length < 500) setDragging(true)
+        if (!disabled && !editor && (state.snapshot?.items.length ?? 0) < 500)
+          setDragging(true)
       }}
       onDragOver={(event) => {
         event.preventDefault()
         event.stopPropagation()
         event.dataTransfer.dropEffect =
-          disabled || editor || items.length >= 500 ? "none" : "copy"
+          disabled || editor || (state.snapshot?.items.length ?? 0) >= 500
+            ? "none"
+            : "copy"
       }}
       onDragLeave={(event) => {
         event.preventDefault()
@@ -239,7 +250,7 @@ export default function ShortcutWorkspace({
           </Button>
           <Button
             size="sm"
-            disabled={disabled || items.length >= 500}
+            disabled={disabled || (state.snapshot?.items.length ?? 0) >= 500}
             onClick={() => edit()}
           >
             <PlusIcon />

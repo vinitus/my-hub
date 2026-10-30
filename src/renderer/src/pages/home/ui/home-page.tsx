@@ -14,9 +14,25 @@ type Props = Pick<
 > & {
   active: boolean
   onSave: SaveScratchpad
+  hideSavedName?: boolean
 }
 
-export function HomePage({ active, onSave, ...actions }: Props) {
+export function HomePage({
+  active,
+  onSave,
+  hideSavedName = false,
+  ...actions
+}: Props) {
   const scratchpad = useScratchpad(active, onSave)
-  return <HomePageView {...scratchpad} {...actions} />
+  return (
+    <HomePageView
+      {...scratchpad}
+      {...actions}
+      saveState={
+        hideSavedName && scratchpad.saveState.status === "saved"
+          ? { status: "saved", name: "" }
+          : scratchpad.saveState
+      }
+    />
+  )
 }

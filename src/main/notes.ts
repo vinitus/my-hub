@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain } from "electron"
-import { basename, extname } from "node:path"
+import { basename, extname, dirname, join } from "node:path"
 import { randomUUID } from "node:crypto"
+import { ModeItemKeySchema, modeItemKey } from "../shared/item-mode"
 import type { SaveNoteRequest } from "../shared/notes"
 import { DEFAULT_NOTE_NAME, normalizeNoteName } from "../shared/notes"
 import {
@@ -10,10 +11,14 @@ import {
   renameMarkdown,
 } from "./note-files"
 import { NoteLibrary } from "./note-library"
+import type { AppSettingsRepository } from "./app-settings"
 
 const filters = [{ name: "Markdown 메모", extensions: ["md"] }]
 
-export function registerNotes(window: BrowserWindow) {
+export function registerNotes(
+  window: BrowserWindow,
+  mode?: AppSettingsRepository
+) {
   const library = new NoteLibrary({
     documents: app.getPath("documents"),
     userData: app.getPath("userData"),
@@ -120,11 +125,34 @@ export function registerNotes(window: BrowserWindow) {
     if (fileOperation) throw new Error("파일 작업이 진행 중입니다.")
     fileOperation = true
     try {
+      if (request.personalSourceKey !== undefined)
+        ModeItemKeySchema.parse(request.personalSourceKey)
+      if (
+        request.personal !== undefined &&
+        typeof request.personal !== "boolean"
+      )
+        throw new Error("메모의 생성 모드를 확인해 주세요.")
       const existing = request.id ? files.get(request.id) : undefined
+      const inherit = async (path: string) => {
+        if (!existing)
+          await mode?.markCreatedPersonal(
+            modeItemKey("note", path),
+            request.personal
+          )
+        if (request.personalSourceKey)
+          await mode?.inheritPersonal(
+            request.personalSourceKey,
+            modeItemKey("note", path)
+          )
+      }
       if (request.id && !existing)
         throw new Error("파일을 다시 열거나 다른 이름으로 저장해 주세요.")
       if (!existing && !request.saveAs) {
-        const file = await library.create(request.markdown, request.name)
+        const file = await library.create(
+          request.markdown,
+          request.name,
+          inherit
+        )
         const id = randomUUID()
         files.set(id, { path: file.path, markdown: file.markdown })
         return { ...file, id }
@@ -140,6 +168,8 @@ export function registerNotes(window: BrowserWindow) {
       // 대화상자에서 확정한 경로를 임의로 바꾸어 다른 파일을 덮어쓰지 않는다.
       if (extname(path).toLowerCase() !== ".md")
         throw new Error("파일 이름에 .md 확장자를 사용해 주세요.")
+      await inherit(path)
+      if (existing) await mode?.preserveNotePrivacy(existing.path, path)
       await writeMarkdown(
         path,
         request.markdown,
@@ -164,6 +194,10 @@ export function registerNotes(window: BrowserWindow) {
       if (fileOperation) throw new Error("파일 작업이 진행 중입니다.")
       fileOperation = true
       try {
+        await mode?.preserveNotePrivacy(
+          existing.path,
+          join(dirname(existing.path), normalizeNoteName(request.name))
+        )
         const path = await renameMarkdown(existing.path, request.name)
         files.set(request.id, { ...existing, path })
         return {

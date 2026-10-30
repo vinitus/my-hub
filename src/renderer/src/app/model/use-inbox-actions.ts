@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useEffect, useRef, useState, useSyncExternalStore } from "react"
 import { InboxStore } from "@/features/inbox"
 import { newCalendarEvent } from "@/entities/calendar-event"
 import { hasOpenDialog } from "@/shared/lib/has-open-dialog"
@@ -16,19 +16,44 @@ export function useInboxActions({
   openCreation,
   saveNote,
   noteBusy,
+  prepareDestination,
   createEvent = newCalendarEvent,
 }: {
   store: InboxStore
   inspectShortcut?: ShortcutsAPI["inspectDrop"]
   openCreation: (kind: HomeCreateSession["kind"], seed?: HomeCreateSeed) => void
   saveNote: (
-    markdown: string
+    markdown: string,
+    sourceKey?: string
   ) => Promise<{ saved: boolean; name: string } | undefined>
   noteBusy: boolean
+  prepareDestination?: (sourceKey: string, targetKey: string) => Promise<void>
   createEvent?: typeof newCalendarEvent
 }) {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [converting, setConverting] = useState(false)
+  const conversionLock = useRef(false)
+  async function openDestination(
+    item: InboxItem,
+    kind: HomeCreateSession["kind"],
+    seed: HomeCreateSeed
+  ) {
+    const id = seed.todo?.id ?? seed.event?.id ?? seed.item?.id
+    if (!id) return
+    setConverting(true)
+    try {
+      await prepareDestination?.(`inbox:${item.id}`, `${kind}:${id}`)
+      openCreation(kind, seed)
+    } catch (error) {
+      store.report(
+        error instanceof Error
+          ? error.message
+          : "개인 항목 설정을 유지하지 못했습니다. 다시 시도해 주세요."
+      )
+    } finally {
+      setConverting(false)
+    }
+  }
   useEffect(() => {
     void store.initialize()
   }, [store])
@@ -43,7 +68,7 @@ export function useInboxActions({
         "대상 항목은 저장했습니다. 인박스 상태를 갱신하지 못했으니 새로고침 후 처리 완료로 표시해 주세요."
       )
   }
-  async function convert(item: InboxItem, kind: InboxDestination["kind"]) {
+  async function convertItem(item: InboxItem, kind: InboxDestination["kind"]) {
     if (
       converting ||
       state.busy ||
@@ -65,7 +90,8 @@ export function useInboxActions({
       setConverting(true)
       try {
         const result = await saveNote(
-          `${item.content}\n\n---\n출처: ${item.source}\n수집 시각: ${item.createdAt}\n`
+          `${item.content}\n\n---\n출처: ${item.source}\n수집 시각: ${item.createdAt}\n`,
+          `inbox:${item.id}`
         )
         if (result?.saved) await finish(item, kind, result.name)
         else
@@ -83,7 +109,7 @@ export function useInboxActions({
     }
     const onCreated = (name: string) => finish(item, kind, name)
     if (kind === "todo")
-      openCreation("todo", {
+      await openDestination(item, "todo", {
         todo: {
           id: crypto.randomUUID(),
           title: title.slice(0, 200),
@@ -92,7 +118,7 @@ export function useInboxActions({
         onCreated,
       })
     if (kind === "event")
-      openCreation("event", {
+      await openDestination(item, "event", {
         event: {
           ...createEvent(),
           title: title.slice(0, 200),
@@ -124,7 +150,10 @@ export function useInboxActions({
             kind: "path",
             target: item.content,
           })
-          openCreation("shortcut", { item: inspected, onCreated })
+          await openDestination(item, "shortcut", {
+            item: inspected,
+            onCreated,
+          })
         } catch (error) {
           store.report(
             error instanceof Error
@@ -135,11 +164,20 @@ export function useInboxActions({
           setConverting(false)
         }
       } else {
-        openCreation("shortcut", { item: shortcut, onCreated })
+        await openDestination(item, "shortcut", { item: shortcut, onCreated })
       }
     }
   }
   const busy = state.busy || state.loading || converting
+  async function convert(item: InboxItem, kind: InboxDestination["kind"]) {
+    if (conversionLock.current) return
+    conversionLock.current = true
+    try {
+      await convertItem(item, kind)
+    } finally {
+      conversionLock.current = false
+    }
+  }
   return {
     viewProps: {
       items: state.snapshot?.items ?? [],

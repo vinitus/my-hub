@@ -1,3 +1,5 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
+import { modeItemKey } from "../../../../../shared/item-mode"
 import { useEffect, useId, useRef, useState } from "react"
 import {
   InboxIcon,
@@ -41,6 +43,10 @@ export type InboxViewProps = InboxCaptureProps & {
   focusRequest?: { id: number; itemId: string } | null
 }
 export function InboxView(props: InboxViewProps) {
+  const { allows } = useContentVisibility()
+  const visibleItems = props.items.filter((item) =>
+    allows(modeItemKey("inbox", item.id))
+  )
   const listId = useId()
   const focusedRequest = useRef<number | undefined>(undefined)
   const [filter, setFilter] = useState<"pending" | "processed" | "all">(
@@ -73,9 +79,9 @@ export function InboxView(props: InboxViewProps) {
       target.scrollIntoView({ block: "nearest" })
     }
   }, [focusRequest, filter, query, props.items, listId])
-  const pending = props.items.filter((item) => !item.processedAt).length
+  const pending = visibleItems.filter((item) => !item.processedAt).length
   const needle = query.trim().toLocaleLowerCase()
-  const items = props.items
+  const items = visibleItems
     .filter(
       (item) =>
         (filter === "all" ||

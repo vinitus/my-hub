@@ -5,15 +5,21 @@ import { useScratchpadSave } from "../model/use-scratchpad-save"
 
 function ScratchpadSavePreview({
   failure = "none",
+  allowModeChange = false,
 }: {
   failure?: "none" | "first-write" | "ai" | "missing"
+  allowModeChange?: boolean
 }) {
   const attempts = useRef(0)
   const [calls, setCalls] = useState<unknown[]>([])
+  const [personal, setPersonal] = useState(false)
   const save = useScratchpadSave(
     async (markdown, previous, title) => {
       attempts.current++
-      setCalls((current) => [...current, { markdown, previous, title }])
+      setCalls((current) => [
+        ...current,
+        { markdown, previous, title, personal },
+      ])
       return {
         key: "fixture-note",
         markdown,
@@ -26,10 +32,19 @@ function ScratchpadSavePreview({
       : async () => {
           if (failure === "ai") throw new Error("AI 제목 생성 실패 테스트")
           return "회의 준비.md"
-        }
+        },
+    personal ? "personal" : "work"
   )
   return (
     <div className="flex h-screen min-h-0 flex-col">
+      {allowModeChange && (
+        <button
+          data-testid="scratchpad-personal"
+          onClick={() => setPersonal(true)}
+        >
+          개인 모드로 전환
+        </button>
+      )}
       <HomePage
         active
         onSave={save}
@@ -56,3 +71,4 @@ export const RetryAfterWriteFailure: Story = {
 }
 export const AiFailure: Story = { args: { failure: "ai" } }
 export const MissingAi: Story = { args: { failure: "missing" } }
+export const ModeChange: Story = { args: { allowModeChange: true } }

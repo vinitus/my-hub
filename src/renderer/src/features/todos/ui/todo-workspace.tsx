@@ -1,3 +1,5 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
+import { modeItemKey } from "../../../../../shared/item-mode"
 import { useEffect, useId, useRef, useState, type RefObject } from "react"
 import {
   CalendarDaysIcon,
@@ -186,7 +188,7 @@ export function TodoForm({
   )
 }
 export function TodoWorkspace({
-  items,
+  items: allItems,
   revision,
   ready,
   busy,
@@ -197,6 +199,8 @@ export function TodoWorkspace({
   onRefresh,
   createRequest = 0,
 }: Props) {
+  const { allows } = useContentVisibility()
+  const items = allItems.filter((item) => allows(modeItemKey("todo", item.id)))
   const [editing, setEditing] = useState<{
     item: Todo
     revision: string
@@ -248,14 +252,29 @@ export function TodoWorkspace({
         </p>
       ) : (
         <>
-          <TodoForm
-            key={editing ? `${editing.item.id}:${editing.revision}` : "new"}
-            item={editing?.item ?? null}
-            busy={busy}
-            titleInputRef={titleInputRef}
-            onSave={(todo) => onSave(todo, editing?.revision ?? revision)}
-            onCancel={() => setEditing(null)}
-          />
+          {editing && !allows(modeItemKey("todo", editing.item.id)) && (
+            <p className="text-sm text-muted-foreground">
+              편집 중인 개인 할일을 숨겼습니다. 개인 모드에서 계속 편집할 수
+              있습니다.
+            </p>
+          )}
+          <div
+            hidden={!!editing && !allows(modeItemKey("todo", editing.item.id))}
+            className={
+              editing && !allows(modeItemKey("todo", editing.item.id))
+                ? "hidden"
+                : "contents"
+            }
+          >
+            <TodoForm
+              key={editing ? `${editing.item.id}:${editing.revision}` : "new"}
+              item={editing?.item ?? null}
+              busy={busy}
+              titleInputRef={titleInputRef}
+              onSave={(todo) => onSave(todo, editing?.revision ?? revision)}
+              onCancel={() => setEditing(null)}
+            />
+          </div>
           <div className="flex items-center gap-2 text-sm">
             <Label htmlFor={filterId}>완료 여부</Label>
             <select

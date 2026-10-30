@@ -1,3 +1,5 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
+import { modeItemKey } from "../../../../../shared/item-mode"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { CalendarStore } from "@/entities/calendar-event"
 import type { ShortcutStore } from "@/features/shortcuts"
@@ -23,6 +25,7 @@ export function LiveStatusPanel({
   onOpenShortcuts: () => void
   onOpenTodos: () => void
 }) {
+  const { allows } = useContentVisibility()
   const calendar = useSyncExternalStore(
     calendarStore.subscribe,
     calendarStore.getSnapshot
@@ -52,7 +55,9 @@ export function LiveStatusPanel({
     }
   }, [calendarStore, shortcutStore, todoStore])
 
-  const items = shortcuts.snapshot?.items ?? []
+  const items = (shortcuts.snapshot?.items ?? []).filter((item) =>
+    allows(modeItemKey("shortcut", item.id))
+  )
   const recent = shortcuts.recentIds.flatMap((id) => {
     const item = items.find((item) => item.id === id)
     return item ? [item] : []
@@ -62,9 +67,13 @@ export function LiveStatusPanel({
       open={open}
       fillContainer
       onOpenChange={onOpenChange}
-      events={calendar.snapshot?.events ?? []}
+      events={(calendar.snapshot?.events ?? []).filter((item) =>
+        allows(modeItemKey("event", item.id))
+      )}
       shortcuts={recent}
-      todos={todos.snapshot?.items ?? []}
+      todos={(todos.snapshot?.items ?? []).filter((item) =>
+        allows(modeItemKey("todo", item.id))
+      )}
       now={now}
       calendarLoading={!calendar.snapshot && !calendar.error}
       calendarError={calendar.error}

@@ -3,12 +3,14 @@ import { isAbsolute } from "node:path"
 import { stat } from "node:fs/promises"
 import { CalendarRepository } from "./calendar-repository"
 import { CalendarReminders } from "./calendar-reminders"
+import type { AppSettingsRepository } from "./app-settings"
 
 export function registerCalendar(
   window: BrowserWindow,
-  repository = new CalendarRepository(app.getPath("userData"))
+  repository = new CalendarRepository(app.getPath("userData")),
+  mode?: AppSettingsRepository
 ) {
-  const reminders = new CalendarReminders(repository, window)
+  const reminders = new CalendarReminders(repository, window, mode?.visibility)
   void reminders.refresh()
   function check(event: Electron.IpcMainInvokeEvent) {
     if (
@@ -38,6 +40,8 @@ export function registerCalendar(
     const snapshot = await repository.load()
     const item = snapshot.events.find((candidate) => candidate.id === id)
     if (!item) throw new Error("일정을 찾을 수 없습니다.")
+    if (mode && !(await mode.visibility()).allows(`event:${item.id}`))
+      throw new Error("개인 모드에서 열어 주세요.")
     for (const url of item.referenceUrls) {
       if (/^https?:\/\//i.test(url))
         await shell.openExternal(url).catch(() => {})

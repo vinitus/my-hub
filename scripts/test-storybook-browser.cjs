@@ -112,6 +112,110 @@ app.whenReady().then(async () => {
           theme === "dark",
           `${story.id}: toolbar theme was not applied`
         )
+        if (story.importPath.endsWith("/item-mode-control.stories.tsx")) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const visible = !story.id.endsWith("--off") && !story.id.endsWith("--work")
+          assert.equal(await run(`!!document.querySelector('[data-mode-control]')`), visible, "only personal mode has an indicator")
+          if (visible) {
+            assert.equal(await run(`getComputedStyle(document.querySelector('[data-mode-control]')).marginLeft`), "4px")
+            assert.equal(await run(`document.querySelector('[data-mode-control] [role="status"]').getBoundingClientRect().width>0`), true)
+            if (!story.id.endsWith("--switching")) {
+              assert.equal(await run(`(()=>{const button=document.querySelector('[data-mode-control]');const style=getComputedStyle(button);const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const ctx=canvas.getContext('2d');const luminance=color=>{ctx.fillStyle=color;ctx.fillRect(0,0,1,1);const rgb=Array.from(ctx.getImageData(0,0,1,1).data).slice(0,3).map(v=>{v/=255;return v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4});return rgb[0]*0.2126+rgb[1]*0.7152+rgb[2]*0.0722};const a=luminance(style.backgroundColor),b=luminance(style.color);return (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05)>=4.5})()`), true, "mode label contrast must remain readable")
+            }
+          }
+          assert.equal(await run(`(()=>{const header=document.querySelector('header').getBoundingClientRect();const buttons=Array.from(document.querySelectorAll('header button')).map(button=>button.getBoundingClientRect());return buttons.every(rect=>rect.left>=header.left-1&&rect.right<=header.right+1&&rect.top>=header.top-1&&rect.bottom<=header.bottom+1)&&buttons.every((a,i)=>buttons.slice(i+1).every(b=>a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top))})()`), true, "mode and header actions must fit without overlap")
+          const output = path.resolve("out/tests/storybook")
+          fs.mkdirSync(output, { recursive: true })
+          fs.writeFileSync(path.join(output, `mode-header-${story.name}-${theme}-${width}.png`), (await win.capturePage()).toPNG())
+          if (theme === "light" && visible) {
+            await run(`document.querySelector('[data-mode-control]').click()`)
+            await delay(50)
+            assert.equal(await run(`!!document.querySelector('[data-mode-control]')`), story.id.endsWith("--switching"))
+          }
+          console.log(`PASS personal-only mode indicator, 4px margin and header bounds: ${story.name}`)
+        }
+        if (theme === "light" && story.importPath.endsWith("/item-mode.stories.tsx")) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          const key = async (extra = "") => {
+            await run(`window.dispatchEvent(new KeyboardEvent('keydown',{key:'m',code:'KeyM',ctrlKey:true,shiftKey:true,bubbles:true,cancelable:true,${extra}}))`)
+            await delay(100)
+          }
+          const personal = () => run(`document.querySelector('[data-mode-control]')?.textContent==='개인 모드'`)
+          const results = () => run(`document.querySelector('[data-testid="mode-search-results"]').innerText`)
+          assert.equal(await personal(), false)
+          assert.equal(await results(), "")
+          assert.equal(await run(`document.querySelector('[data-testid="mode-inbox"]').innerText.includes('PRIVATE-INBOX')`), false)
+          assert.equal(await run(`document.querySelector('[data-testid="mode-todos"]').innerText.includes('PRIVATE-TODO')`), false)
+          await key("isComposing:true")
+          await key("repeat:true")
+          assert.equal(await run(`document.querySelector('[data-testid="mode-calls"]').textContent`), "0")
+          await key()
+          if (story.id.endsWith("--switch-failure")) {
+            assert.equal(await personal(), false)
+            assert.equal(await results(), "")
+          } else {
+            assert.equal(await personal(), true)
+            for (const kind of ["NOTE", "TODO", "EVENT", "SHORTCUT"]) assert.ok((await results()).includes(`PRIVATE-${kind}`))
+            assert.equal(await run(`document.querySelector('[data-testid="mode-inbox"]').innerText.includes('PRIVATE-INBOX')`), true)
+            await run(`(()=>{const input=document.querySelector('input[aria-label="개인 메모 초안"]');input.focus();Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(input,'편집 중인 개인 초안');input.dispatchEvent(new Event('input',{bubbles:true}))})()`)
+            await key()
+            assert.equal(await personal(), false)
+            assert.equal(await run(`document.querySelector('input[aria-label="개인 메모 초안"]').closest('[hidden]')!==null`), true)
+            assert.equal(await run(`document.activeElement===document.querySelector('[data-mode-focus-target]')`), true)
+            await key()
+            assert.equal(await run(`document.querySelector('input[aria-label="개인 메모 초안"]').value`), "편집 중인 개인 초안")
+            await run(`Array.from(document.querySelectorAll('button')).find(b=>b.textContent==='검색 열기').click()`)
+            await delay(100)
+            await key()
+            assert.equal(await personal(), true, "open dialog must block mode changes")
+            await win.webContents.sendInputEvent({ type: "keyDown", keyCode: "Escape" })
+            await win.webContents.sendInputEvent({ type: "keyUp", keyCode: "Escape" })
+            await delay(200)
+            await run(`document.querySelector('[data-testid="mode-block"]').click()`)
+            await key()
+            assert.equal(await personal(), true, "pending save must block mode changes")
+            await run(`document.querySelector('[data-testid="mode-block"]').click()`)
+            await key()
+            assert.equal(await personal(), false)
+            assert.equal(await run(`document.querySelector('[data-testid="mode-data-count"]').textContent`), "5")
+            await key()
+            await run(`Array.from(document.querySelectorAll('label')).find(el=>el.textContent.includes('PRIVATE-NOTE')).querySelector('input').click()`)
+            await delay(50)
+            await key()
+            assert.equal((await results()).trim(), "PRIVATE-NOTE", "unmarked note remains visible in work mode")
+            await key()
+            await run(`Array.from(document.querySelectorAll('label')).find(el=>el.textContent.includes('PRIVATE-NOTE')).querySelector('input').click()`)
+            await delay(50)
+            await key()
+            assert.equal(await results(), "")
+            await run(`(()=>{const label=Array.from(document.querySelectorAll('label')).find(el=>el.textContent.trim()==='\uBAA8\uB4DC \uC804\uD658 \uB2E8\uCD95\uD0A4');const select=document.getElementById(label.htmlFor);select.value='ctrl+alt+shift+m';select.dispatchEvent(new Event('change',{bubbles:true}))})()`)
+            await delay(50)
+            await key()
+            assert.equal(await personal(), false, "old shortcut stops matching after setting change")
+            await key("altKey:true")
+            assert.equal(await personal(), true)
+            await run(`Array.from(document.querySelectorAll('label')).find(el=>el.textContent.includes('항목별 개인용 숨김 사용')).querySelector('input').click()`)
+            await delay(50)
+            assert.equal(await personal(), false)
+            assert.ok((await results()).includes("PRIVATE-TODO"), "disabling mode shows all items")
+            await run(`Array.from(document.querySelectorAll('label')).find(el=>el.textContent.includes('항목별 개인용 숨김 사용')).querySelector('input').click()`)
+            await delay(50)
+            assert.equal(await results(), "", "reenabling starts in work mode")
+          }
+          console.log(`PASS mode visibility, shortcut guards and retained draft: ${story.name}`)
+        }
+        if (theme === "light" && story.importPath.endsWith("/item-mode-settings.stories.tsx") && story.id.endsWith("--save-failure")) {
+          const run = (code) => win.webContents.executeJavaScript(code)
+          await run(`Array.from(document.querySelectorAll('label')).find(el=>el.textContent.includes('할일 개인 항목')).querySelector('input').click()`)
+          await delay(150)
+          assert.equal(await run(`Array.from(document.querySelectorAll('label')).find(el=>el.textContent.includes('할일 개인 항목')).querySelector('input').checked`), false)
+          assert.equal(await run(`document.querySelector('[role="alert"]').textContent.includes('저장하지 못했습니다')`), true)
+        }
+        if (story.importPath.endsWith("/item-mode-settings.stories.tsx") && story.id.endsWith("--personal")) {
+          const output = path.resolve("out/tests/storybook")
+          fs.mkdirSync(output, { recursive: true })
+          fs.writeFileSync(path.join(output, `item-mode-${theme}-${width}.png`), (await win.capturePage()).toPNG())
+        }
         if (
           theme === "light" &&
           story.importPath.endsWith("/configured-quick-menu.stories.tsx")
@@ -1859,15 +1963,23 @@ app.whenReady().then(async () => {
               story.name === "Retry After Write Failure"
             )
             // Rerender the entire hook caller with new input before repeating save.
+            if (story.name === "Mode Change") {
+              await run(`document.querySelector('[data-testid="scratchpad-personal"]').click()`)
+              await delay(50)
+            }
             await run(`document.querySelector('textarea').focus()`)
             win.webContents.insertText(" updated")
             await delay(30)
             await save()
             const second = (await writes())[1]
-            assert.deepEqual(second.previous, {
+            assert.deepEqual(second.previous, story.name === "Mode Change" ? null : {
               key: "fixture-note",
               markdown: first.markdown,
             })
+            if (story.name === "Mode Change") {
+              assert.equal(first.personal, false)
+              assert.equal(second.personal, true)
+            }
             assert.equal(second.title, first.title)
             assert.equal(
               await run(`!!document.querySelector('[role="alert"]')`),

@@ -117,6 +117,15 @@ const commands: CommandAPI = {
 const settings: AppSettingsAPI = {
   read: () => ipcRenderer.invoke("settings:read"),
   update: (patch) => ipcRenderer.invoke("settings:update", patch),
+  inheritPersonal: (sourceKey, targetKey) =>
+    ipcRenderer.invoke("settings:inherit-personal", { sourceKey, targetKey }),
+  setPersonalMode: (personal) =>
+    ipcRenderer.invoke("settings:personal-mode", personal),
+  onChange: (callback) => {
+    const listener = () => callback()
+    ipcRenderer.on("settings:changed", listener)
+    return () => ipcRenderer.removeListener("settings:changed", listener)
+  },
 }
 const inbox: InboxRendererAPI = {
   load: () => ipcRenderer.invoke("inbox:load"),

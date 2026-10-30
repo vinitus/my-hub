@@ -14,6 +14,7 @@ type ThemeStorage = {
 type State = {
   settings: AppSettings
   ready: boolean
+  loaded: boolean
   error: string
 }
 
@@ -38,6 +39,7 @@ export class AppSettingsStore {
     this.state = {
       settings: { ...DEFAULT_APP_SETTINGS },
       ready: !api,
+      loaded: !api,
       error: "",
     }
   }
@@ -84,11 +86,13 @@ export class AppSettingsStore {
     this.initialization ??= this.enqueue(async () => {
       let settings = this.state.settings
       let error = ""
+      let loaded = false
       try {
         const theme = this.legacyTheme()
         settings = this.api
           ? await this.api.read()
           : { ...DEFAULT_APP_SETTINGS }
+        loaded = true
         if (theme) {
           settings =
             this.api && theme !== settings.theme
@@ -100,7 +104,7 @@ export class AppSettingsStore {
       } catch (cause) {
         error = message(cause)
       }
-      this.publish({ settings, error, ready: true })
+      this.publish({ settings, error, ready: true, loaded })
     })
     return this.initialization
   }
@@ -114,11 +118,28 @@ export class AppSettingsStore {
           : { ...this.state.settings, ...patch }
         if (!this.api && patch.theme) this.themeStorage.write(patch.theme)
         if (this.api && patch.theme) this.finishThemeMigration()
-        this.publish({ settings, error: "" })
+        this.publish({ settings, error: "", loaded: true })
         return true
       } catch (cause) {
         this.publish({ error: message(cause) })
         return false
+      }
+    })
+  }
+  refresh = async (invalidate = false) => {
+    // main은 새 개인 지정을 파일보다 먼저 알린다. 읽는 동안 이전 분류로 새 파일을 표시하지 않는다.
+    if (invalidate) this.publish({ loaded: false })
+    await this.initialize()
+    return this.enqueue(async () => {
+      if (!this.api) return
+      try {
+        this.publish({
+          settings: await this.api.read(),
+          error: "",
+          loaded: true,
+        })
+      } catch (cause) {
+        this.publish({ error: message(cause) })
       }
     })
   }

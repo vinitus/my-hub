@@ -12,6 +12,7 @@ import { CodexCommandPlanner, NeedsConnection } from "./codex-command-planner"
 import type { CalendarRepository } from "./calendar-repository"
 import type { TodoRepository } from "./todo-repository"
 import type { CodexSettings } from "./codex-settings"
+import { modeItemKey } from "../shared/item-mode"
 
 export function validateCommandPlan(
   raw: unknown,
@@ -91,6 +92,7 @@ type ValidatedAction = {
   todo: TodoSnapshot["items"][number] | null
 }
 type Batch = {
+  modeRevision: number
   token: string
   actions: ValidatedAction[]
   calendar: CalendarSnapshot
@@ -110,6 +112,10 @@ function describe(
 }
 
 export class CommandService {
+  private readonly visibility: () => Promise<{
+    allows: (key: string) => boolean
+    revision: number
+  }>
   private running = false
   private disposed = false
   private pending: Batch | null = null
@@ -132,7 +138,11 @@ export class CommandService {
       CodexCommandPlanner,
       "plan" | "dispose"
     > = new CodexCommandPlanner(),
-    now = () => new Date()
+    now = () => new Date(),
+    visibility: () => Promise<{
+      allows: (key: string) => boolean
+      revision: number
+    }> = async () => ({ allows: () => true, revision: 0 })
   ) {
     this.calendar = calendar
     this.todos = todos
@@ -140,6 +150,7 @@ export class CommandService {
     this.changed = changed
     this.planner = planner
     this.now = now
+    this.visibility = visibility
   }
   dispose() {
     this.disposed = true
@@ -151,6 +162,10 @@ export class CommandService {
     return { status: "error", message, changed: [] }
   }
   private async assertCurrent(batch: Batch) {
+    if ((await this.visibility()).revision !== batch.modeRevision)
+      throw new Error(
+        "모드 또는 개인 항목 설정이 변경되었습니다. 다시 요청해 주세요."
+      )
     const [calendar, todos] = await Promise.all([
       this.calendar.load(),
       this.todos.load(),
@@ -180,13 +195,26 @@ export class CommandService {
         this.todos.load(),
         this.settings.read(),
       ])
+      const visibility = await this.visibility()
+      const visibleCalendar = {
+        ...calendar,
+        events: calendar.events.filter((item) =>
+          visibility.allows(modeItemKey("event", item.id))
+        ),
+      }
+      const visibleTodos = {
+        ...todos,
+        items: todos.items.filter((item) =>
+          visibility.allows(modeItemKey("todo", item.id))
+        ),
+      }
       const now = this.now()
       const context = JSON.stringify({
         request: parsed.data,
         currentLocalTime: now.toString(),
         currentInstant: now.toISOString(),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        calendar: calendar.events.map(
+        calendar: visibleCalendar.events.map(
           ({ id, title, description, color, allDay, start, end }) => ({
             id,
             title,
@@ -197,7 +225,7 @@ export class CommandService {
             end,
           })
         ),
-        todos: todos.items,
+        todos: visibleTodos.items,
       })
       if (Buffer.byteLength(context) > 200000)
         throw new Error(
@@ -206,15 +234,25 @@ export class CommandService {
       const raw: CommandPlan = await this.planner.plan(context, preferences)
       if (this.disposed)
         throw new Error("작업 창이 종료되어 변경하지 않았습니다.")
-      const { plan, actions } = validateCommandPlan(raw, calendar, todos)
+      const { plan, actions } = validateCommandPlan(
+        raw,
+        visibleCalendar,
+        visibleTodos
+      )
+      const batch = {
+        token: randomUUID(),
+        actions,
+        calendar,
+        todos,
+        modeRevision: visibility.revision,
+      }
+      await this.assertCurrent(batch)
       if (plan.kind !== "actions")
         return {
           status: plan.kind === "answer" ? "success" : "clarification",
           message: plan.message,
           changed: [],
         }
-      const batch = { token: randomUUID(), actions, calendar, todos }
-      await this.assertCurrent(batch)
       if (this.disposed) throw new Error("작업 창이 종료되었습니다.")
       this.pending = batch
       return {
@@ -274,6 +312,7 @@ export class CommandService {
     try {
       await this.assertCurrent(batch)
       for (const action of batch.actions) {
+        await this.assertCurrent({ ...batch, calendar, todos })
         if (this.disposed) throw new Error("작업 창이 종료되었습니다.")
         const previousEvent = calendar.events.find(
           (item) => item.id === action.id
@@ -322,7 +361,13 @@ export class CommandService {
         status: "success",
         message: `${applied.length}건 ${undo ? "실행 취소" : "저장"} 완료\n${applied.join("\n")}`,
         changed: [...domains],
-        ...this.rememberUndo(undo, inverses, calendar, todos),
+        ...this.rememberUndo(
+          undo,
+          inverses,
+          calendar,
+          todos,
+          batch.modeRevision
+        ),
       }
     } catch (error) {
       return {
@@ -331,7 +376,13 @@ export class CommandService {
         message: applied.length
           ? `${applied.length}건만 ${undo ? "복원" : "저장"}했습니다.\n${applied.join("\n")}\n나머지 작업은 중단했습니다. 전체 요청을 다시 보내면 중복될 수 있습니다.\n${this.errorMessage(error)}`
           : this.errorMessage(error),
-        ...this.rememberUndo(undo, inverses, calendar, todos),
+        ...this.rememberUndo(
+          undo,
+          inverses,
+          calendar,
+          todos,
+          batch.modeRevision
+        ),
       }
     } finally {
       this.running = false
@@ -342,10 +393,17 @@ export class CommandService {
     undo: boolean,
     actions: ValidatedAction[],
     calendar: CalendarSnapshot,
-    todos: TodoSnapshot
+    todos: TodoSnapshot,
+    modeRevision: number
   ) {
     if (undo || !actions.length || this.disposed) return {}
-    this.undoBatch = { token: randomUUID(), actions, calendar, todos }
+    this.undoBatch = {
+      token: randomUUID(),
+      actions,
+      calendar,
+      todos,
+      modeRevision,
+    }
     return { undoToken: this.undoBatch.token }
   }
 }

@@ -3,17 +3,29 @@ import { NoteStore, hasNoteChanges } from "./note-store"
 
 const DRAFT_KEY = "my-hub:markdown-draft:v1"
 
-export function useNote(shortcutsEnabled = true) {
+export function useNote(
+  shortcutsEnabled = true,
+  personalMode = false,
+  afterSave?: () => Promise<unknown>
+) {
   const api = window.api?.notes
   const [store] = useState(
     () =>
-      new NoteStore(api, {
-        read: () => JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"),
-        write: (draft) =>
-          localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)),
-      })
+      new NoteStore(
+        api,
+        {
+          read: () => JSON.parse(localStorage.getItem(DRAFT_KEY) || "null"),
+          write: (draft) =>
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)),
+        },
+        1000,
+        afterSave
+      )
   )
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  useEffect(() => {
+    store.setPersonalMode(personalMode)
+  }, [store, personalMode])
 
   useEffect(() => {
     const stop = store.start()

@@ -28,6 +28,8 @@ import type { NoteFile, NotesAPI } from "../src/shared/notes"
 import { normalizeNoteName } from "../src/shared/notes"
 import { NoteLibrary } from "../src/main/note-library"
 import { NoteStore } from "../src/renderer/src/features/notes/model/note-store"
+import { AppSettingsRepository } from "../src/main/app-settings"
+import { modeItemKey } from "../src/shared/item-mode"
 
 function semantics(markdown: string) {
   return JSON.parse(
@@ -259,7 +261,7 @@ test("IPC 파일명 변경 후 같은 ID로 본문 저장을 이어간다", asyn
   }
 })
 
-async function fixture() {
+async function fixture(withMode = false) {
   const root = await mkdtemp(join(tmpdir(), "my-hub-library-test-"))
   app.paths = {
     documents: join(root, "Documents"),
@@ -267,7 +269,10 @@ async function fixture() {
   }
   await mkdir(app.paths.documents)
   const window = new BrowserWindow()
-  registerNotes(window as never)
+  const mode = withMode
+    ? new AppSettingsRepository(app.paths.userData)
+    : undefined
+  registerNotes(window as never, mode)
   async function invoke<T>(channel: string, request?: unknown): Promise<T> {
     return (await handlers.get(channel)!(window.event(), request)) as T
   }
@@ -291,6 +296,7 @@ async function fixture() {
   return {
     root,
     api,
+    mode,
     cleanup: async () => {
       ipcMain.emit("notes:dirty", window.event(), false)
       window.close()
@@ -298,6 +304,245 @@ async function fixture() {
     },
   }
 }
+
+test("personal inbox note conversion, retries, rename and save-as preserve designation", async () => {
+  const f = await fixture(true)
+  const storage = memoryDraft()
+  let fail = true
+  const store = new NoteStore(
+    {
+      ...f.api,
+      save: async (request) => {
+        if (fail) throw new Error("synthetic save failure")
+        return f.api.save(request)
+      },
+    },
+    storage,
+    60000
+  )
+  const stop = store.start()
+  try {
+    await f.mode!.update({
+      modeEnabled: true,
+      personalItemKeys: ["inbox:source"],
+    })
+    await until(() => store.getSnapshot().ready)
+    assert.equal(
+      (await store.saveText("private content", null, "private", "inbox:source"))
+        ?.saved,
+      false
+    )
+    assert.equal(store.getSnapshot().note.personalSourceKey, "inbox:source")
+    assert.equal(store.getSnapshot().note.markdown, "private content")
+    const restored = new NoteStore(undefined, storage)
+    assert.equal(restored.getSnapshot().note.personalSourceKey, "inbox:source")
+    fail = false
+    assert.equal(await store.save(), true)
+    const file = store.getSnapshot().note.file!
+    assert.equal(
+      (await f.mode!.visibility()).allows(modeItemKey("note", file.path)),
+      false
+    )
+    await store.rename("renamed private")
+    const renamed = store.getSnapshot().note.file!
+    assert.equal(
+      (await f.mode!.visibility()).allows(modeItemKey("note", renamed.path)),
+      false
+    )
+    dialog.saveResult = { canceled: false, filePath: join(f.root, "copy.md") }
+    assert.equal(await store.save(true), true)
+    assert.equal(
+      (await f.mode!.visibility()).allows(
+        modeItemKey("note", join(f.root, "copy.md"))
+      ),
+      false
+    )
+    const copiedKey = modeItemKey("note", join(f.root, "copy.md"))
+    await f.mode!.update({
+      personalItemKeys: (await f.mode!.read()).personalItemKeys.filter(
+        (key) => key !== copiedKey
+      ),
+    })
+    store.change("explicitly shared note")
+    assert.equal(await store.save(), true)
+    assert.equal((await f.mode!.visibility()).allows(copiedKey), true)
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("note publication aborts when personal metadata cannot be saved", async () => {
+  const f = await fixture()
+  try {
+    const library = new NoteLibrary(app.paths)
+    await assert.rejects(
+      library.create("private", "private", async () => {
+        throw new Error("metadata failure")
+      }),
+      /metadata failure/
+    )
+    assert.deepEqual((await library.snapshot()).notes, [])
+    assert.deepEqual(await readdir(await library.directory()), [])
+  } finally {
+    await f.cleanup()
+  }
+})
+
+test("a note keeps its creation mode through switching, failed save, draft restore and retry", async () => {
+  const f = await fixture(true)
+  const storage = memoryDraft()
+  let fail = true
+  const api = {
+    ...f.api,
+    save: async (request: Parameters<NotesAPI["save"]>[0]) => {
+      if (fail) throw new Error("synthetic failure")
+      return f.api.save(request)
+    },
+  }
+  const store = new NoteStore(api, storage, 60000)
+  const stop = store.start()
+  let stopRestored: (() => void) | undefined
+  try {
+    await f.mode!.update({ modeEnabled: true })
+    await f.mode!.setPersonalMode(true)
+    await until(() => store.getSnapshot().ready)
+    store.setPersonalMode(true)
+    await store.newNote()
+    store.change("created in personal mode")
+    assert.equal(store.getSnapshot().note.personal, true)
+    store.setPersonalMode(false)
+    await f.mode!.setPersonalMode(false)
+    assert.equal(await store.save(), false)
+    assert.equal(store.getSnapshot().note.markdown, "created in personal mode")
+    const restored = new NoteStore(api, storage, 60000)
+    assert.equal(restored.getSnapshot().note.personal, true)
+    stopRestored = restored.start()
+    await until(() => restored.getSnapshot().ready)
+    fail = false
+    assert.equal(await restored.save(), true)
+    const file = restored.getSnapshot().note.file!
+    assert.equal(
+      (await f.mode!.visibility()).allows(modeItemKey("note", file.path)),
+      false
+    )
+    await f.mode!.setPersonalMode(true)
+    assert.equal(
+      (await f.mode!.visibility()).allows(modeItemKey("note", file.path)),
+      true
+    )
+
+    // Editing an existing public file does not change its designation.
+    const publicFile = await f.api.save({
+      id: null,
+      name: "public",
+      markdown: "public",
+      personal: false,
+    })
+    await f.api.save({ id: publicFile!.id, markdown: "public edit" })
+    await f.mode!.setPersonalMode(false)
+    assert.equal(
+      (await f.mode!.visibility()).allows(
+        modeItemKey("note", publicFile!.path)
+      ),
+      true
+    )
+    await f.mode!.setPersonalMode(true)
+    const legacyFile = await f.api.save({
+      id: null,
+      name: "native personal",
+      markdown: "legacy caller",
+    })
+    await f.mode!.setPersonalMode(false)
+    assert.equal(
+      (await f.mode!.visibility()).allows(
+        modeItemKey("note", legacyFile!.path)
+      ),
+      false
+    )
+  } finally {
+    stopRestored?.()
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("a work draft stays shared and an explicitly personal scratchpad save stays private", async () => {
+  const f = await fixture(true)
+  const store = new NoteStore(f.api, memoryDraft(), 60000)
+  const stop = store.start()
+  try {
+    await f.mode!.update({ modeEnabled: true })
+    await until(() => store.getSnapshot().ready)
+    store.change("started at work")
+    store.setPersonalMode(true)
+    await f.mode!.setPersonalMode(true)
+    assert.equal(await store.save(), true)
+    const file = store.getSnapshot().note.file!
+    await f.mode!.setPersonalMode(false)
+    store.setPersonalMode(false)
+    assert.equal(
+      (await f.mode!.visibility()).allows(modeItemKey("note", file.path)),
+      true
+    )
+    const saved = await store.saveText(
+      "personal scratchpad",
+      null,
+      "private scratchpad",
+      undefined,
+      true
+    )
+    assert.equal(saved?.saved, true)
+    assert.equal(
+      (await f.mode!.visibility()).allows(
+        modeItemKey("note", store.getSnapshot().note.file!.path)
+      ),
+      false
+    )
+  } finally {
+    stop()
+    await f.cleanup()
+  }
+})
+
+test("a new personal file is published to the editor only after settings synchronization", async () => {
+  const f = await fixture(true)
+  let release!: () => void
+  let synchronized!: () => void
+  const gate = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  const reached = new Promise<void>((resolve) => {
+    synchronized = resolve
+  })
+  const store = new NoteStore(f.api, memoryDraft(), 60000, async () => {
+    const file = (await f.api.library()).notes[0]
+    assert.equal(
+      (await f.mode!.visibility()).allows(modeItemKey("note", file.path)),
+      false
+    )
+    synchronized()
+    await gate
+  })
+  const stop = store.start()
+  try {
+    await f.mode!.update({ modeEnabled: true })
+    await until(() => store.getSnapshot().ready)
+    store.setPersonalMode(true)
+    store.change("private before first save")
+    const saving = store.save()
+    await reached
+    assert.equal(store.getSnapshot().note.file, null)
+    assert.equal(store.getSnapshot().note.personal, true)
+    release()
+    assert.equal(await saving, true)
+    assert.ok(store.getSnapshot().note.file)
+  } finally {
+    release()
+    stop()
+    await f.cleanup()
+  }
+})
 
 const pause = (ms = 40) => new Promise((resolve) => setTimeout(resolve, ms))
 async function until(predicate: () => boolean) {

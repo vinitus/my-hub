@@ -1,3 +1,10 @@
+import {
+  ContentVisibilityProvider,
+  ContentVisibility,
+} from "@/shared/lib/content-visibility"
+import { useItemMode } from "./model/use-item-mode"
+import { modeItemKey } from "../../../shared/item-mode"
+import { ItemModeControl } from "./ui/item-mode-control"
 import { Toaster } from "@/shared/ui/sonner"
 import { TodoStore } from "@/features/todos"
 import { AppSidebar } from "@/widgets/app-sidebar"
@@ -52,7 +59,9 @@ export function App() {
   const {
     settings,
     ready: settingsReady,
+    loaded: settingsLoaded,
     updateSettings,
+    refreshSettings,
     error: settingsError,
   } = useAppSettings()
   const { view, visited, navigate } = useWorkspaceNavigation()
@@ -86,6 +95,26 @@ export function App() {
     () => new ShortcutStore(window.api?.shortcuts)
   )
   const [inboxStore] = useState(() => new InboxStore(window.api?.inbox))
+  const mode = useItemMode({
+    settings,
+    ready: settingsLoaded && !settingsError,
+    settingsOpen,
+    canTransition: () =>
+      !todoStore.getSnapshot().busy &&
+      !calendarStore.getSnapshot().busy &&
+      !shortcutStore.getSnapshot().busy &&
+      !inboxStore.getSnapshot().busy &&
+      !memo.busy &&
+      !memo.saving &&
+      !inbox.viewProps.busy &&
+      !creation.busy,
+    onTransition: async () => {
+      todoStore.clearFeedback()
+      shortcutStore.clearFeedback()
+      inboxStore.report("")
+      await refreshSettings()
+    },
+  })
   useEffect(
     () =>
       window.api?.commands?.onChange((domains) => {
@@ -104,17 +133,33 @@ export function App() {
       !calculatorOpen &&
       !inboxDialogOpen &&
       !inboxQuickAddOpen &&
-      creation.session === null
+      creation.session === null,
+    mode.personal,
+    refreshSettings
   )
   const saveScratchpad = useScratchpadSave(
-    memo.saveText,
-    window.api?.codex?.suggestNoteTitle
+    (text, previous, title) =>
+      memo.saveText(text, previous, title, undefined, mode.personal),
+    window.api?.codex?.suggestNoteTitle,
+    mode.personal ? "personal" : "work"
   )
   const inbox = useInboxActions({
     store: inboxStore,
     inspectShortcut: window.api?.shortcuts?.inspectDrop,
     openCreation: creation.open,
-    saveNote: memo.saveText,
+    saveNote: (markdown, sourceKey) =>
+      memo.saveText(markdown, null, undefined, sourceKey),
+    prepareDestination: async (sourceKey, targetKey) => {
+      if (!window.api?.settings?.inheritPersonal) {
+        if (settings.personalItemKeys.includes(sourceKey))
+          throw new Error(
+            "개인 항목 설정을 유지하려면 앱을 다시 시작해 주세요."
+          )
+        return
+      }
+      await window.api.settings.inheritPersonal(sourceKey, targetKey)
+      await refreshSettings()
+    },
     noteBusy: memo.busy,
   })
   const menuItems =
@@ -123,6 +168,7 @@ export function App() {
     items: menuItems,
     store: shortcutStore,
     settingsOpen,
+    allows: mode.allows,
     noteBusy: memo.busy || !memo.ready,
     handlers: {
       note: () => {
@@ -140,7 +186,8 @@ export function App() {
   })
   const showNavigationNumbers = useNavigationShortcuts(navigate)
   const launcher = useActionLauncher({
-    open: commandOpen,
+    open: commandOpen || settingsOpen,
+    allows: mode.allows,
     library: memo.library,
     noteBusy: memo.busy,
     refreshNotes: memo.refresh,
@@ -245,265 +292,359 @@ export function App() {
     ],
   })
   return (
-    <WorkspaceLayout
-      settings={settings}
-      ready={settingsReady}
-      onChange={(patch) => void updateSettings(patch)}
-      sidebar={
-        <AppSidebar
-          scheduleStatus={<LiveScheduleStatus store={calendarStore} />}
-          weather={<WeatherWidget />}
-          navigationItems={NAVIGATION_ITEMS}
-          variant="inset"
-          activeView={view}
-          showNavigationNumbers={showNavigationNumbers}
-          onNavigate={navigate}
-          onNewNote={() => {
-            navigate("notes")
-            void memo.newNote()
-          }}
-          onOpenNote={() => {
-            navigate("notes")
-            void memo.open()
-          }}
-          busy={memo.busy}
-          library={memo.library}
-          ready={memo.ready}
-          currentPath={memo.note.file?.path}
-          onSelectNote={(name) => {
-            navigate("notes")
-            void memo.openNote(name)
-          }}
-          onToggleNoteFavorite={(path, favorite) => {
-            void memo.setFavorite(path, favorite)
-          }}
-          onOpenSettings={() => {
-            setSettingsOpen(true)
-          }}
-          onRefresh={() => void memo.refresh()}
-        />
-      }
-      header={
-        <SiteHeader
-          title={NAVIGATION_ITEMS.find((item) => item.id === view)!.label}
-          onQuickCommand={() => setCommandOpen(true)}
-          onAIQuickCommand={() => setAICommandOpen(true)}
-          onInboxCapture={() => setInboxDialogOpen(true)}
-          launcherShortcut={settings.launcherShortcut}
-        />
-      }
-      statusPanel={
-        <LiveStatusPanel
-          calendarStore={calendarStore}
-          shortcutStore={shortcutStore}
-          todoStore={todoStore}
-          open={settings.rightPanelOpen}
-          onOpenChange={(rightPanelOpen) =>
-            void updateSettings({ rightPanelOpen })
-          }
-          onOpenCalendar={() => navigate("calendar")}
-          onOpenShortcuts={() => navigate("shortcuts")}
-          onOpenTodos={() => navigate("todos")}
-        />
-      }
-      overlays={
-        <>
-          {/* Both home capture flows replace the same brief success notice. */}
-          <Toaster
-            id="home-actions"
-            hotkey={[]}
-            theme={settings.theme}
-            position="bottom-center"
-            closeButton
-          />
-          <QuickCommand
-            open={commandOpen}
-            onOpenChange={setCommandOpen}
-            {...launcher}
-            shortcut={settings.launcherShortcut}
-          />
-          <AIQuickCommand
-            open={aiCommandOpen}
-            onOpenChange={setAICommandOpen}
-          />
-          <CalendarReminderCenter />
-          <HomeCreateDialog {...creation} />
-          <InboxCaptureDialog
-            {...inbox.viewProps}
-            open={inboxDialogOpen}
-            onOpenChange={setInboxDialogOpen}
-          />
-          <Dialog open={calculatorOpen} onOpenChange={setCalculatorOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>계산기</DialogTitle>
-                <DialogDescription>
-                  사칙연산과 괄호를 사용해 계산합니다.
-                </DialogDescription>
-              </DialogHeader>
-              <Calculator collapsible={false} />
-            </DialogContent>
-          </Dialog>
-          <SettingsSheet
-            launcherShortcut={settings.launcherShortcut}
-            onLauncherShortcutChange={(launcherShortcut) =>
-              void updateSettings({ launcherShortcut })
-            }
-            shortcutMenuItems={menuItems}
-            quickMenuOptions={quickMenu.options}
-            quickMenuError={quickMenu.error}
-            onShortcutMenuItemsChange={(shortcutMenuItems) =>
-              void updateSettings({ shortcutMenuItems })
-            }
-            shortcutMenuMotion={settings.shortcutMenuMotion}
-            onShortcutMenuMotionChange={(shortcutMenuMotion) =>
-              void updateSettings({ shortcutMenuMotion })
-            }
-            open={settingsOpen}
-            onOpenChange={setSettingsOpen}
-            directory={memo.library?.directory}
-            ready={memo.ready}
-            busy={memo.busy}
-            error={memo.error}
-            onChooseDirectory={() => void memo.chooseDirectory()}
-            settingsError={settingsError}
-          />
-          {codexSetup !== null && (
-            <CodexSetupPrompt
-              open={codexPromptOpen}
-              initialStep={codexSetup}
-              onDismiss={() => setCodexSetup(null)}
-            />
-          )}
-        </>
-      }
-    >
-      <div className="relative flex h-full min-w-0 flex-col">
-        {visited.has("inbox") && (
-          <div
-            className={
-              view === "inbox" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-            }
-          >
-            <Suspense
-              fallback={
-                <p role="status" className="p-6 text-sm text-muted-foreground">
-                  인박스를 불러오는 중…
-                </p>
-              }
-            >
-              <InboxWorkspace {...inbox.viewProps} focusRequest={inboxFocus} />
-            </Suspense>
-          </div>
-        )}
-        <div
-          className={
-            view === "home" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-          }
-        >
-          <HomePage
-            active={view === "home"}
-            onSave={saveScratchpad}
-            onCreateTodo={() => creation.open("todo")}
-            onCreateEvent={() => creation.open("event")}
-            onCreateShortcut={() => creation.open("shortcut")}
-            inboxAction={
-              <InboxQuickAddPopover
-                open={inboxQuickAddOpen}
-                onOpenChange={setInboxQuickAddOpen}
-                onSave={async (content) => {
-                  if (!(await inboxStore.captureText(content, "홈 빠른 추가")))
-                    throw new Error(
-                      inboxStore.getSnapshot().error ||
-                        "인박스가 준비되지 않았습니다. 잠시 후 다시 시도해 주세요."
-                    )
-                }}
-              />
-            }
-            recentInboxItems={inbox.viewProps.items}
-            inboxBusy={inbox.viewProps.busy}
-            onOpenInbox={(itemId) => {
-              navigate("inbox")
-              setInboxFocus((current) => ({
-                id: (current?.id ?? 0) + 1,
-                itemId,
-              }))
+    <ContentVisibilityProvider allows={mode.allows} scope={mode.scope}>
+      <WorkspaceLayout
+        settings={settings}
+        ready={settingsReady}
+        onChange={(patch) => void updateSettings(patch)}
+        sidebar={
+          <AppSidebar
+            scheduleStatus={<LiveScheduleStatus store={calendarStore} />}
+            weather={<WeatherWidget />}
+            navigationItems={NAVIGATION_ITEMS}
+            variant="inset"
+            activeView={view}
+            showNavigationNumbers={showNavigationNumbers}
+            onNavigate={navigate}
+            onNewNote={() => {
+              navigate("notes")
+              void memo.newNote()
             }}
+            onOpenNote={() => {
+              navigate("notes")
+              void memo.open()
+            }}
+            busy={memo.busy}
+            library={memo.library}
+            ready={memo.ready}
+            currentPath={memo.note.file?.path}
+            onSelectNote={(name) => {
+              navigate("notes")
+              void memo.openNote(name)
+            }}
+            onToggleNoteFavorite={(path, favorite) => {
+              void memo.setFavorite(path, favorite)
+            }}
+            onOpenSettings={() => {
+              setSettingsOpen(true)
+            }}
+            onRefresh={() => void memo.refresh()}
+          />
+        }
+        header={
+          <SiteHeader
+            modeControl={
+              settings.modeEnabled && mode.personal ? (
+                <ItemModeControl
+                  enabled={settings.modeEnabled}
+                  personal={mode.personal}
+                  pending={mode.pending || !settingsLoaded}
+                  shortcut={settings.modeShortcut}
+                  onToggle={() => void mode.change(!mode.personal)}
+                />
+              ) : undefined
+            }
+            title={NAVIGATION_ITEMS.find((item) => item.id === view)!.label}
+            onQuickCommand={() => setCommandOpen(true)}
+            onAIQuickCommand={() => setAICommandOpen(true)}
+            onInboxCapture={() => setInboxDialogOpen(true)}
+            launcherShortcut={settings.launcherShortcut}
+          />
+        }
+        statusPanel={
+          <LiveStatusPanel
+            calendarStore={calendarStore}
+            shortcutStore={shortcutStore}
+            todoStore={todoStore}
+            open={settings.rightPanelOpen}
+            onOpenChange={(rightPanelOpen) =>
+              void updateSettings({ rightPanelOpen })
+            }
+            onOpenCalendar={() => navigate("calendar")}
+            onOpenShortcuts={() => navigate("shortcuts")}
+            onOpenTodos={() => navigate("todos")}
+          />
+        }
+        overlays={
+          <>
+            {/* Both home capture flows replace the same brief success notice. */}
+            <Toaster
+              id="home-actions"
+              hotkey={[]}
+              theme={settings.theme}
+              position="bottom-center"
+              closeButton
+            />
+            <QuickCommand
+              open={commandOpen}
+              onOpenChange={setCommandOpen}
+              {...launcher}
+              shortcut={settings.launcherShortcut}
+            />
+            <AIQuickCommand
+              open={aiCommandOpen}
+              onOpenChange={setAICommandOpen}
+            />
+            <CalendarReminderCenter />
+            <HomeCreateDialog {...creation} />
+            <InboxCaptureDialog
+              {...inbox.viewProps}
+              open={inboxDialogOpen}
+              onOpenChange={setInboxDialogOpen}
+            />
+            <Dialog open={calculatorOpen} onOpenChange={setCalculatorOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>계산기</DialogTitle>
+                  <DialogDescription>
+                    사칙연산과 괄호를 사용해 계산합니다.
+                  </DialogDescription>
+                </DialogHeader>
+                <Calculator collapsible={false} />
+              </DialogContent>
+            </Dialog>
+            <SettingsSheet
+              itemMode={{
+                settings,
+                personal: mode.personal,
+                busy:
+                  !settingsReady ||
+                  mode.pending ||
+                  todoStore.getSnapshot().busy ||
+                  calendarStore.getSnapshot().busy ||
+                  shortcutStore.getSnapshot().busy ||
+                  inboxStore.getSnapshot().busy ||
+                  memo.busy ||
+                  memo.saving ||
+                  inbox.viewProps.busy ||
+                  creation.busy,
+                onChange: updateSettings,
+                onPersonalChange: (personal) => void mode.change(personal),
+                items: [
+                  ...inbox.viewProps.items
+                    .filter((item) =>
+                      mode.allows(modeItemKey("inbox", item.id))
+                    )
+                    .map((item) => ({
+                      key: modeItemKey("inbox", item.id),
+                      kind: "inbox" as const,
+                      title: item.content.slice(0, 160),
+                    })),
+                  ...launcher.actions.flatMap((action) =>
+                    action.kind === "command"
+                      ? []
+                      : [
+                          {
+                            key: modeItemKey(
+                              action.kind,
+                              action.id.slice(action.id.indexOf(":") + 1)
+                            ),
+                            kind: action.kind,
+                            title: action.title,
+                          },
+                        ]
+                  ),
+                ],
+              }}
+              launcherShortcut={settings.launcherShortcut}
+              onLauncherShortcutChange={(launcherShortcut) =>
+                void updateSettings({ launcherShortcut })
+              }
+              shortcutMenuItems={menuItems}
+              quickMenuOptions={quickMenu.options}
+              quickMenuError={quickMenu.error}
+              onShortcutMenuItemsChange={(shortcutMenuItems) =>
+                void updateSettings({ shortcutMenuItems })
+              }
+              shortcutMenuMotion={settings.shortcutMenuMotion}
+              onShortcutMenuMotionChange={(shortcutMenuMotion) =>
+                void updateSettings({ shortcutMenuMotion })
+              }
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+              directory={memo.library?.directory}
+              ready={memo.ready}
+              busy={memo.busy}
+              error={memo.error}
+              onChooseDirectory={() => void memo.chooseDirectory()}
+              settingsError={settingsError}
+            />
+            {codexSetup !== null && (
+              <CodexSetupPrompt
+                open={codexPromptOpen}
+                initialStep={codexSetup}
+                onDismiss={() => setCodexSetup(null)}
+              />
+            )}
+          </>
+        }
+      >
+        <div className="relative flex h-full min-w-0 flex-col">
+          {visited.has("inbox") && (
+            <div
+              className={
+                view === "inbox" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+              }
+            >
+              <Suspense
+                fallback={
+                  <p
+                    role="status"
+                    className="p-6 text-sm text-muted-foreground"
+                  >
+                    인박스를 불러오는 중…
+                  </p>
+                }
+              >
+                <InboxWorkspace
+                  {...inbox.viewProps}
+                  focusRequest={inboxFocus}
+                />
+              </Suspense>
+            </div>
+          )}
+          <div
+            className={
+              view === "home" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+            }
+          >
+            <HomePage
+              active={view === "home"}
+              onSave={saveScratchpad}
+              onCreateTodo={() => creation.open("todo")}
+              onCreateEvent={() => creation.open("event")}
+              onCreateShortcut={() => creation.open("shortcut")}
+              inboxAction={
+                <InboxQuickAddPopover
+                  open={inboxQuickAddOpen}
+                  onOpenChange={setInboxQuickAddOpen}
+                  onSave={async (content) => {
+                    if (
+                      !(await inboxStore.captureText(content, "홈 빠른 추가"))
+                    )
+                      throw new Error(
+                        inboxStore.getSnapshot().error ||
+                          "인박스가 준비되지 않았습니다. 잠시 후 다시 시도해 주세요."
+                      )
+                  }}
+                />
+              }
+              hideSavedName={settings.modeEnabled && !mode.personal}
+              recentInboxItems={inbox.viewProps.items.filter((item) =>
+                mode.allows(modeItemKey("inbox", item.id))
+              )}
+              inboxBusy={inbox.viewProps.busy}
+              onOpenInbox={(itemId) => {
+                navigate("inbox")
+                setInboxFocus((current) => ({
+                  id: (current?.id ?? 0) + 1,
+                  itemId,
+                }))
+              }}
+            />
+          </div>
+          {/* 창 전체 대신 메모 본문만 스크롤한다. 상위 flex 요소의 min-h-0도 유지한다. */}
+          <div
+            className={
+              view === "notes" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+            }
+          >
+            <ContentVisibility
+              visible={
+                !memo.note.file && memo.note.personal
+                  ? (!settings.modeEnabled || mode.personal) &&
+                    mode.allows(memo.note.personalSourceKey ?? "note:draft")
+                  : undefined
+              }
+              fallback={
+                <p className="p-6 text-sm text-muted-foreground">
+                  개인 메모를 숨겼습니다. 개인 모드에서 계속 편집할 수 있습니다.
+                </p>
+              }
+              contentKey={
+                memo.note.file
+                  ? modeItemKey("note", memo.note.file.path)
+                  : (memo.note.personalSourceKey ?? "note:draft")
+              }
+            >
+              <NotesPage memo={memo} />
+            </ContentVisibility>
+          </div>
+          {visited.has("shortcuts") && (
+            <div
+              className={
+                view === "shortcuts" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+              }
+            >
+              <Suspense
+                fallback={
+                  <p
+                    role="status"
+                    className="p-6 text-sm text-muted-foreground"
+                  >
+                    바로가기를 불러오는 중…
+                  </p>
+                }
+              >
+                <ShortcutWorkspace
+                  active={view === "shortcuts"}
+                  store={shortcutStore}
+                />
+              </Suspense>
+            </div>
+          )}
+          {visited.has("todos") && (
+            <div
+              className={
+                view === "todos" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+              }
+            >
+              <Suspense
+                fallback={
+                  <p
+                    role="status"
+                    className="p-6 text-sm text-muted-foreground"
+                  >
+                    할일을 불러오는 중…
+                  </p>
+                }
+              >
+                <TodoWorkspace store={todoStore} />
+              </Suspense>
+            </div>
+          )}
+          {visited.has("calendar") && (
+            <div
+              className={
+                view === "calendar" ? "flex min-h-0 flex-1 flex-col" : "hidden"
+              }
+            >
+              <Suspense
+                fallback={
+                  <p
+                    role="status"
+                    className="p-6 text-sm text-muted-foreground"
+                  >
+                    캘린더를 불러오는 중…
+                  </p>
+                }
+              >
+                <CalendarWorkspace
+                  store={calendarStore}
+                  focusRequest={calendarFocus}
+                />
+              </Suspense>
+            </div>
+          )}
+          <ShortcutMenu
+            key={view}
+            motion={settings.shortcutMenuMotion}
+            actions={quickMenu.actions}
+            disabled={quickMenu.actions.length === 0}
           />
         </div>
-        {/* 창 전체 대신 메모 본문만 스크롤한다. 상위 flex 요소의 min-h-0도 유지한다. */}
-        <div
-          className={
-            view === "notes" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-          }
-        >
-          <NotesPage memo={memo} />
-        </div>
-        {visited.has("shortcuts") && (
-          <div
-            className={
-              view === "shortcuts" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-            }
-          >
-            <Suspense
-              fallback={
-                <p role="status" className="p-6 text-sm text-muted-foreground">
-                  바로가기를 불러오는 중…
-                </p>
-              }
-            >
-              <ShortcutWorkspace
-                active={view === "shortcuts"}
-                store={shortcutStore}
-              />
-            </Suspense>
-          </div>
-        )}
-        {visited.has("todos") && (
-          <div
-            className={
-              view === "todos" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-            }
-          >
-            <Suspense
-              fallback={
-                <p role="status" className="p-6 text-sm text-muted-foreground">
-                  할일을 불러오는 중…
-                </p>
-              }
-            >
-              <TodoWorkspace store={todoStore} />
-            </Suspense>
-          </div>
-        )}
-        {visited.has("calendar") && (
-          <div
-            className={
-              view === "calendar" ? "flex min-h-0 flex-1 flex-col" : "hidden"
-            }
-          >
-            <Suspense
-              fallback={
-                <p role="status" className="p-6 text-sm text-muted-foreground">
-                  캘린더를 불러오는 중…
-                </p>
-              }
-            >
-              <CalendarWorkspace
-                store={calendarStore}
-                focusRequest={calendarFocus}
-              />
-            </Suspense>
-          </div>
-        )}
-        <ShortcutMenu
-          key={view}
-          motion={settings.shortcutMenuMotion}
-          actions={quickMenu.actions}
-          disabled={quickMenu.actions.length === 0}
-        />
-      </div>
-    </WorkspaceLayout>
+      </WorkspaceLayout>
+    </ContentVisibilityProvider>
   )
 }
 

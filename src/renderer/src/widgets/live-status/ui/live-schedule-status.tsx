@@ -1,3 +1,5 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
+import { modeItemKey } from "../../../../../shared/item-mode"
 import { useEffect, useState, useSyncExternalStore } from "react"
 import type { CalendarStore } from "@/entities/calendar-event"
 import { ScheduleStatusCard } from "./schedule-status-card"
@@ -5,6 +7,7 @@ import { sidebarScheduleStatus } from "@/entities/calendar-event"
 
 // Share the calendar's store so saved edits are reflected without polling IPC.
 export function LiveScheduleStatus({ store }: { store: CalendarStore }) {
+  const { allows } = useContentVisibility()
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [now, setNow] = useState(() => Date.now())
 
@@ -36,7 +39,12 @@ export function LiveScheduleStatus({ store }: { store: CalendarStore }) {
 
   return (
     <ScheduleStatusCard
-      status={sidebarScheduleStatus(state.snapshot.events, now)}
+      status={sidebarScheduleStatus(
+        state.snapshot.events.filter((item) =>
+          allows(modeItemKey("event", item.id))
+        ),
+        now
+      )}
       now={now}
     />
   )

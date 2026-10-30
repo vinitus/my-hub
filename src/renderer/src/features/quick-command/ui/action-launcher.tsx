@@ -11,6 +11,7 @@ import {
   XIcon,
 } from "lucide-react"
 import { hasOpenDialog } from "@/shared/lib/has-open-dialog"
+import { useContentVisibility } from "@/shared/lib/content-visibility"
 import { Button } from "@/shared/ui/button"
 import {
   ACTION_LABELS,
@@ -49,6 +50,13 @@ export function QuickCommand({
   shortcut?: LauncherShortcut
 }) {
   const [draft, setDraft] = useState("")
+  const { scope } = useContentVisibility()
+  const [draftScope, setDraftScope] = useState(scope)
+  if (draftScope !== scope) {
+    setDraftScope(scope)
+    setDraft("")
+  }
+  const [feedbackScope, setFeedbackScope] = useState(scope)
   const [selection, setSelection] = useState<string | null>(null)
   const [feedback, setFeedback] = useState("")
   const [running, setRunning] = useState(false)
@@ -96,6 +104,7 @@ export function QuickCommand({
     busy.current = true
     setRunning(true)
     setFeedback("")
+    setFeedbackScope(scope)
     onOpenChange(false)
     setDraft("")
     setSelection(null)
@@ -272,7 +281,7 @@ export function QuickCommand({
           </Dialog.Popup>
         </Dialog.Portal>
       </Dialog.Root>
-      {feedback && (
+      {feedback && feedbackScope === scope && (
         <aside
           role="status"
           aria-label="액션 실행 결과"

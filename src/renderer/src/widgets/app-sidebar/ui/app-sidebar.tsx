@@ -1,3 +1,5 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
+import { modeItemKey } from "../../../../../shared/item-mode"
 import {
   useState,
   type ComponentProps,
@@ -79,9 +81,11 @@ export function AppSidebar<View extends string>({
   showNavigationNumbers,
   ...props
 }: Props<View>) {
+  const { allows } = useContentVisibility()
   const [query, setQuery] = useState("")
   const notes =
     library?.notes
+      .filter((note) => allows(modeItemKey("note", note.path)))
       .filter((note) =>
         note.name.toLocaleLowerCase().includes(query.toLocaleLowerCase())
       )
@@ -147,7 +151,10 @@ export function AppSidebar<View extends string>({
             <SidebarGroup>
               <div className="flex items-center justify-between pr-1">
                 <SidebarGroupLabel>
-                  저장된 메모 {library ? `(${library.notes.length})` : ""}
+                  저장된 메모{" "}
+                  {library
+                    ? `(${library.notes.filter((note) => allows(modeItemKey("note", note.path))).length})`
+                    : ""}
                 </SidebarGroupLabel>
                 <Button
                   size="icon-xs"

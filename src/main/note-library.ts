@@ -194,7 +194,11 @@ export class NoteLibrary {
     return { path, name, markdown: await readMarkdown(path) }
   }
 
-  async create(markdown: string, requestedName = DEFAULT_NOTE_NAME) {
+  async create(
+    markdown: string,
+    requestedName = DEFAULT_NOTE_NAME,
+    beforePublish?: (path: string) => Promise<void>
+  ) {
     if (Buffer.byteLength(markdown) > MAX_NOTE_BYTES)
       throw new Error("메모는 5MB 이하여야 합니다.")
     const directory = await this.directory()
@@ -206,8 +210,18 @@ export class NoteLibrary {
       for (let number = 1; number <= 10000; number++) {
         const name = number === 1 ? normalized : `${stem} (${number}).md`
         const path = join(directory, name)
+        // 기존 파일 이름에 새 개인 지정을 붙이지 않는다. link의 배타적 생성도 유지한다.
+        if (beforePublish) {
+          try {
+            await lstat(path)
+            continue
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error
+          }
+        }
         try {
           // 완성된 임시 파일을 배치한다. 이미 존재하는 파일은 절대 덮어쓰지 않는다.
+          await beforePublish?.(path)
           await link(temporary, path)
           return { path, name, markdown }
         } catch (error) {

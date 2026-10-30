@@ -1,8 +1,11 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
+import { modeItemKey } from "../../../../../shared/item-mode"
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/shared/ui/button"
 import type { CalendarReminder } from "../../../../../shared/calendar"
 
 export function CalendarReminderCenter() {
+  const { allows } = useContentVisibility()
   const [items, setItems] = useState<
     (CalendarReminder & { notificationId: number })[]
   >([])
@@ -17,21 +20,23 @@ export function CalendarReminderCenter() {
   }, [api])
   return (
     <div className="pointer-events-none fixed right-4 bottom-4 z-[60] flex w-[min(22rem,calc(100vw-2rem))] flex-col gap-2">
-      {items.map((item) => (
-        <CalendarReminderCard
-          key={item.notificationId}
-          item={item}
-          onOpenLinks={() => void api?.openLinks(item.id)}
-          onDismiss={() =>
-            setItems((current) =>
-              current.filter(
-                (currentItem) =>
-                  currentItem.notificationId !== item.notificationId
+      {items
+        .filter((item) => allows(modeItemKey("event", item.id)))
+        .map((item) => (
+          <CalendarReminderCard
+            key={item.notificationId}
+            item={item}
+            onOpenLinks={() => void api?.openLinks(item.id)}
+            onDismiss={() =>
+              setItems((current) =>
+                current.filter(
+                  (currentItem) =>
+                    currentItem.notificationId !== item.notificationId
+                )
               )
-            )
-          }
-        />
-      ))}
+            }
+          />
+        ))}
     </div>
   )
 }

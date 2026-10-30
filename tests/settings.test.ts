@@ -14,6 +14,210 @@ import {
 import { BrowserWindow, handlers } from "./fakes/electron"
 import { AppSettingsStore } from "../src/renderer/src/app/model/app-settings-store"
 import { matchesLauncherShortcut } from "../src/shared/launcher-shortcut"
+import {
+  itemVisibility,
+  modeItemKey,
+  PersonalItemKeysSchema,
+  mergeVisibleOrder,
+} from "../src/shared/item-mode"
+import {
+  matchesModeShortcut,
+  ModeShortcutSchema,
+} from "../src/shared/mode-shortcut"
+
+test("classification notifications invalidate stale visibility until new settings arrive", async () => {
+  let release!: (value: typeof DEFAULT_APP_SETTINGS) => void
+  let reads = 0
+  const pending = new Promise<typeof DEFAULT_APP_SETTINGS>((resolve) => {
+    release = resolve
+  })
+  const store = new AppSettingsStore(
+    {
+      read: async () => (++reads === 1 ? DEFAULT_APP_SETTINGS : pending),
+      update: async () => DEFAULT_APP_SETTINGS,
+    },
+    { read: () => null, write: () => {}, remove: () => {} }
+  )
+  await store.initialize()
+  assert.equal(store.getSnapshot().loaded, true)
+  const refreshing = store.refresh(true)
+  assert.equal(store.getSnapshot().loaded, false)
+  release({
+    ...DEFAULT_APP_SETTINGS,
+    modeEnabled: true,
+    personalItemKeys: ["note:new-private"],
+  })
+  await refreshing
+  assert.equal(store.getSnapshot().loaded, true)
+  assert.equal(
+    itemVisibility(store.getSnapshot().settings, false)("note:new-private"),
+    false
+  )
+})
+
+test("item mode normalizes note paths and hides all five kinds without removing data", () => {
+  assert.equal(
+    modeItemKey("note", "C:\\Notes\\Private.md"),
+    "note:c:/notes/private.md"
+  )
+  const keys = ["note:a", "inbox:b", "todo:c", "event:d", "shortcut:e"]
+  const settings = { modeEnabled: true, personalItemKeys: keys }
+  for (const key of keys) {
+    assert.equal(itemVisibility(settings, false)(key), false)
+    assert.equal(itemVisibility(settings, true)(key), true)
+    assert.equal(
+      itemVisibility({ ...settings, modeEnabled: false }, false)(key),
+      true
+    )
+  }
+  assert.equal(itemVisibility(settings, false)("note:public"), true)
+  assert.deepEqual(settings.personalItemKeys, keys)
+  assert.equal(
+    PersonalItemKeysSchema.safeParse(["note:a", "note:a"]).success,
+    false
+  )
+  assert.equal(PersonalItemKeysSchema.safeParse(["invalid:a"]).success, false)
+  assert.deepEqual(
+    mergeVisibleOrder(["a", "private", "b", "private2", "c"], ["c", "a", "b"]),
+    ["c", "private", "a", "private2", "b"]
+  )
+})
+
+test("personal metadata persists, starts in work mode, inherits before publication and resets on disable", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "my-hub-item-mode-"))
+  try {
+    const repository = new AppSettingsRepository(directory)
+    await repository.update({
+      modeEnabled: true,
+      personalItemKeys: ["inbox:source"],
+    })
+    assert.equal((await repository.visibility()).allows("inbox:source"), false)
+    await repository.setPersonalMode(true)
+    assert.equal((await repository.visibility()).allows("inbox:source"), true)
+    await Promise.all([
+      repository.inheritPersonal("inbox:source", "todo:target"),
+      repository.inheritPersonal("inbox:source", "note:c:/notes/a.md"),
+    ])
+    await repository.preserveNotePrivacy("C:\\Notes\\a.md", "C:\\Notes\\b.md")
+    const restarted = new AppSettingsRepository(directory)
+    for (const key of [
+      "inbox:source",
+      "todo:target",
+      "note:c:/notes/a.md",
+      "note:c:/notes/b.md",
+    ])
+      assert.equal((await restarted.visibility()).allows(key), false)
+    await repository.update({ modeEnabled: false })
+    await repository.update({ modeEnabled: true })
+    assert.equal((await repository.visibility()).allows("inbox:source"), false)
+    const original = await readFile(
+      join(directory, "app-settings.json"),
+      "utf8"
+    )
+    await assert.rejects(repository.inheritPersonal("bad", "todo:target"))
+    assert.equal(
+      await readFile(join(directory, "app-settings.json"), "utf8"),
+      original
+    )
+    const window = new BrowserWindow()
+    registerAppSettings(window as never, repository)
+    await assert.rejects(async () =>
+      handlers.get("settings:personal-mode")!(
+        { sender: {}, senderFrame: {} },
+        true
+      )
+    )
+    await assert.rejects(async () =>
+      handlers.get("settings:personal-mode")!(window.event(), "true")
+    )
+    assert.equal(
+      await handlers.get("settings:personal-mode")!(window.event(), true),
+      true
+    )
+    window.close()
+    assert.equal(handlers.has("settings:inherit-personal"), false)
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
+
+test("mode shortcut excludes composition, repeats, handled events and other app shortcuts", () => {
+  const event = {
+    key: "m",
+    code: "KeyM",
+    ctrlKey: true,
+    shiftKey: true,
+    altKey: false,
+    metaKey: false,
+    isComposing: false,
+    repeat: false,
+    defaultPrevented: false,
+  }
+  assert.equal(matchesModeShortcut(event, "ctrl+shift+m"), true)
+  assert.equal(
+    matchesModeShortcut({ ...event, key: "ㅡ" }, "ctrl+shift+m"),
+    true
+  )
+  for (const patch of [
+    { isComposing: true },
+    { keyCode: 229 },
+    { repeat: true },
+    { defaultPrevented: true },
+    { metaKey: true },
+    { ctrlKey: false },
+    { shiftKey: false },
+    { altKey: true },
+    { key: "k", code: "KeyK" },
+    { key: "s", code: "KeyS" },
+  ])
+    assert.equal(
+      matchesModeShortcut({ ...event, ...patch }, "ctrl+shift+m"),
+      false
+    )
+  assert.equal(
+    matchesModeShortcut({ ...event, altKey: true }, "ctrl+alt+shift+m"),
+    true
+  )
+  for (const reserved of [
+    "ctrl+k",
+    "ctrl+shift+k",
+    "ctrl+o",
+    "ctrl+s",
+    "ctrl+h",
+  ])
+    assert.equal(ModeShortcutSchema.safeParse(reserved).success, false)
+})
+
+test("mode shortcut migrates existing settings and persists without modifying other preferences", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "my-hub-mode-shortcut-"))
+  try {
+    const legacy: Record<string, unknown> = { ...DEFAULT_APP_SETTINGS }
+    delete legacy.modeShortcut
+    await writeFile(
+      join(directory, "app-settings.json"),
+      JSON.stringify(legacy)
+    )
+    const repository = new AppSettingsRepository(directory)
+    assert.equal((await repository.read()).modeShortcut, "ctrl+shift+m")
+    const updated = await repository.update({
+      modeShortcut: "ctrl+alt+shift+m",
+    })
+    assert.deepEqual(updated, {
+      ...DEFAULT_APP_SETTINGS,
+      modeShortcut: "ctrl+alt+shift+m",
+    })
+    assert.equal(
+      (await new AppSettingsRepository(directory).read()).modeShortcut,
+      "ctrl+alt+shift+m"
+    )
+    await assert.rejects(() =>
+      repository.update({ modeShortcut: "ctrl+k" as never })
+    )
+    assert.equal((await repository.read()).modeShortcut, "ctrl+alt+shift+m")
+  } finally {
+    await rm(directory, { recursive: true, force: true })
+  }
+})
 
 test("launcher shortcuts exclude AI, composition and extra modifiers", () => {
   const event = {
@@ -155,6 +359,11 @@ test("실패한 설정 저장은 직전 값을 유지하고 다음 변경을 순
   assert.equal(await store.update({ theme: "dark" }), false)
   assert.equal(store.getSnapshot().settings.theme, DEFAULT_APP_SETTINGS.theme)
   assert.match(store.getSnapshot().error, /저장 실패/)
+  assert.equal(
+    store.getSnapshot().loaded,
+    true,
+    "failed updates keep the last loaded visibility settings"
+  )
   fail = false
   assert.deepEqual(
     await Promise.all([

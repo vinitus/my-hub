@@ -203,7 +203,13 @@ const actions = (...items: CommandPlan["actions"]): CommandPlan => ({
   message: "작업 계획",
   actions: items,
 })
-async function setup(plan: (context: string) => Promise<CommandPlan>) {
+async function setup(
+  plan: (context: string) => Promise<CommandPlan>,
+  visibility?: () => Promise<{
+    allows: (key: string) => boolean
+    revision: number
+  }>
+) {
   const dir = await mkdtemp(join(tmpdir(), "my-hub-commands-test-"))
   const calendar = new CalendarRepository(dir),
     todos = new TodoRepository(dir),
@@ -215,7 +221,8 @@ async function setup(plan: (context: string) => Promise<CommandPlan>) {
     settings,
     (domains) => changed.push(domains),
     { plan, dispose() {} },
-    () => new Date("2026-10-28T10:00:00+09:00")
+    () => new Date("2026-10-28T10:00:00+09:00"),
+    visibility
   )
   return {
     calendar,
@@ -229,6 +236,52 @@ async function setup(plan: (context: string) => Promise<CommandPlan>) {
     },
   }
 }
+test("work mode excludes private context and invalidates in-flight AI answers and previews", async () => {
+  let revision = 0
+  let context = ""
+  let flip = false
+  let plan: CommandPlan = { kind: "answer", message: "answer", actions: [] }
+  const env = await setup(
+    async (input) => {
+      context = input
+      if (flip) revision++
+      return plan
+    },
+    async () => ({ allows: (key) => !key.endsWith(privateId), revision })
+  )
+  const privateId = crypto.randomUUID()
+  try {
+    await env.todos.save({
+      todo: { id: privateId, title: "PRIVATE-TITLE", completed: false },
+      expectedRevision: (await env.todos.load()).revision,
+    })
+    await env.service.execute("context")
+    assert.doesNotMatch(context, /PRIVATE-TITLE/)
+    flip = true
+    assert.match((await env.service.execute("late answer")).message, /모드/)
+    flip = false
+    plan = actions(todoAction())
+    const preview = await env.service.execute("preview")
+    assert.ok(preview.preview)
+    revision++
+    assert.match(
+      (await env.service.apply(preview.preview.token)).message,
+      /모드/
+    )
+    assert.equal((await env.todos.load()).items.length, 1)
+    plan = actions({ ...todoAction(), operation: "update", id: privateId })
+    assert.equal((await env.service.execute("hidden update")).status, "error")
+    assert.equal((await env.todos.load()).items[0].title, "PRIVATE-TITLE")
+    plan = actions(todoAction())
+    const applied = await executeConfirmed(env.service, "create")
+    assert.ok(applied.undoToken)
+    revision++
+    assert.equal((await env.service.undo(applied.undoToken)).status, "error")
+    assert.equal((await env.todos.load()).items.length, 2)
+  } finally {
+    await env.cleanup()
+  }
+})
 async function executeConfirmed(service: CommandService, input: string) {
   const result = await service.execute(input)
   return result.preview ? service.apply(result.preview.token) : result

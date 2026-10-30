@@ -80,13 +80,19 @@ export const shell = {
   },
 }
 export class Notification extends NotificationEmitter {
+  static instances: Notification[] = []
+  closed = false
   static isSupported() {
     return true
   }
   constructor(readonly options: { title: string; body: string }) {
     super()
+    Notification.instances.push(this)
   }
   show() {}
+  close() {
+    this.closed = true
+  }
 }
 export class BrowserWindow extends EventEmitter {
   closed = false

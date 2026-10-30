@@ -10,6 +10,7 @@ import {
 } from "../src/shared/calendar"
 import { CalendarRepository } from "../src/main/calendar-repository"
 import { registerCalendar } from "../src/main/calendar"
+import { CalendarReminders } from "../src/main/calendar-reminders"
 import { CalendarStore } from "../src/renderer/src/entities/calendar-event/model/calendar-store"
 import { panelSchedule } from "../src/renderer/src/widgets/live-status/model/panel-status"
 import {
@@ -17,7 +18,54 @@ import {
   eventFromDraft,
   shiftDate,
 } from "../src/renderer/src/entities/calendar-event/lib/calendar-dates"
-import { app, BrowserWindow, handlers, dialog, shell } from "./fakes/electron"
+import {
+  app,
+  BrowserWindow,
+  handlers,
+  dialog,
+  shell,
+  Notification,
+} from "./fakes/electron"
+
+test("private reminders neither notify nor open links and existing notifications close when hidden", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "my-hub-private-reminder-"))
+  const window = new BrowserWindow()
+  let personal = false
+  const reminders = new CalendarReminders(
+    new CalendarRepository(directory),
+    window as never,
+    async () => ({ allows: () => personal })
+  )
+  // Drive the timer callback directly with a fixed event; no OS notification or clock dependency.
+  const driver = reminders as unknown as {
+    fire: (event: CalendarEvent) => Promise<void>
+  }
+  const event = {
+    ...sample(),
+    referenceUrls: ["https://example.com/private"],
+    openLinks: "at-start" as const,
+  }
+  const before = Notification.instances.length
+  const urls = shell.openedUrls.length
+  try {
+    await driver.fire(event)
+    assert.equal(window.sent.length, 0)
+    assert.equal(Notification.instances.length, before)
+    assert.equal(shell.openedUrls.length, urls)
+    personal = true
+    await driver.fire(event)
+    assert.ok(window.sent.includes("calendar:reminder"))
+    assert.equal(Notification.instances.length, before + 1)
+    personal = false
+    await reminders.refresh()
+    assert.equal(Notification.instances.at(-1)!.closed, true)
+    await driver.fire({ ...event, id: crypto.randomUUID() })
+    assert.equal(Notification.instances.length, before + 1)
+  } finally {
+    reminders.dispose()
+    await rm(directory, { recursive: true, force: true })
+  }
+})
 
 function sample(): CalendarEvent {
   return {

@@ -3,6 +3,10 @@ import { FolderCogIcon, MonitorIcon, MoonIcon, SunIcon } from "lucide-react"
 import { Button } from "@/shared/ui/button"
 import { CodexConnectionPanel } from "./codex-connection"
 import { QuickMenuSettings, type QuickMenuOption } from "./quick-menu-settings"
+import {
+  ItemModeSettings,
+  type ItemModeSettingsProps,
+} from "./item-mode-settings"
 import { useTheme } from "@/shared/lib/theme-provider"
 import type { AppSettings } from "../../../../../shared/app-settings"
 import {
@@ -42,6 +46,7 @@ export function SettingsSheet({
   onShortcutMenuItemsChange,
   launcherShortcut = "ctrl+k",
   onLauncherShortcutChange,
+  itemMode,
 }: {
   connectionPanel?: React.ReactNode
   open: boolean
@@ -62,6 +67,7 @@ export function SettingsSheet({
   onShortcutMenuItemsChange: (items: AppSettings["shortcutMenuItems"]) => void
   launcherShortcut?: LauncherShortcut
   onLauncherShortcutChange?: (shortcut: LauncherShortcut) => void
+  itemMode?: ItemModeSettingsProps
 }) {
   const sectionId = useId()
   const { theme, setTheme } = useTheme()
@@ -140,6 +146,7 @@ export function SettingsSheet({
               열며, 두 단축키는 중복되지 않습니다.
             </p>
           </section>
+          {itemMode && <ItemModeSettings {...itemMode} />}
           <QuickMenuSettings
             items={shortcutMenuItems}
             options={quickMenuOptions}

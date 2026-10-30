@@ -6,6 +6,7 @@ import type { CalendarStore } from "@/entities/calendar-event"
 import type { NoteLibrarySnapshot } from "../../../../shared/notes"
 import type { CalendarEvent } from "../../../../shared/calendar"
 import { SHORTCUT_LABELS } from "../../../../shared/shortcuts"
+import { modeItemKey } from "../../../../shared/item-mode"
 
 // 도메인 간 조립은 app이 소유한다. 런처 UI는 store나 Electron API를 참조하지 않는다.
 export function useActionLauncher({
@@ -20,6 +21,7 @@ export function useActionLauncher({
   onOpenTodos,
   refreshNotes,
   commands,
+  allows = () => true,
 }: {
   open: boolean
   library: NoteLibrarySnapshot | null
@@ -32,6 +34,7 @@ export function useActionLauncher({
   onOpenTodos: () => void
   refreshNotes: () => Promise<void>
   commands: LauncherAction[]
+  allows?: (key: string) => boolean
 }) {
   const todos = useSyncExternalStore(todoStore.subscribe, todoStore.getSnapshot)
   const calendar = useSyncExternalStore(
@@ -135,7 +138,13 @@ export function useActionLauncher({
     ...commands,
   ]
   return {
-    actions,
+    actions: actions.filter(
+      (action) =>
+        action.kind === "command" ||
+        allows(
+          modeItemKey(action.kind, action.id.slice(action.id.indexOf(":") + 1))
+        )
+    ),
     loading: todos.loading || calendar.loading || shortcuts.loading,
     error: [todos.error, calendar.error, shortcuts.error]
       .filter(Boolean)

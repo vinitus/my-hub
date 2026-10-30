@@ -1,3 +1,4 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
 import { useRef, useState } from "react"
 import type {
   executeCommand,
@@ -8,6 +9,7 @@ import type {
 } from "./command-runner"
 
 type Task = {
+  scope: string
   id: string
   input: string
   status: CommandResult["status"] | "running"
@@ -32,11 +34,17 @@ export function useCommandTask({
   undo,
   discard,
 }: CommandTaskOptions) {
+  const { scope } = useContentVisibility()
   const [draft, setDraft] = useState("")
+  const [draftScope, setDraftScope] = useState(scope)
+  if (draftScope !== scope) {
+    setDraftScope(scope)
+    setDraft("")
+  }
   const [task, setTask] = useState<Task | null>(null)
   const busyRef = useRef(false)
   const running = task?.status === "running"
-  const reviewing = task?.status === "preview"
+  const reviewing = task?.scope === scope && task.status === "preview"
 
   async function submit() {
     const input = draft.trim()
@@ -45,6 +53,7 @@ export function useCommandTask({
     const id = crypto.randomUUID()
     setTask({
       id,
+      scope,
       input,
       status: "running",
       message: "요청을 처리하고 있습니다.",
@@ -75,7 +84,7 @@ export function useCommandTask({
   }
   async function resolveTask(action: "apply" | "undo" | "discard") {
     const token = action === "undo" ? task?.undoToken : task?.preview?.token
-    if (!task || !token || busyRef.current) return
+    if (!task || task.scope !== scope || !token || busyRef.current) return
     busyRef.current = true
     const current = task
     setTask({
@@ -98,10 +107,16 @@ export function useCommandTask({
               changed: [],
             })
           : await (action === "undo" ? undo : apply)(token)
-      setTask({ id: current.id, input: current.input, ...result })
+      setTask({
+        id: current.id,
+        scope: current.scope,
+        input: current.input,
+        ...result,
+      })
     } catch (error) {
       setTask({
         id: current.id,
+        scope: current.scope,
         input: current.input,
         status: "error",
         message:
@@ -116,7 +131,7 @@ export function useCommandTask({
   return {
     draft,
     setDraft,
-    task,
+    task: task?.scope === scope ? task : null,
     setTask,
     running,
     reviewing,

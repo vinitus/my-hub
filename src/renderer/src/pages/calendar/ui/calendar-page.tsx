@@ -1,3 +1,5 @@
+import { useContentVisibility } from "@/shared/lib/content-visibility"
+import { modeItemKey } from "../../../../../shared/item-mode"
 import {
   useCallback,
   useEffect,
@@ -56,6 +58,7 @@ export default function CalendarWorkspace({
   createRequest?: number
   focusRequest?: { id: number; date: string } | null
 }) {
+  const { allows } = useContentVisibility()
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const [editor, setEditor] = useState<Editor | null>(null)
   const handledCreateRequest = useRef(0)
@@ -76,12 +79,14 @@ export default function CalendarWorkspace({
   const disabled = state.busy || state.loading || !state.snapshot
   const events = useMemo(
     () =>
-      state.snapshot?.events.map((event) => ({
-        ...event,
-        color: colors[event.color],
-        contrastColor: "#ffffff",
-      })) ?? [],
-    [state.snapshot]
+      state.snapshot?.events
+        .filter((event) => allows(modeItemKey("event", event.id)))
+        .map((event) => ({
+          ...event,
+          color: colors[event.color],
+          contrastColor: "#ffffff",
+        })) ?? [],
+    [state.snapshot, allows]
   )
 
   useEffect(() => {

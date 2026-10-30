@@ -9,6 +9,8 @@ export type NoteFile = {
 export type SaveNoteRequest = {
   id: string | null
   markdown: string
+  personalSourceKey?: string
+  personal?: boolean
   saveAs?: boolean
   name?: string
 }

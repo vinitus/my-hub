@@ -3,6 +3,7 @@ import { isAbsolute } from "node:path"
 import { stat } from "node:fs/promises"
 import type { CalendarEvent } from "../shared/calendar"
 import { CalendarRepository } from "./calendar-repository"
+import { modeItemKey } from "../shared/item-mode"
 
 function eventTime(event: CalendarEvent) {
   if (!event.allDay) return Date.parse(event.start)
@@ -11,16 +12,31 @@ function eventTime(event: CalendarEvent) {
 }
 
 export class CalendarReminders {
+  private readonly notifications = new Map<string, Notification>()
   private timer: ReturnType<typeof setTimeout> | undefined
   private readonly fired = new Set<string>()
   private readonly repository: CalendarRepository
   private readonly window: BrowserWindow
-  constructor(repository: CalendarRepository, window: BrowserWindow) {
+  private readonly visibility: () => Promise<{
+    allows: (key: string) => boolean
+  }>
+  constructor(
+    repository: CalendarRepository,
+    window: BrowserWindow,
+    visibility: () => Promise<{
+      allows: (key: string) => boolean
+    }> = async () => ({
+      allows: () => true,
+    })
+  ) {
     this.repository = repository
     this.window = window
+    this.visibility = visibility
   }
 
   private async openLinks(event: CalendarEvent) {
+    if (!(await this.visibility()).allows(modeItemKey("event", event.id)))
+      return
     for (const url of event.referenceUrls) {
       if (/^https?:\/\//i.test(url)) {
         await shell.openExternal(url).catch(() => {})
@@ -35,6 +51,8 @@ export class CalendarReminders {
   }
 
   private async fire(event: CalendarEvent) {
+    if (!(await this.visibility()).allows(modeItemKey("event", event.id)))
+      return
     const key = `${event.id}:${event.start}`
     if (this.fired.has(key)) return
     this.fired.add(key)
@@ -54,6 +72,7 @@ export class CalendarReminders {
         if (event.openLinks === "on-notification") void this.openLinks(event)
       })
       notification.show()
+      this.notifications.set(event.id, notification)
     }
     if (event.openLinks === "at-start") await this.openLinks(event)
   }
@@ -79,7 +98,15 @@ export class CalendarReminders {
     try {
       const now = Date.now()
       const snapshot = await this.repository.load()
+      const visibility = await this.visibility()
+      for (const [id, notification] of this.notifications) {
+        if (!visibility.allows(modeItemKey("event", id))) {
+          notification.close()
+          this.notifications.delete(id)
+        }
+      }
       const future = snapshot.events
+        .filter((event) => visibility.allows(modeItemKey("event", event.id)))
         .map((event) => ({ event, time: eventTime(event) }))
         .filter(
           ({ event, time }) =>
@@ -106,5 +133,7 @@ export class CalendarReminders {
   dispose() {
     if (this.timer) clearTimeout(this.timer)
     this.timer = undefined
+    for (const notification of this.notifications.values()) notification.close()
+    this.notifications.clear()
   }
 }

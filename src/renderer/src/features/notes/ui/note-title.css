@@ -1,0 +1,5 @@
+.note-title-input {
+  field-sizing: content;
+  min-inline-size: 10ch;
+  max-inline-size: min(32ch, 45vw);
+}

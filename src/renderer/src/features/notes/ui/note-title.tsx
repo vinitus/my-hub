@@ -1,4 +1,6 @@
 import { useRef, useState } from "react"
+import { Input } from "@/shared/ui/input"
+import "./note-title.css"
 
 type Props = {
   name: string
@@ -17,45 +19,34 @@ export function NoteTitle({
   onSave,
   onFocusBody = () => {},
 }: Props) {
-  const [editing, setEditing] = useState(false)
   const title = name.replace(/\.md$/i, "")
   const [draft, setDraft] = useState(title)
+  const [previousTitle, setPreviousTitle] = useState(title)
   const submitting = useRef(false)
-  const cancelled = useRef(false)
 
-  function start() {
-    if (busy) return
-    cancelled.current = false
+  if (title !== previousTitle) {
+    setPreviousTitle(title)
     setDraft(title)
-    setEditing(true)
   }
 
   async function commit() {
-    if (submitting.current || cancelled.current) return
+    if (submitting.current) return
     submitting.current = true
     try {
-      const applied = await onRename(draft.trim() || "제목 없는 메모")
-      if (applied) setEditing(false)
-      return applied
+      return await onRename(draft.trim() || "제목 없는 메모")
     } finally {
       submitting.current = false
     }
   }
 
-  return editing ? (
-    <input
-      autoFocus
-      aria-label="메모 파일명"
+  return (
+    <Input
+      aria-label="메모 제목"
       value={draft}
       placeholder="제목 없는 메모"
       readOnly={busy}
-      className="h-7 w-44 rounded border border-input bg-background px-1 text-sm font-medium outline-none focus:ring-2 focus:ring-ring/50"
-      onFocus={(event) =>
-        event.currentTarget.setSelectionRange(
-          0,
-          draft.length
-        )
-      }
+      className="note-title-input h-7 w-auto min-w-0 rounded border border-transparent bg-transparent px-1 text-sm font-medium shadow-none outline-none placeholder:text-muted-foreground/70 focus:border-input focus:bg-background focus:ring-2 focus:ring-ring/50 focus-visible:border-input focus-visible:ring-2"
+      title={`${path ?? name}\n.md 확장자는 저장할 때 자동으로 붙습니다.`}
       onChange={(event) => setDraft(event.target.value)}
       onBlur={() => void commit()}
       onKeyDown={(event) => {
@@ -89,27 +80,9 @@ export function NoteTitle({
         if (event.key === "Escape") {
           event.preventDefault()
           event.stopPropagation()
-          cancelled.current = true
-          setEditing(false)
+          setDraft(title)
         }
       }}
     />
-  ) : (
-    <button
-      type="button"
-      className="max-w-44 truncate rounded px-1 text-left font-medium hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring"
-      title={`${path ?? name}\n더블클릭해서 파일명 변경`}
-      aria-label={`${name}, 더블클릭하거나 Enter를 눌러 이름 변경`}
-      disabled={busy}
-      onDoubleClick={start}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === "F2") {
-          event.preventDefault()
-          start()
-        }
-      }}
-    >
-      {title}
-    </button>
   )
 }

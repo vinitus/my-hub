@@ -10,6 +10,13 @@ Ctrl+5와 사이드바에서 인박스를 연다. 헤더의 수집 버튼과 Ctr
 ## 우측 실시간 현황 패널
 
 `widgets/live-status`의 `LiveStatusPanel`이 우측 현황 패널을 연결한다.
+
+일정 현황과 우측 패널의 갱신 수명은 같은 slice의 `model/use-live-status-clock.ts`가 관리한다.
+위젯별로 마운트 시 store 초기화, 1초 시각 갱신, 창 focus 시 store 새로고침을 수행한다.
+타이머는 IPC 조회를 하지 않는다. store 교체·언마운트 시 타이머와 focus 구독을 해제하며,
+여러 위젯이 같은 store를 사용해도 전역 타이머나 focus 구독을 합치지 않는다.
+목록 구독·가시성 필터·사용자 동작은 각 위젯에 남긴다.
+`live-status.stories.tsx`는 실제 브리지 없는 준비·로딩·오류 상태와 갱신 수명 fixture를 제공한다.
 `app/ui/workspace-layout.tsx`는 레이아웃 슬롯과 props/콜백만 받아 좌우 패널을 조절한다.
 좌측은 shadcn의 `SidebarProvider → Sidebar + SidebarInset` 구성을 사용한다.
 접을 때는 콘텐츠 폭을 유지한 채 offcanvas로 이동하고 gap만 줄여 내부 줄바꿈을 방지한다.

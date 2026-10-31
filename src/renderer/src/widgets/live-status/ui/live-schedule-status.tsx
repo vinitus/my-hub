@@ -1,6 +1,7 @@
 import { useContentVisibility } from "@/shared/lib/content-visibility"
 import { modeItemKey } from "../../../../../shared/item-mode"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useSyncExternalStore } from "react"
+import { useLiveStatusClock } from "../model/use-live-status-clock"
 import type { CalendarStore } from "@/entities/calendar-event"
 import { ScheduleStatusCard } from "./schedule-status-card"
 import { sidebarScheduleStatus } from "@/entities/calendar-event"
@@ -9,21 +10,7 @@ import { sidebarScheduleStatus } from "@/entities/calendar-event"
 export function LiveScheduleStatus({ store }: { store: CalendarStore }) {
   const { allows } = useContentVisibility()
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot)
-  const [now, setNow] = useState(() => Date.now())
-
-  useEffect(() => {
-    void store.initialize()
-    const refresh = () => {
-      setNow(Date.now())
-      void store.refresh()
-    }
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
-    window.addEventListener("focus", refresh)
-    return () => {
-      window.clearInterval(timer)
-      window.removeEventListener("focus", refresh)
-    }
-  }, [store])
+  const now = useLiveStatusClock({ calendarStore: store })
 
   if (!state.snapshot) {
     return (

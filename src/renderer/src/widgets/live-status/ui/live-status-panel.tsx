@@ -1,6 +1,7 @@
 import { useContentVisibility } from "@/shared/lib/content-visibility"
 import { modeItemKey } from "../../../../../shared/item-mode"
-import { useEffect, useState, useSyncExternalStore } from "react"
+import { useSyncExternalStore } from "react"
+import { useLiveStatusClock } from "../model/use-live-status-clock"
 import type { CalendarStore } from "@/entities/calendar-event"
 import type { ShortcutStore } from "@/features/shortcuts"
 import type { TodoStore } from "@/features/todos"
@@ -35,25 +36,7 @@ export function LiveStatusPanel({
     shortcutStore.getSnapshot
   )
   const todos = useSyncExternalStore(todoStore.subscribe, todoStore.getSnapshot)
-  const [now, setNow] = useState(() => Date.now())
-
-  useEffect(() => {
-    void calendarStore.initialize()
-    void shortcutStore.initialize()
-    void todoStore.initialize()
-    const refresh = () => {
-      setNow(Date.now())
-      void calendarStore.refresh()
-      void shortcutStore.refresh()
-      void todoStore.refresh()
-    }
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
-    window.addEventListener("focus", refresh)
-    return () => {
-      window.clearInterval(timer)
-      window.removeEventListener("focus", refresh)
-    }
-  }, [calendarStore, shortcutStore, todoStore])
+  const now = useLiveStatusClock({ calendarStore, shortcutStore, todoStore })
 
   const items = (shortcuts.snapshot?.items ?? []).filter((item) =>
     allows(modeItemKey("shortcut", item.id))

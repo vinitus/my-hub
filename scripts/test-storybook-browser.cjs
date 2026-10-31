@@ -6,6 +6,9 @@ const path = require("node:path")
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), "my-hub-storybook-"))
 app.setPath("userData", profile)
 const base = process.env.STORYBOOK_TEST_URL
+// The development run exercises React StrictMode's Effect replay. Permit HMR
+// only on this same local Storybook server; external requests stay blocked.
+const hmrOrigin = new URL(base.replace(/^http/, "ws")).origin
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 app.whenReady().then(async () => {
   const win = new BrowserWindow({
@@ -25,6 +28,7 @@ app.whenReady().then(async () => {
     callback({
       cancel:
         !details.url.startsWith(base) &&
+        new URL(details.url).origin !== hmrOrigin &&
         !details.url.startsWith("data:") &&
         !details.url.startsWith("devtools:"),
     })
@@ -3614,6 +3618,9 @@ app.whenReady().then(async () => {
             `Storage.prototype.setItem = window.__originalSetItem; void 0`
           )
           console.log("PASS theme shortcut writes once in StrictMode")
+        }
+        if (story.importPath.endsWith("/live-status.stories.tsx")) {
+          await require("./test-live-status-browser.cjs")(win, story)
         }
         count++
       }

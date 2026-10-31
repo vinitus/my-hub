@@ -14,7 +14,8 @@ Ctrl+5와 사이드바에서 인박스를 연다. 헤더의 수집 버튼과 Ctr
 좌측은 shadcn의 `SidebarProvider → Sidebar + SidebarInset` 구성을 사용한다.
 접을 때는 콘텐츠 폭을 유지한 채 offcanvas로 이동하고 gap만 줄여 내부 줄바꿈을 방지한다.
 좌측 너비 조절 핸들은 포인터 드래그와 방향키·Home·End를 지원하며 완료 시 설정을 저장한다.
-`react-resizable-panels`는 본문과 우측 현황 패널의 분할에만 사용한다.
+본문과 우측 현황 패널은 flex 레이아웃이며, 좌우 너비 조절은 `app/model/use-panel-resize.ts`를 공유한다.
+`react-resizable-panels`와 해당 shadcn Resizable 래퍼는 사용하지 않는다.
 기본 너비는 좌측 288px·우측 280px이고, 열린 패널의 최소 너비는 모두 200px이다.
 최대 너비는 좌측 320px·우측 480px이다. 이전에 저장한 좌측 너비가 320px를 넘으면 읽을 때 보정한다.
 드래그로는 200px 아래로 줄이거나 자동으로 접을 수 없다. 접기 버튼으로만 접으며,

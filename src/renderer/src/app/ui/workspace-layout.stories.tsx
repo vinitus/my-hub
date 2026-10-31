@@ -24,8 +24,9 @@ function InteractiveLayout(args: ComponentProps<typeof WorkspaceLayout>) {
       onChange={async (patch) => {
         // Model the app's asynchronous settings save without calling Electron.
         await new Promise((resolve) => setTimeout(resolve, 60))
-        setSettings((current) => ({ ...current, ...patch }))
         setWrites((count) => count + 1)
+        if ((await args.onChange(patch)) === false) return false
+        setSettings((current) => ({ ...current, ...patch }))
       }}
       sidebar={
         <Sidebar variant="inset" collapsible="offcanvas">
@@ -130,3 +131,6 @@ export const Collapsed: Story = {
   },
 }
 export const Hydration: Story = { args: { ready: false } }
+export const SaveFailure: Story = {
+  args: { onChange: async () => false },
+}

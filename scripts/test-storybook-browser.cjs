@@ -2230,7 +2230,7 @@ app.whenReady().then(async () => {
               `document.querySelector('[aria-label="본문 입력"]').focus()`
             )
             win.webContents.insertText("preserved draft")
-            const drag = async (label, dx) => {
+            const drag = async (label, dx, cancel = false) => {
               const point = await win.webContents.executeJavaScript(`(() => {
                 const r = document.querySelector('[aria-label="${label}"]').getBoundingClientRect();
                 const x = Math.round(r.x + r.width / 2), y = Math.round(r.y + r.height / 2);
@@ -2254,6 +2254,11 @@ app.whenReady().then(async () => {
                 })
                 await delay(20)
               }
+              if (cancel) {
+                await win.webContents.executeJavaScript(
+                  `document.activeElement.dispatchEvent(new KeyboardEvent('keydown', {key:'Escape',bubbles:true,cancelable:true}))`
+                )
+              }
               win.webContents.sendInputEvent({
                 type: "mouseUp",
                 button: "left",
@@ -2261,7 +2266,7 @@ app.whenReady().then(async () => {
                 x: point.x + dx,
                 y: point.y,
               })
-              if (label === "왼쪽 사이드바 크기 조절") {
+              if (!cancel && label === "왼쪽 사이드바 크기 조절") {
                 await delay(20)
                 const pendingWidth = await win.webContents.executeJavaScript(
                   `document.querySelector('[data-slot="sidebar-container"]').getBoundingClientRect().width`
@@ -2380,9 +2385,64 @@ app.whenReady().then(async () => {
             assert.equal(minimumSettings.rightPanelOpen, true)
             assert.equal(minimumSettings.leftSidebarWidth, 200)
             assert.equal(minimumSettings.rightPanelWidth, 200)
+            const writesBeforeCancel = (await sizes()).writes
+            await drag("왼쪽 사이드바 크기 조절", 40, true)
+            await drag("오른쪽 현황 패널 크기 조절", -40, true)
+            await delay(160)
+            assert.equal(Math.round((await sizes()).left), 200)
+            assert.equal(Math.round((await sizes()).right), 200)
+            assert.equal((await sizes()).writes, writesBeforeCancel, 'cancelled drags must not save')
+
+            const resizeKey = async (label, key) => {
+              await win.webContents.executeJavaScript(`(() => {
+                const handle = document.querySelector('[aria-label="${label}"]');
+                handle.focus();
+                handle.dispatchEvent(new KeyboardEvent('keydown', {key:'${key}',bubbles:true,cancelable:true}));
+              })()`)
+              await delay(100)
+            }
+            await resizeKey("왼쪽 사이드바 크기 조절", "ArrowRight")
+            assert.equal(Math.round((await sizes()).left), 210)
+            await resizeKey("왼쪽 사이드바 크기 조절", "End")
+            assert.equal(Math.round((await sizes()).left), 320)
+            await resizeKey("오른쪽 현황 패널 크기 조절", "ArrowLeft")
+            assert.equal(Math.round((await sizes()).right), 210)
+            await resizeKey("오른쪽 현황 패널 크기 조절", "End")
+            assert.equal(Math.round((await sizes()).right), 480)
+            const savedBeforeShrink = (await sizes()).writes
+            win.setSize(800, 800)
+            await delay(100)
+            const constrained = await win.webContents.executeJavaScript(`({
+              viewport: innerWidth,
+              total: document.documentElement.scrollWidth,
+              panel: document.getElementById('right-status-panel').getBoundingClientRect().width,
+              available: document.getElementById('right-status-panel').parentElement.getBoundingClientRect().width,
+            })`)
+            assert.ok(constrained.panel <= constrained.available, 'right panel must fit available width')
+            assert.ok(constrained.panel < 480, 'narrow desktop must constrain the preferred 480px width')
+            assert.ok(constrained.total <= constrained.viewport, 'narrow desktop must not overflow')
+            win.setSize(1100, 800)
+            await delay(100)
+            assert.equal(Math.round((await sizes()).right), 480, 'window growth must restore the preferred width')
+            assert.equal((await sizes()).writes, savedBeforeShrink, 'window constraints must not save another width')
+            await resizeKey("왼쪽 사이드바 크기 조절", "Home")
+            await resizeKey("오른쪽 현황 패널 크기 조절", "Home")
+            assert.equal(Math.round((await sizes()).left), 200)
+            assert.equal(Math.round((await sizes()).right), 200)
             console.log(
-              `PASS ${story.name} panel drag, restore and preserved content`
+              `PASS ${story.name} panel drag, cancellation, keyboard, window constraints and restored content`
             )
+          }
+          if (story.name === "Save Failure") {
+            for (const label of ["왼쪽 사이드바 크기 조절", "오른쪽 현황 패널 크기 조절"]) {
+              await win.webContents.executeJavaScript(`document.querySelector('[aria-label="${label}"]').dispatchEvent(new KeyboardEvent('keydown', {key:'End',bubbles:true,cancelable:true}))`)
+              await delay(320)
+            }
+            const rejected = await sizes()
+            assert.equal(Math.round(rejected.left), 288)
+            assert.equal(Math.round(rejected.right), 280)
+            assert.equal(rejected.writes, 2, 'rejected width changes must roll back without another save')
+            console.log('PASS rejected panel saves restore preferred widths')
           }
         }
         if (
